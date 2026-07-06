@@ -1,0 +1,40 @@
+files:
+  - path: app/api/auth/route.ts
+    source: claude
+    purpose: "Password-gate check endpoint"
+  - path: app/api/fetch-video/route.ts
+    source: claude
+    purpose: "SSRF-guarded proxy for direct video URLs"
+  - path: app/api/generate/route.ts
+    source: claude
+    purpose: "Submit generation job (validated, provider-dispatched)"
+  - path: app/api/keys/route.ts
+    source: claude
+    purpose: "Key presence booleans; dev-only .env.local writer"
+  - path: app/api/refine/route.ts
+    source: claude
+    purpose: "Gemini Flash prompt rewriter (history/context/transfer modes)"
+  - path: app/api/status/route.ts
+    source: claude
+    purpose: "Poll provider job state"
+  - path: app/api/video/route.ts
+    source: claude
+    purpose: "Streams MP4s needing auth headers (Veo/Sora/remote CDNs)"
+  - path: app/chat/page.tsx
+    source: claude
+    purpose: "Studio UI — chat takes, sessions, archive, spend, key panel"
+  - path: app/demo-reel.tsx
+    source: claude
+    purpose: "Animated demo playing real ZCLIP takes on a ~15s loop"
+  - path: app/globals.css
+    source: claude
+    purpose: "Whole design system: tokens, starfield, chat pill, charts"
+  - path: app/icon.svg
+    source: claude
+    purpose: "Favicon — cyan underscore on black"
+  - path: app/layout.tsx
+    source: claude
+    purpose: "Root layout: fonts (Inter/JetBrains/Space Grotesk), metadata"
+  - path: app/page.tsx
+    source: claude
+    purpose: "Public landing page (hero, differentiators, workflow, star CTA)"

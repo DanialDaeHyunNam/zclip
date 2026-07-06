@@ -1,0 +1,25 @@
+files:
+  - path: .env.example
+    source: claude
+    purpose: "Documented env template (keys + optional APP_PASSWORD)"
+  - path: .gitignore
+    source: claude
+    purpose: "Excludes env files, build output, logs from the public repo"
+  - path: CLAUDE.md
+    source: claude
+    purpose: "Agent handoff notes — architecture map, provider facts, verify rules"
+  - path: README.md
+    source: claude
+    purpose: "Human quickstart, provider swap guide, deploy/teardown"
+  - path: bun.lock
+    source: claude
+    purpose: "Bun dependency lockfile"
+  - path: next.config.ts
+    source: claude
+    purpose: "Next.js config (defaults)"
+  - path: package.json
+    source: claude
+    purpose: "Scripts + minimal deps (next/react/typescript)"
+  - path: tsconfig.json
+    source: claude
+    purpose: "TypeScript config (Next App Router)"

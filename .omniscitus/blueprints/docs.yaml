@@ -1,0 +1,4 @@
+files:
+  - path: docs/DEVLOG.md
+    source: claude
+    purpose: "Chronological decision log with evidence (#1–25)"

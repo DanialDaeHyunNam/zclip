@@ -1,0 +1,43 @@
+# ZCLIP Landing & Demo Reel
+
+**Participants**: dan, claude
+
+## Summary
+Public landing at `/` (studio moved to /chat): OpusClip-style pitch with an
+animated demo reel that plays REAL ZCLIP-generated takes, differentiator list,
+cut.donkeyuse.com workflow, open-source star CTA. Brand renamed HOOK LAB → ZCLIP.
+
+## Context
+- **Background**: Dan wants the repo public + a landing that explains the tool
+  instantly and pitches the hook→cut(donkeyuse) full-video workflow.
+- **Requirements**: hero legible at a glance ("UGC reaction hooks, typed not
+  filmed"), numbered differentiators (model-swap, takes-as-context = THE BIG ONE,
+  video-to-video-in-spirit, multimodal, spend dashboard), star-the-repo ask,
+  demo must be authentic (made with the tool itself).
+- **Decisions**: demo reel is a JS state machine (no video file) playing 3 real
+  takes (T1 Veo, T2/3 Grok after a quota hit — accidentally demoing model-swap);
+  each take frame-seeded from the previous (real continuity); balanced 3F/3M cast
+  strip; SynthID stance: Veo already watermarks — self-label on platforms, never
+  fake testimonials.
+- **Constraints**: Veo RPD quota mid-work → Grok fallback; performance copied from
+  reference clips is transcription-only (no pixels reused) for rights safety.
+
+## Timeline
+
+### 2026-07-06
+**Focus**: Landing v1→v2, rebrand, real-output demo reel, cast assets.
+- Baked 27+10 starter photos (realistic-texture prompts, neutral casting names)
+- Fluid design refresh: starfield, Space Grotesk, pills, radius tokens
+- Demo reel: 3-act story (bedroom → rooftop with friends → outfit restyle),
+  expression-hold prompts verified frame-by-frame
+- Routes: landing `/`, studio `/chat`; rail Z_ logo home affordance
+
+**Learned**: the demo IS the pitch — "REAL OUTPUT, each built on the last" only
+works because the pipeline actually did it.
+
+## Pending
+- [ ] Replace REPO_URL placeholder once the GitHub repo exists
+- [ ] Owner eyeball pass on all 37 baked card photos (re-bake singles as needed)
+
+## Notes
+Cross-ref: web/2026-07-06-zclip-chat-studio.md

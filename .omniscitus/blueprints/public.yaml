@@ -1,0 +1,124 @@
+files:
+  - path: public/demo/take-1.mp4
+    source: claude
+    purpose: "Real ZCLIP-generated demo take for the landing reel"
+  - path: public/demo/take-2.mp4
+    source: claude
+    purpose: "Real ZCLIP-generated demo take for the landing reel"
+  - path: public/demo/take-3.mp4
+    source: claude
+    purpose: "Real ZCLIP-generated demo take for the landing reel"
+  - path: public/starters/README.md
+    source: claude
+    purpose: "Card image naming convention + bake instructions"
+  - path: public/starters/asian-f-1.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/asian-f-2.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/asian-f-3.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/asian-m-1.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/asian-m-2.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/asian-m-3.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/beach.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/bedroom.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/black-f-1.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/black-f-2.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/black-f-3.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/black-m-1.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/black-m-2.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/black-m-3.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/blonde-1.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/blonde-2.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/blonde-3.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/brunette-1.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/brunette-2.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/brunette-3.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/cafe.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/car.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/desk.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/dorm.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/guy-1.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/guy-2.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/guy-3.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/kitchen.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/latina-1.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/latina-2.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/latina-3.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/mountain.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/park.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/redhead-1.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/redhead-2.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/redhead-3.jpg
+    source: claude
+    purpose: "Baked starter card photo"
+  - path: public/starters/rooftop.jpg
+    source: claude
+    purpose: "Baked starter card photo"

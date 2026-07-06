@@ -1,0 +1,7 @@
+files:
+  - path: scripts/bake-starters.mjs
+    source: claude
+    purpose: "Bakes starter card photos via Gemini image model"
+  - path: scripts/regen-demo-takes.mjs
+    source: claude
+    purpose: "Regenerates landing demo takes (PROVIDER env)"

@@ -1,0 +1,28 @@
+files:
+  - path: lib/auth.ts
+    source: claude
+    purpose: "Shared password helpers"
+  - path: lib/config.ts
+    source: claude
+    purpose: "Provider registry, whitelists, effectiveSeconds, cost estimates"
+  - path: lib/prompts.ts
+    source: claude
+    purpose: "Cast/settings blocks, composeStarter, surprise arc choreography"
+  - path: lib/providers/grok.ts
+    source: claude
+    purpose: "Grok adapter (text→image→video, CDN proxy, 1–15s)"
+  - path: lib/providers/index.ts
+    source: claude
+    purpose: "Provider resolver"
+  - path: lib/providers/seedance.ts
+    source: claude
+    purpose: "Seedance adapter (best-effort, unverified)"
+  - path: lib/providers/sora.ts
+    source: claude
+    purpose: "Sora 2 adapter (sizes, 8s min, multipart reference)"
+  - path: lib/providers/types.ts
+    source: claude
+    purpose: "VideoProvider adapter interface"
+  - path: lib/providers/veo.ts
+    source: claude
+    purpose: "Veo 3.1 adapter (LRO submit/poll, quota messaging)"
