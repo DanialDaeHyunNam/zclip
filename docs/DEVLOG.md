@@ -297,6 +297,17 @@ All entries 2026-07-06 (single build session, owner: Dan).
   sync reads), and React's muted-as-property misses autoplay policy
   (force el.muted + play() in a ref).
 
+## 19. Demo recast: Asian lead, dramatic acts, half-speed loop
+
+- Owner feedback: pajamas never appeared (frame-seed beats wardrobe
+  prompts — LEARNING: seed frames for emotion/camera changes, go
+  prompt-chain-only for wardrobe/location changes), acts too tame, loop
+  too slow, recast to the Asian lead.
+- Regenerated all three takes (~$1.20): asian-f-1 bedroom quiet-surprise
+  -> big laugh burst (T1-frame-seeded) -> golden-hour rooftop showing
+  the phone (prompt-chain only, deliberate). Demo copy now matches the
+  clips; loop tightened 27s -> ~15s (typing 3 chars/tick, ~1.4s renders).
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.
