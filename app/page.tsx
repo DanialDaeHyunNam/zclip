@@ -1237,138 +1237,6 @@ export default function Home() {
 
           {error && <div className="error-box fade">{error}</div>}
 
-          <div
-            className={`chat-zone ${dragOver ? "dragover" : ""}`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOver(false);
-              const f = e.dataTransfer.files?.[0];
-              if (f) attachMediaFile(f);
-            }}
-          >
-            {(attach || (turns.length === 0 && (selChar || selSetting))) && (
-              <div className="chips-row">
-                {turns.length === 0 && selChar && (
-                  <span className="sel-chip fade">
-                    <img
-                      src={
-                        "custom" in selChar && selChar.custom
-                          ? selChar.image
-                          : `/starters/${selChar.id}.jpg`
-                      }
-                      alt=""
-                      onError={(e) => (e.currentTarget.style.display = "none")}
-                    />
-                    {selChar.label}
-                    <button
-                      className="link-btn danger"
-                      onClick={() => setCharId(null)}
-                      aria-label="Remove character"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )}
-                {turns.length === 0 && selSetting && (
-                  <span className="sel-chip fade">
-                    <img
-                      src={
-                        "custom" in selSetting && selSetting.custom
-                          ? selSetting.image
-                          : `/starters/${selSetting.id}.jpg`
-                      }
-                      alt=""
-                      onError={(e) => (e.currentTarget.style.display = "none")}
-                    />
-                    {selSetting.label}
-                    <button
-                      className="link-btn danger"
-                      onClick={() => setSettingId(null)}
-                      aria-label="Remove background"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )}
-                {attach && (
-                  <span className="sel-chip fade">
-                    <img src={attach.thumb} alt="attached reference" />
-                    {attach.kind === "video"
-                      ? `Video · ${attach.frames.length} frames`
-                      : "Image reference"}
-                    <button
-                      className="link-btn danger"
-                      onClick={() => setAttach(null)}
-                      aria-label="Remove attachment"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )}
-              </div>
-            )}
-            <div className="chat-bar">
-              <button
-                className="attach-btn"
-                title="Attach a reference image — or drag & drop / paste one"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={Boolean(busyTurn)}
-              >
-                +
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*"
-                hidden
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) attachMediaFile(f);
-                  e.target.value = "";
-                }}
-              />
-              <textarea
-                className="chat-input"
-                rows={2}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
-                onPaste={(e) => {
-                  const item = [...e.clipboardData.items].find((i) =>
-                    i.type.startsWith("image/"),
-                  );
-                  const f = item?.getAsFile();
-                  if (f) {
-                    e.preventDefault();
-                    attachMediaFile(f);
-                  }
-                }}
-                placeholder={
-                  busyTurn
-                    ? "Rendering — wait for this take…"
-                    : starterReady
-                      ? "Action for the take — empty = default quiet-surprise beat"
-                      : turns.length === 0
-                        ? "Pick blocks above and/or describe the clip… (drop an image as reference)"
-                        : "What should change in the next take?"
-                }
-                disabled={Boolean(busyTurn)}
-              />
-              <button className="btn-primary send-btn" onClick={send} disabled={!canSend}>
-                {starterReady && !draft.trim() ? "Start" : "Send"}
-              </button>
-            </div>
-          </div>
           {turns.length === 0 && (
             <div className="starter fade">
               <div className="starter-pills">
@@ -1566,6 +1434,139 @@ export default function Home() {
             </div>
           )}
 
+
+          <div
+            className={`chat-zone ${dragOver ? "dragover" : ""}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) attachMediaFile(f);
+            }}
+          >
+            {(attach || (turns.length === 0 && (selChar || selSetting))) && (
+              <div className="chips-row">
+                {turns.length === 0 && selChar && (
+                  <span className="sel-chip fade">
+                    <img
+                      src={
+                        "custom" in selChar && selChar.custom
+                          ? selChar.image
+                          : `/starters/${selChar.id}.jpg`
+                      }
+                      alt=""
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                    />
+                    {selChar.label}
+                    <button
+                      className="link-btn danger"
+                      onClick={() => setCharId(null)}
+                      aria-label="Remove character"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                {turns.length === 0 && selSetting && (
+                  <span className="sel-chip fade">
+                    <img
+                      src={
+                        "custom" in selSetting && selSetting.custom
+                          ? selSetting.image
+                          : `/starters/${selSetting.id}.jpg`
+                      }
+                      alt=""
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                    />
+                    {selSetting.label}
+                    <button
+                      className="link-btn danger"
+                      onClick={() => setSettingId(null)}
+                      aria-label="Remove background"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                {attach && (
+                  <span className="sel-chip fade">
+                    <img src={attach.thumb} alt="attached reference" />
+                    {attach.kind === "video"
+                      ? `Video · ${attach.frames.length} frames`
+                      : "Image reference"}
+                    <button
+                      className="link-btn danger"
+                      onClick={() => setAttach(null)}
+                      aria-label="Remove attachment"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="chat-bar">
+              <button
+                className="attach-btn"
+                title="Attach a reference image — or drag & drop / paste one"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={Boolean(busyTurn)}
+              >
+                +
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) attachMediaFile(f);
+                  e.target.value = "";
+                }}
+              />
+              <textarea
+                className="chat-input"
+                rows={2}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                onPaste={(e) => {
+                  const item = [...e.clipboardData.items].find((i) =>
+                    i.type.startsWith("image/"),
+                  );
+                  const f = item?.getAsFile();
+                  if (f) {
+                    e.preventDefault();
+                    attachMediaFile(f);
+                  }
+                }}
+                placeholder={
+                  busyTurn
+                    ? "Rendering — wait for this take…"
+                    : starterReady
+                      ? "Action for the take — empty = default quiet-surprise beat"
+                      : turns.length === 0
+                        ? "Pick blocks above and/or describe the clip… (drop an image as reference)"
+                        : "What should change in the next take?"
+                }
+                disabled={Boolean(busyTurn)}
+              />
+              <button className="btn-primary send-btn" onClick={send} disabled={!canSend}>
+                {starterReady && !draft.trim() ? "Start" : "Send"}
+              </button>
+            </div>
+          </div>
         </section>
 
         {/* preview + controls — rendered into the LEFT column via CSS order */}
@@ -1637,15 +1638,13 @@ export default function Home() {
             </div>
           )}
 
-          {/* next-take parameters */}
+          {/* next-take settings — one compact strip */}
           <div className="panel-controls">
-            <div className="field">
-              <label className="label" htmlFor="model">
-                Model
-              </label>
-              <div className="select-wrap">
+            <div className="settings-strip">
+              <div className="select-wrap bare">
                 <select
-                  id="model"
+                  aria-label="Model"
+                  title={providerInfo.note ?? "Model"}
                   value={providerId}
                   onChange={(e) => {
                     setProviderId(e.target.value as ProviderName);
@@ -1661,6 +1660,66 @@ export default function Home() {
                   ))}
                 </select>
               </div>
+              <div className="select-wrap bare">
+                <select
+                  aria-label="Aspect ratio"
+                  title="Aspect ratio"
+                  value={aspect}
+                  onChange={(e) => setAspect(e.target.value as AspectRatio)}
+                >
+                  {ASPECT_RATIOS.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="select-wrap bare">
+                <select
+                  aria-label="Duration"
+                  title="Duration (1080p locks to 8s)"
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                >
+                  {DURATIONS.map((d) => (
+                    <option key={d} value={d} disabled={resolution !== "720p" && d !== 8}>
+                      {d}S
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="select-wrap bare">
+                <select
+                  aria-label="Resolution"
+                  title="Resolution"
+                  value={resolution}
+                  onChange={(e) => {
+                    const r = e.target.value as Resolution;
+                    setResolution(r);
+                    if (r !== "720p") setDuration(8);
+                  }}
+                >
+                  {RESOLUTIONS.map((r) => (
+                    <option key={r} value={r}>
+                      {r.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="select-wrap bare">
+                <select
+                  aria-label="Continuity"
+                  title="Carry a frame from the last take into the next one"
+                  value={continuity ? "on" : "off"}
+                  onChange={(e) => setContinuity(e.target.value === "on")}
+                >
+                  <option value="on">CONT ON</option>
+                  <option value="off">CONT OFF</option>
+                </select>
+              </div>
+              <span className="strip-cost" title="Estimated cost per take">
+                {estCostUsd != null ? `≈$${estCostUsd.toFixed(2)}` : "$—"}
+              </span>
             </div>
 
             {keyMissing && (
@@ -1707,89 +1766,6 @@ export default function Home() {
               </div>
             )}
             {!keyMissing && keyMsg && <p className="key-msg fade">{keyMsg}</p>}
-            {providerInfo.note && <p className="key-hint">{providerInfo.note}</p>}
-
-            <div className="params">
-              <div className="param">
-                <span className="label">Aspect</span>
-                <div className="select-wrap small">
-                  <select
-                    aria-label="Aspect ratio"
-                    value={aspect}
-                    onChange={(e) => setAspect(e.target.value as AspectRatio)}
-                  >
-                    {ASPECT_RATIOS.map((a) => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="param">
-                <span className="label">Duration</span>
-                <div className="select-wrap small">
-                  <select
-                    aria-label="Duration"
-                    value={duration}
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                  >
-                    {DURATIONS.map((d) => (
-                      <option
-                        key={d}
-                        value={d}
-                        disabled={resolution !== "720p" && d !== 8}
-                      >
-                        {d}S{d === 4 ? " · 3S BEAT" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="param">
-                <span className="label">Resolution</span>
-                <div className="select-wrap small">
-                  <select
-                    aria-label="Resolution"
-                    value={resolution}
-                    onChange={(e) => {
-                      const r = e.target.value as Resolution;
-                      setResolution(r);
-                      if (r !== "720p") setDuration(8);
-                    }}
-                  >
-                    {RESOLUTIONS.map((r) => (
-                      <option key={r} value={r}>
-                        {r.toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="param">
-                <span className="label">Continuity</span>
-                <div className="select-wrap small">
-                  <select
-                    aria-label="Continuity"
-                    value={continuity ? "on" : "off"}
-                    onChange={(e) => setContinuity(e.target.value === "on")}
-                    title="Carry a frame from the last take into the next one"
-                  >
-                    <option value="on">ON</option>
-                    <option value="off">OFF</option>
-                  </select>
-                </div>
-              </div>
-              <div className="param">
-                <span className="label">Est. Cost</span>
-                <span className="param-value cost-live">
-                  {estCostUsd != null ? `≈$${estCostUsd.toFixed(2)}` : "—"}
-                </span>
-              </div>
-            </div>
-            {resolution !== "720p" && (
-              <p className="hint">1080P locks duration to 8S (Veo constraint).</p>
-            )}
           </div>
         </section>
       </main>

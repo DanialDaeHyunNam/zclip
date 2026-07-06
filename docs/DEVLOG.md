@@ -220,6 +220,24 @@ All entries 2026-07-06 (single build session, owner: Dan).
   the dashed empty-state guidance box, and the header model-meta line
   (model/aspect/duration already live in the params panel).
 
+## 14. Realism-first prompts, layout alignment, Asian rename
+
+- Video-prompt realism (owner: "질감에 모든 걸 걸어"): STYLE_SUFFIX now
+  demands hyper-realistic found-footage texture (visible pores, no
+  beauty filter/airbrushing) + natural micro-expressions/blinking;
+  defaultAction adds natural blinks/relaxed posture. /api/refine SYSTEM
+  now FORBIDS removing these clauses in rewrites (adds them if missing).
+- Character prompt audit: all 27 fragments + fallback use neutral
+  phrasing (no skin-tone comparatives, no body objectification) — grep
+  clean. "Korean" line renamed to "Asian Woman" (owner call), ids
+  korean-N -> asian-f-N (images renamed, not re-baked), core text now
+  "East Asian", K-beauty term dropped.
+- Left/right bottoms now align exactly (grid stretch + thread flex:1,
+  chat pill is the last element; measured diff 0px). Params panel
+  collapsed into one chip-style dropdown strip under the frame (model
+  select max-width + ellipsis); big MODEL field, params grid and 1080p
+  hint are gone. Starter pills/carousel moved back ABOVE the input.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

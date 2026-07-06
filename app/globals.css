@@ -290,7 +290,7 @@ body::before {
   display: grid;
   grid-template-columns: 380px minmax(0, 1fr);
   gap: 60px;
-  align-items: start;
+  align-items: stretch; /* chat input bottom lines up with the output column */
 }
 
 .output-col {
@@ -786,7 +786,7 @@ button {
   flex-direction: column;
   gap: 14px;
   margin-bottom: 22px;
-  max-height: 62vh;
+  min-height: 60px;
   overflow-y: auto;
   padding-right: 6px;
 }
@@ -898,7 +898,58 @@ button {
 /* ── starter blocks (empty thread only) ─────────── */
 
 .starter {
-  margin: 16px 0 8px;
+  margin: 0 0 18px;
+}
+
+.settings-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 2px 0;
+}
+
+.select-wrap.bare::after {
+  width: 4px;
+  height: 4px;
+  right: 10px;
+  border-color: var(--faint);
+}
+
+/* dropdown-button chips */
+.select-wrap.bare select {
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 6px 24px 6px 10px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-wrap.bare select:hover,
+.select-wrap.bare select:focus {
+  color: var(--fg);
+  border-color: var(--hair-strong);
+}
+
+.sep {
+  color: var(--faint);
+  font-size: 10px;
+}
+
+.strip-cost {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: var(--fg);
+  padding-left: 2px;
 }
 
 .starter-pills {

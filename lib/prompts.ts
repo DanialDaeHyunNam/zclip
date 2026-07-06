@@ -9,10 +9,10 @@ const STYLE_PREFIX =
   "Vertical 9:16 amateur front-camera selfie video, handheld iPhone.";
 
 const STYLE_SUFFIX =
-  "Authentic unpolished UGC look, natural skin texture, subtle handheld camera shake, slightly overexposed, no cinematic color grading. 3 seconds.";
+  "Hyper-realistic, indistinguishable from real found iPhone footage: natural skin texture with visible pores, no beauty filter, no airbrushed smoothing, authentic unpolished UGC look, subtle handheld camera shake, slightly imperfect exposure, no cinematic color grading. Natural micro-expressions, natural blinking, relaxed lifelike body language. 3 seconds.";
 
 const defaultAction = (pronoun: "She" | "He") =>
-  `${pronoun} is looking at ${pronoun === "She" ? "her" : "his"} phone, and in one calm slow beat ${pronoun === "She" ? "her" : "his"} eyes widen slightly and ${pronoun.toLowerCase()} silently mouths 'whaaaat?' in quiet disbelief, then holds that expression. Just one single subtle reaction — no gasping, no panting, no hand movements, minimal motion, slow and natural.`;
+  `${pronoun} is looking at ${pronoun === "She" ? "her" : "his"} phone, and in one calm slow beat ${pronoun === "She" ? "her" : "his"} eyes widen slightly and ${pronoun.toLowerCase()} silently mouths 'whaaaat?' in quiet disbelief, then holds that expression. Just one single subtle reaction — no gasping, no panting, no hand movements, minimal motion, slow and natural, with natural blinks and relaxed posture.`;
 
 export interface Character {
   id: string;
@@ -57,13 +57,13 @@ const CHAR_BASES: CharBase[] = [
     ],
   },
   {
-    idBase: "korean",
-    labelBase: "Korean",
+    idBase: "asian-f",
+    labelBase: "Asian Woman",
     pronoun: "She",
     desc: "EARLY-MID 20S · NATURAL",
-    core: "A very pretty young Korean woman in her early-to-mid 20s with a fresh natural look, clear realistic skin",
+    core: "A very pretty young East Asian woman in her early-to-mid 20s with a fresh natural look, clear realistic skin",
     variants: [
-      "long dark hair with soft balayage, subtle K-beauty makeup, cozy cream oversized cardigan",
+      "long dark hair with soft balayage, soft natural makeup, cozy cream oversized cardigan",
       "chin-length dark bob, barely-there makeup, oversized white tee",
       "long straight black hair half-tied, thin wire glasses, beige hoodie",
     ],
