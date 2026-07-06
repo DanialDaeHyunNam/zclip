@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CHARACTERS } from "@/lib/prompts";
+import DemoReel from "./demo-reel";
 
 export const metadata: Metadata = {
   title: "ZCLIP — 1 prompt, 10 takes. Hook 10x faster.",
@@ -11,31 +12,36 @@ export const metadata: Metadata = {
 const REPO_URL = "https://github.com/your-handle/zclip";
 const CUT_URL = "https://cut.donkeyuse.com";
 
-const FEATURES = [
+const DIFFS = [
   {
-    title: "Chat is the timeline",
-    body: "Every message becomes a new take. The refiner rewrites the full prompt with minimal edits — say it in any language, it lands in clean English prompt-craft.",
+    n: "01",
+    title: "Swap the model mid-chat",
+    body: "Veo, Sora, Grok, Seedance — one dropdown, same conversation, keys pasted straight into the UI. Four models today; the adapter interface is two functions, so the fifth is a pull request away.",
+    big: false,
   },
   {
-    title: "Rewind anything",
-    body: "Branch from any take, Claude-style. The archive keeps every render you paid for, even after a rewind.",
+    n: "02",
+    title: "Takes become context",
+    body: "Pin any earlier take and the next one is built ON it — its prompt becomes source material, its frames become the visual reference. Iteration compounds instead of starting over. This is the whole game.",
+    big: true,
   },
   {
-    title: "A cast that's ready",
-    body: "27 realistic faces × 10 sets, baked in — photoreal texture, no beauty-filter plastic. Add your own character from a single photo.",
-    cast: true,
+    n: "03",
+    title: "Video-to-video, in spirit",
+    body: "Nobody sells true video-to-video yet — so ZCLIP does the honest version: drop any clip and it's compacted into key frames, read for subject, scene and motion, then re-directed into your next take. The result feels like v2v, today.",
+    big: false,
   },
   {
-    title: "Real continuity",
-    body: "A frame from each take carries into the next automatically. Pin any takes as context and the next take blends them — prompt and pixels.",
+    n: "04",
+    title: "Actually multimodal input",
+    body: "Images, videos, earlier takes, cast cards — everything attaches to the composer as a chip and verifiably lands in the prompt. The base prompt is always visible and editable. Nothing hidden.",
+    big: false,
   },
   {
-    title: "Every model, one chat",
-    body: "Veo 3.1 Fast by default; Sora 2, Grok Imagine and Seedance are one dropdown away. Paste a key into the UI and it just works.",
-  },
-  {
-    title: "Costs you can see",
-    body: "Per-take estimates before you send, and a per-session, per-model spend chart after. No subscription — your keys, your pennies.",
+    n: "05",
+    title: "A spend dashboard, built in",
+    body: "Every take shows its cost before and after, and a per-session, per-model chart keeps the running total honest. No subscription — your keys, your pennies.",
+    big: false,
   },
 ];
 
@@ -49,7 +55,7 @@ const STEPS = [
   {
     n: "02",
     title: "Cut",
-    body: "Send it to cut — the AI copilot editor that sees your whole project. Split, title, subtitle and caption by chat.",
+    body: "Send it to cut — the AI copilot editor that sees your whole project. Split, title, subtitle and caption by chat. Open source and free, same as this.",
     link: { href: CUT_URL, label: "cut.donkeyuse.com ↗" },
   },
   {
@@ -87,14 +93,14 @@ export default function Landing() {
       <header className="ld-hero">
         <span className="ld-badge">Open-source AI UGC hook studio</span>
         <h1>
-          1 prompt, 10 takes.
+          UGC reaction hooks,
           <br />
-          <span>Hook 10x faster.</span>
+          <span>typed, not filmed.</span>
         </h1>
         <p>
-          ZCLIP spins scroll-stopping UGC reaction hooks out of a chat — pick
-          a face, pick a room, type the beat. Iterate take by take, rewind
-          anything, and pay cents per clip on your own API keys.
+          The scroll-stopping first 3 seconds of a TikTok ad, out of a chat —
+          pick a face, pick a room, type the beat. Iterate take by take on
+          your own API keys, cents per clip.
         </p>
         <div className="ld-cta-row">
           <a className="btn-primary ld-cta" href="/chat">
@@ -113,30 +119,34 @@ export default function Landing() {
           ~60s a take · ~$0.40 a clip on Veo Fast · 4 video models · 27-face
           cast
         </p>
+        <DemoReel />
       </header>
 
       <section className="ld-section" id="features">
-        <span className="label">What it does</span>
-        <div className="ld-grid">
-          {FEATURES.map((f) => (
-            <div className="ld-card" key={f.title}>
-              <h3>{f.title}</h3>
-              <p>{f.body}</p>
-              {f.cast && (
-                <div className="ld-cast">
-                  {cast.map((c) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={c.id}
-                      src={`/starters/${c.id}.jpg`}
-                      alt={c.label}
-                      loading="lazy"
-                    />
-                  ))}
-                </div>
-              )}
+        <span className="label">Why it&apos;s different</span>
+        <div className="ld-diffs">
+          {DIFFS.map((d) => (
+            <div className="ld-diff" key={d.n}>
+              <span className="ld-step-n">{d.n}</span>
+              <div>
+                <h3>
+                  {d.title}
+                  {d.big && <em className="ld-big">The big one</em>}
+                </h3>
+                <p>{d.body}</p>
+              </div>
             </div>
           ))}
+        </div>
+        <div className="ld-cast ld-cast-row">
+          {cast.map((c) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={c.id} src={`/starters/${c.id}.jpg`} alt={c.label} loading="lazy" />
+          ))}
+          <p className="ld-stats">
+            Also in the box · chat-native takes · rewind &amp; branch ·
+            27-face / 10-set cast · shared-password deploy
+          </p>
         </div>
       </section>
 

@@ -267,6 +267,22 @@ All entries 2026-07-06 (single build session, owner: Dan).
   REPO_URL in app/page.tsx is a placeholder — set after `gh repo create`.
 - Landing offsets the global 52px rail padding via negative margin.
 
+## 17. Landing v2: legible hero, differentiators, animated demo reel
+
+- Hero says what it is at a glance: "UGC reaction hooks, / typed, not
+  filmed." Animated DemoReel below the CTAs (app/demo-reel.tsx): a
+  state-machine miniature of the real flow — type -> render timer ->
+  take lands with cost -> pin as context -> next take builds on it —
+  using real baked portraits, ~19s loop, no video file.
+- "Why it's different" numbered section replaces the feature grid:
+  01 model-swap mid-chat (4 today, adapters open) / 02 takes-as-context
+  with THE BIG ONE badge / 03 "video-to-video, in spirit" (honest
+  framing of the frame-compaction pipeline) / 04 actually-multimodal
+  input / 05 built-in spend dashboard. Cast strip + "also in the box"
+  one-liner keeps the rest.
+- Workflow: cut.donkeyuse.com step now notes cut is open source and
+  free as well.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

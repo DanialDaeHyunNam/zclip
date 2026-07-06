@@ -1840,6 +1840,199 @@ button {
   margin-top: 14px !important;
 }
 
+/* differentiators + demo reel */
+
+.ld-diffs {
+  border-bottom: 1px solid var(--hair);
+}
+
+.ld-diff {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 10px;
+  padding: 26px 0;
+  border-top: 1px solid var(--hair);
+}
+
+.ld-diff h3 {
+  font-family: var(--font-display), sans-serif;
+  font-size: 21px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.ld-diff p {
+  color: var(--dim);
+  font-size: 13.5px;
+  line-height: 1.75;
+  max-width: 72ch;
+}
+
+.ld-big {
+  font-style: normal;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid rgba(111, 220, 255, 0.35);
+  border-radius: var(--r-pill);
+  padding: 4px 10px;
+  margin-left: 12px;
+  vertical-align: 3px;
+}
+
+.ld-cast-row {
+  align-items: center;
+  gap: 8px;
+  margin-top: 26px;
+  flex-wrap: wrap;
+}
+
+.ld-cast-row .ld-stats {
+  margin-left: 12px;
+}
+
+.demo {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 22px;
+  max-width: 720px;
+  margin: 44px auto 0;
+  padding: 18px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, 0.015);
+  text-align: left;
+  position: relative;
+}
+
+@media (max-width: 620px) {
+  .demo {
+    grid-template-columns: 130px 1fr;
+    gap: 14px;
+  }
+}
+
+.demo-frame {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  background: #050506;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.demo-clip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: kenburns 8s ease-out both;
+}
+
+@keyframes kenburns {
+  from {
+    transform: scale(1);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.07);
+    opacity: 1;
+  }
+}
+
+.demo-timer {
+  font-family: var(--font-mono), monospace;
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.demo-play {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.demo-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.demo-msg {
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--fg);
+  min-height: 20px;
+}
+
+.demo-caret {
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  background: var(--accent);
+  margin-left: 2px;
+  vertical-align: -2px;
+  animation: pulse 1s steps(2) infinite;
+}
+
+.demo-take {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+  padding-left: 4px;
+}
+
+.demo-chip {
+  align-self: flex-start;
+  border: 1px solid rgba(111, 220, 255, 0.35);
+  border-radius: var(--r-pill);
+  color: var(--accent);
+  font-size: 10.5px;
+  padding: 5px 12px;
+}
+
+.demo-spend {
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--faint);
+  padding-left: 4px;
+}
+
+.demo-cap {
+  position: absolute;
+  bottom: -26px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
+  color: var(--faint);
+}
+
 /* ── password gate ──────────────────────────────── */
 
 .gate {
