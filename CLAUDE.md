@@ -68,15 +68,17 @@ do NOT store full images/videos in localStorage (5MB quota).
   frame is captured client-side (canvas) and auto-attached to the next
   take as the image reference. Manual attachment wins over continuity.
   Cross-origin videos without CORS silently skip capture.
-- **Starter blocks** (empty thread only): visual CHARACTER × SETTING card
-  picker (`lib/prompts.ts` — `CHARACTERS`/`SETTINGS`/`composeStarter`).
-  Either half optional; chat text = the action (empty → default
-  quiet-surprise beat). Free-form text with no blocks still works.
-  Card images: `/public/starters/<id>.jpg` (bake via
-  `bun scripts/bake-starters.mjs` or drop files — see that folder's
-  README); users add their own assets via "+ Custom" (localStorage
-  `hooklab.customAssets`, image doubles as the first take's generation
-  reference).
+- **Starter blocks** (empty thread only, input-first): pill buttons under
+  the chat input open a card CAROUSEL (9 characters × 10 backgrounds,
+  `lib/prompts.ts`); picking one attaches a chip to the composer like a
+  multimodal attachment. Composing fills a VISIBLE editable base-prompt
+  textarea (`starterDraft`) — that exact text runs as take 1's base (no
+  hidden prompt; house rule: all faces above-average attractive, neutral
+  "Blonde 1"-style naming). Card images:
+  `/public/starters/<id>.jpg` (bake via `bun scripts/bake-starters.mjs`
+  or drop files); "+ Custom" assets live in localStorage
+  `hooklab.customAssets`, their image doubles as take 1's generation
+  reference.
 - **Attachments are images OR videos** — a video is compacted client-side
   into 3 frames; refine sees all frames, the video model gets the middle
   one. Reference priority: manual attach > starter-asset images >

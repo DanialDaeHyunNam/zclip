@@ -898,7 +898,84 @@ button {
 /* ── starter blocks (empty thread only) ─────────── */
 
 .starter {
-  margin-bottom: 26px;
+  margin: 16px 0 8px;
+}
+
+.starter-pills {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pill-btn {
+  background: transparent;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-pill);
+  color: var(--dim);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 400;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: color 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+}
+
+.pill-btn:hover {
+  color: var(--fg);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.pill-btn.on {
+  color: var(--accent);
+  border-color: rgba(111, 220, 255, 0.45);
+  background: rgba(111, 220, 255, 0.05);
+}
+
+.starter-carousel {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 16px 2px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--faint) transparent;
+}
+
+.starter-carousel .starter-card {
+  width: 132px;
+  flex-shrink: 0;
+}
+
+.chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-pill);
+  padding: 4px 12px 4px 5px;
+  font-size: 11.5px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sel-chip img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.sel-chip .link-btn {
+  font-size: 10px;
+  letter-spacing: 0;
 }
 
 .starter-group {
@@ -1119,6 +1196,32 @@ button {
   display: block;
   margin-bottom: 8px;
   border-radius: 8px;
+}
+
+.base-prompt {
+  margin-bottom: 22px;
+}
+
+.base-prompt .label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--accent);
+}
+
+.base-prompt textarea {
+  min-height: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--dim);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.base-prompt textarea:focus {
+  color: var(--fg);
+}
+
+.base-prompt .hint {
+  margin-top: 8px;
 }
 
 /* Grok-style chat pill: one rounded container, borderless innards */

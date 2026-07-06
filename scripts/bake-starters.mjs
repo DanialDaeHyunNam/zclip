@@ -33,11 +33,14 @@ function apiKey() {
 const jobs = [
   ...CHARACTERS.map((c) => ({
     id: c.id,
-    text: `Stunning amateur smartphone selfie-style photo portrait of ${c.prompt}. Exceptionally attractive and photogenic with naturally beautiful facial features, clear glowing skin, fit healthy physique, tastefully styled, subtle confident smile, looking at the camera. Soft flattering natural indoor light, realistic skin texture, shot on an iPhone front camera, vertical framing, no text, no watermark.`,
+    text:
+      c.pronoun === "He"
+        ? `Stunning amateur smartphone selfie-style photo portrait of ${c.prompt}. Exceptionally handsome and photogenic, strong masculine features, sharp jawline, clear skin, athletic physique, tastefully styled, relaxed confident expression, looking at the camera. Soft flattering natural light, realistic skin texture, shot on an iPhone front camera, vertical framing, no text, no watermark.`
+        : `Stunning amateur smartphone selfie-style photo portrait of ${c.prompt}. Exceptionally attractive and photogenic with naturally beautiful facial features, clear glowing skin, fit healthy physique, tastefully styled, subtle confident smile, looking at the camera. Soft flattering natural light, realistic skin texture, shot on an iPhone front camera, vertical framing, no text, no watermark.`,
   })),
   ...SETTINGS.map((s) => ({
     id: s.id,
-    text: `Beautiful cozy amateur smartphone photo of the place described, empty, no people: ${s.prompt}. Aesthetically pleasing and inviting, warm tones, natural light, realistic, tidy but lived-in, no text, no watermark.`,
+    text: `Beautiful amateur smartphone photo of the place described, no people: ${s.prompt}. Aesthetically pleasing and inviting, natural light, realistic, slightly imperfect casual framing, no text, no watermark.`,
   })),
 ];
 

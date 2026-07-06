@@ -185,6 +185,25 @@ All entries 2026-07-06 (single build session, owner: Dan).
   with gradient accent). The old square-corner rule in CLAUDE.md is
   superseded by this.
 
+## 12. Asset library v2 + input-first picker
+
+- Characters diversified to 9 (Blonde/Korean/Redhead/Black Girl/Latina/
+  Mom + White/Black/Asian Guy), ALL prompts upgraded to above-average
+  attractive ("strikingly beautiful", "exceptionally handsome", fit) —
+  house rule: even the no-selection fallback subject is attractive.
+  Neutral catalog naming ("Blonde 1", "Black Guy 1") per owner.
+- Settings expanded to 10 (added Park/Mountain/Beach/Rooftop 1).
+  All 19 card images re-baked (male-specific bake wrapper; one 503
+  retried). freckles asset removed.
+- Input-first UX (Grok reference): the big grids are gone — pill buttons
+  under the chat input ("✦ Character · <sel>", "◫ Background") toggle a
+  horizontal card carousel; picking one attaches a round-thumb chip to
+  the composer like a multimodal attachment.
+- NO hidden prompt: composing blocks fills a visible, editable
+  "BASE PROMPT · YOURS TO EDIT" textarea (`starterDraft`) — that exact
+  text (user edits included) is what take 1 runs on; the message field
+  layers the action on top via refine.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

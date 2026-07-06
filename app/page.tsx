@@ -148,6 +148,11 @@ export default function Home() {
   // visual starter blocks (empty-thread only)
   const [charId, setCharId] = useState<string | null>(null);
   const [settingId, setSettingId] = useState<string | null>(null);
+  /** The composed starter prompt, SHOWN and editable — no hidden prompt.
+   *  Whatever is in here is exactly what take 1 builds on. */
+  const [starterDraft, setStarterDraft] = useState<string | null>(null);
+  /** Which asset carousel is open under the input (Grok-pill style). */
+  const [pickerOpen, setPickerOpen] = useState<"char" | "setting" | null>(null);
   // user-created assets, persisted; images stored as small dataURL thumbs
   const [custom, setCustom] = useState<{
     characters: CustomAsset[];
@@ -473,6 +478,14 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [turns.length, custom]);
 
+  /* recompose the visible base prompt whenever blocks change */
+  useEffect(() => {
+    if (turns.length) return;
+    const s = composeStarter(selChar, selSetting);
+    setStarterDraft(s ? s.prompt : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charId, settingId, custom, turns.length]);
+
   /* close the sidebar on Escape */
   useEffect(() => {
     if (!sideOpen) return;
@@ -661,9 +674,13 @@ export default function Home() {
   const send = async () => {
     const text = draft.trim();
     const manual = attach;
-    const starter =
-      turns.length === 0 ? composeStarter(selChar, selSetting) : null;
-    if (busyTurn || (!text && !starter && !manual) || keyMissing) return;
+    // The VISIBLE (possibly user-edited) base text is what actually runs.
+    const starterText =
+      turns.length === 0 && starterDraft?.trim() ? starterDraft.trim() : null;
+    const starterLabel = starterText
+      ? composeStarter(selChar, selSetting)?.label ?? "Custom base"
+      : undefined;
+    if (busyTurn || (!text && !starterText && !manual) || keyMissing) return;
     setError(null);
 
     // Reference precedence: manual attachment > starter-asset images >
@@ -674,7 +691,7 @@ export default function Home() {
         ? [...turns].reverse().find((t) => t.snapshot)?.snapshot
         : undefined;
     const assetImages =
-      !manual && starter
+      !manual && starterText
         ? ([selChar?.image, selSetting?.image].filter(Boolean) as string[])
         : [];
     const refImages = manual
@@ -696,7 +713,7 @@ export default function Home() {
     const createdAt = Date.now();
     const base = turns.length
       ? [...turns].reverse().find((t) => t.prompt)?.prompt
-      : starter?.prompt;
+      : starterText ?? undefined;
     // Earlier takes give the refiner context for "take 1's background" etc.
     const history = turns
       .map((t, i) => ({ take: i + 1, request: t.userText, prompt: t.prompt ?? "" }))
@@ -707,10 +724,10 @@ export default function Home() {
       id,
       userText:
         text ||
-        (starter
-          ? `Start: ${starter.label}`
+        (starterText
+          ? `Start: ${starterLabel}`
           : "Use the attached image as the reference."),
-      presetLabel: starter?.label,
+      presetLabel: starterLabel,
       provider: providerId,
       aspectRatio: aspect,
       durationSeconds: duration,
@@ -728,8 +745,8 @@ export default function Home() {
 
     try {
       let prompt: string;
-      if (!text && starter && !manual) {
-        prompt = starter.prompt; // composed blocks as-is, no LLM pass needed
+      if (!text && starterText && !manual) {
+        prompt = starterText; // the visible base, exactly as shown/edited
       } else {
         const r = await fetch("/api/refine", {
           method: "POST",
@@ -1012,13 +1029,12 @@ export default function Home() {
     );
     return { rows, total, max, providers };
   })();
-  const starterPick =
-    turns.length === 0 ? composeStarter(selChar, selSetting) : null;
+  const starterReady = turns.length === 0 && Boolean(starterDraft?.trim());
   const canSend =
     !busyTurn &&
     ready &&
     !keyMissing &&
-    Boolean(draft.trim() || attach || starterPick);
+    Boolean(draft.trim() || attach || starterReady);
 
   /* ── render ────────────────────────────────────── */
 
@@ -1237,8 +1253,158 @@ export default function Home() {
 
           {error && <div className="error-box fade">{error}</div>}
 
+          <div
+            className={`chat-zone ${dragOver ? "dragover" : ""}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) attachMediaFile(f);
+            }}
+          >
+            {(attach || (turns.length === 0 && (selChar || selSetting))) && (
+              <div className="chips-row">
+                {turns.length === 0 && selChar && (
+                  <span className="sel-chip fade">
+                    <img
+                      src={
+                        "custom" in selChar && selChar.custom
+                          ? selChar.image
+                          : `/starters/${selChar.id}.jpg`
+                      }
+                      alt=""
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                    />
+                    {selChar.label}
+                    <button
+                      className="link-btn danger"
+                      onClick={() => setCharId(null)}
+                      aria-label="Remove character"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                {turns.length === 0 && selSetting && (
+                  <span className="sel-chip fade">
+                    <img
+                      src={
+                        "custom" in selSetting && selSetting.custom
+                          ? selSetting.image
+                          : `/starters/${selSetting.id}.jpg`
+                      }
+                      alt=""
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                    />
+                    {selSetting.label}
+                    <button
+                      className="link-btn danger"
+                      onClick={() => setSettingId(null)}
+                      aria-label="Remove background"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                {attach && (
+                  <span className="sel-chip fade">
+                    <img src={attach.thumb} alt="attached reference" />
+                    {attach.kind === "video"
+                      ? `Video · ${attach.frames.length} frames`
+                      : "Image reference"}
+                    <button
+                      className="link-btn danger"
+                      onClick={() => setAttach(null)}
+                      aria-label="Remove attachment"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="chat-bar">
+              <button
+                className="attach-btn"
+                title="Attach a reference image — or drag & drop / paste one"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={Boolean(busyTurn)}
+              >
+                +
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) attachMediaFile(f);
+                  e.target.value = "";
+                }}
+              />
+              <textarea
+                className="chat-input"
+                rows={2}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                onPaste={(e) => {
+                  const item = [...e.clipboardData.items].find((i) =>
+                    i.type.startsWith("image/"),
+                  );
+                  const f = item?.getAsFile();
+                  if (f) {
+                    e.preventDefault();
+                    attachMediaFile(f);
+                  }
+                }}
+                placeholder={
+                  busyTurn
+                    ? "Rendering — wait for this take…"
+                    : starterReady
+                      ? "Action for the take — empty = default quiet-surprise beat"
+                      : turns.length === 0
+                        ? "Pick blocks above and/or describe the clip… (drop an image as reference)"
+                        : "What should change in the next take?"
+                }
+                disabled={Boolean(busyTurn)}
+              />
+              <button className="btn-primary send-btn" onClick={send} disabled={!canSend}>
+                {starterReady && !draft.trim() ? "Start" : "Send"}
+              </button>
+            </div>
+          </div>
           {turns.length === 0 && (
             <div className="starter fade">
+              <div className="starter-pills">
+                <button
+                  className={`pill-btn ${pickerOpen === "char" ? "on" : ""}`}
+                  onClick={() =>
+                    setPickerOpen((p) => (p === "char" ? null : "char"))
+                  }
+                >
+                  ✦ Character{selChar ? ` · ${selChar.label}` : ""}
+                </button>
+                <button
+                  className={`pill-btn ${pickerOpen === "setting" ? "on" : ""}`}
+                  onClick={() =>
+                    setPickerOpen((p) => (p === "setting" ? null : "setting"))
+                  }
+                >
+                  ◫ Background{selSetting ? ` · ${selSetting.label}` : ""}
+                </button>
+              </div>
               {(
                 [
                   {
@@ -1258,13 +1424,9 @@ export default function Home() {
                       setSettingId((cur) => (cur === id ? null : id)),
                   },
                 ]
-              ).map((group) => (
+              ).filter((g) => g.kind === pickerOpen).map((group) => (
                 <div className="starter-group" key={group.kind}>
-                  <span className="label">
-                    {group.title}
-                    {group.selId ? "" : " · optional"}
-                  </span>
-                  <div className="starter-grid">
+                  <div className="starter-carousel">
                     {group.items.map((item) => {
                       const isCustom = "custom" in item && item.custom;
                       const imgSrc = isCustom
@@ -1403,90 +1565,23 @@ export default function Home() {
             </div>
           )}
 
-          <div
-            className={`chat-zone ${dragOver ? "dragover" : ""}`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOver(false);
-              const f = e.dataTransfer.files?.[0];
-              if (f) attachMediaFile(f);
-            }}
-          >
-            {attach && (
-              <div className="attach-chip fade">
-                <img src={attach.thumb} alt="attached reference" />
-                <span className="label">
-                  {attach.kind === "video"
-                    ? `Video reference · ${attach.frames.length} frames extracted`
-                    : "Image reference · goes with the next take"}
-                </span>
-                <button className="link-btn danger" onClick={() => setAttach(null)}>
-                  Remove
-                </button>
-              </div>
-            )}
-            <div className="chat-bar">
-              <button
-                className="attach-btn"
-                title="Attach a reference image — or drag & drop / paste one"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={Boolean(busyTurn)}
-              >
-                +
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*"
-                hidden
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) attachMediaFile(f);
-                  e.target.value = "";
-                }}
-              />
+          {turns.length === 0 && starterDraft != null && (
+            <div className="base-prompt fade">
+              <span className="label">Base Prompt · yours to edit</span>
               <textarea
-                className="chat-input"
-                rows={2}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
-                onPaste={(e) => {
-                  const item = [...e.clipboardData.items].find((i) =>
-                    i.type.startsWith("image/"),
-                  );
-                  const f = item?.getAsFile();
-                  if (f) {
-                    e.preventDefault();
-                    attachMediaFile(f);
-                  }
-                }}
-                placeholder={
-                  busyTurn
-                    ? "Rendering — wait for this take…"
-                    : starterPick
-                      ? "Action for the take — empty = default quiet-surprise beat"
-                      : turns.length === 0
-                        ? "Pick blocks above and/or describe the clip… (drop an image as reference)"
-                        : "What should change in the next take?"
-                }
-                disabled={Boolean(busyTurn)}
+                value={starterDraft}
+                onChange={(e) => setStarterDraft(e.target.value)}
+                rows={5}
+                spellCheck={false}
+                aria-label="Base prompt"
               />
-              <button className="btn-primary send-btn" onClick={send} disabled={!canSend}>
-                {starterPick && !draft.trim() ? "Start" : "Send"}
-              </button>
+              <p className="hint">
+                This exact text is take 1&apos;s base — nothing hidden. Tweak
+                it directly, or type the action below and it gets folded in.
+              </p>
             </div>
-          </div>
+          )}
+
           <p className="hint">{PROMPT_RULE}</p>
         </section>
 

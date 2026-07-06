@@ -32,96 +32,148 @@ export interface Setting {
 export const CHARACTERS: Character[] = [
   {
     id: "blonde",
-    label: "Blonde girl-next-door",
+    label: "Blonde 1",
     desc: "EARLY 20S · HOODIE",
     pronoun: "She",
     prompt:
-      "A pretty blonde girl-next-door woman in her early 20s, long wavy blonde hair slightly messy, fair skin with a few freckles, light natural makeup, casual oversized hoodie",
+      "A strikingly beautiful blonde woman in her early 20s, long wavy blonde hair, luminous fair skin, light natural makeup, fit slim figure, casual oversized hoodie",
   },
   {
     id: "korean",
-    label: "Korean influencer",
+    label: "Korean 1",
     desc: "GLASS SKIN · CARDIGAN",
     pronoun: "She",
     prompt:
-      "A pretty young Korean woman in her early-to-mid 20s with a soft influencer look, dewy glass skin, subtle K-beauty natural makeup, straight dark hair with light-brown balayage falling loosely, wearing a cozy cream oversized cardigan",
-  },
-  {
-    id: "freckles",
-    label: "Freckled bun",
-    desc: "MID 20S · SWEATER",
-    pronoun: "She",
-    prompt:
-      "A cute woman in her mid-20s, freckles, hair in a loose bun, oversized sweater",
+      "A strikingly beautiful young Korean woman in her early-to-mid 20s, dewy glass skin, subtle K-beauty makeup, long dark hair with soft balayage, slim elegant figure, cozy cream oversized cardigan",
   },
   {
     id: "redhead",
-    label: "Curly redhead",
+    label: "Redhead 1",
     desc: "COPPER CURLS · BAND TEE",
     pronoun: "She",
     prompt:
-      "A charismatic woman in her mid-20s with curly copper-red hair, pale skin, minimal makeup, wearing a vintage band t-shirt",
+      "A gorgeous woman in her mid-20s with curly copper-red hair, striking green eyes, flawless pale skin, fit figure, vintage band t-shirt",
   },
   {
-    id: "guy",
-    label: "Casual guy",
-    desc: "MID 20S · CREWNECK",
-    pronoun: "He",
+    id: "black-f",
+    label: "Black Girl 1",
+    desc: "CURLS · KNIT TOP",
+    pronoun: "She",
     prompt:
-      "A friendly clean-cut man in his mid-20s, short dark hair, light stubble, wearing a plain heather-gray crewneck",
+      "A stunningly beautiful Black woman in her early 20s, radiant deep skin, defined curls in a loose updo, elegant features, fit figure, ribbed knit top",
+  },
+  {
+    id: "latina",
+    label: "Latina 1",
+    desc: "DARK WAVES · GOLD HOOPS",
+    pronoun: "She",
+    prompt:
+      "A gorgeous Latina woman in her mid-20s, warm tan skin, glossy dark waves, striking features, subtle gold hoops, fit figure, casual cropped cardigan",
   },
   {
     id: "mom",
-    label: "Relatable mom",
+    label: "Mom 1",
     desc: "LATE 30S · KNIT TOP",
     pronoun: "She",
     prompt:
-      "A warm relatable woman in her late 30s, shoulder-length brown hair tied back loosely, comfortable knit top, soft natural look",
+      "A beautiful warm woman in her late 30s, elegant features, shoulder-length brown hair, soft glowing skin, fit figure, comfortable knit top",
+  },
+  {
+    id: "guy",
+    label: "White Guy 1",
+    desc: "JAWLINE · CREWNECK",
+    pronoun: "He",
+    prompt:
+      "An exceptionally handsome white man in his mid-20s, chiseled jawline, piercing blue eyes, tousled dark-blond hair, light stubble, athletic build, fitted heather-gray crewneck",
+  },
+  {
+    id: "black-m",
+    label: "Black Guy 1",
+    desc: "FADE · WHITE TEE",
+    pronoun: "He",
+    prompt:
+      "A strikingly handsome Black man in his mid-20s, sharp jawline, short fade haircut, warm confident eyes, athletic build, fitted white t-shirt",
+  },
+  {
+    id: "asian-m",
+    label: "Asian Guy 1",
+    desc: "SHARP · BLACK CREWNECK",
+    pronoun: "He",
+    prompt:
+      "A very handsome East Asian man in his mid-20s, sharp features, styled black hair, clear skin, lean athletic build, minimal black crewneck",
   },
 ];
 
 export const SETTINGS: Setting[] = [
   {
     id: "bedroom",
-    label: "Bedroom",
+    label: "Bedroom 1",
     desc: "WARM LAMP · CLUTTER",
     prompt:
       "sitting in a softly lit real bedroom with a slightly cluttered background and warm lamp light",
   },
   {
     id: "cafe",
-    label: "Cafe window",
+    label: "Cafe 1",
     desc: "DAYLIGHT · BLURRED BAR",
     prompt:
       "sitting by the window of a cozy cafe in daylight, blurred espresso bar in the background",
   },
   {
     id: "car",
-    label: "Parked car",
+    label: "Car 1",
     desc: "DRIVER SEAT · WINDOW LIGHT",
     prompt:
       "sitting in the driver's seat of a parked car in daylight, soft window light on the face",
   },
   {
     id: "kitchen",
-    label: "Kitchen",
+    label: "Kitchen 1",
     desc: "MORNING · LIVED-IN",
     prompt:
       "standing at a kitchen counter at home in soft morning light, everyday clutter in the background",
   },
   {
     id: "desk",
-    label: "Home office",
+    label: "Desk 1",
     desc: "EVENING · MONITOR GLOW",
     prompt:
       "sitting at a desk in a home office in the evening, faint monitor glow to one side",
   },
   {
     id: "dorm",
-    label: "Dorm floor",
+    label: "Dorm 1",
     desc: "FAIRY LIGHTS · POSTERS",
     prompt:
       "sitting on a dorm-room floor leaning against the bed, fairy lights and posters in the background",
+  },
+  {
+    id: "park",
+    label: "Park 1",
+    desc: "SUNNY · BENCH",
+    prompt:
+      "sitting on a bench in a sunny green park, trees and a walking path softly blurred behind",
+  },
+  {
+    id: "mountain",
+    label: "Mountain 1",
+    desc: "OVERLOOK · GOLDEN HOUR",
+    prompt:
+      "standing at a scenic mountain overlook, hazy ridgelines and golden-hour light behind",
+  },
+  {
+    id: "beach",
+    label: "Beach 1",
+    desc: "WAVES · BRIGHT SKY",
+    prompt:
+      "sitting on a sandy beach near the waterline, soft ocean waves and a bright sky behind",
+  },
+  {
+    id: "rooftop",
+    label: "Rooftop 1",
+    desc: "DUSK · SKYLINE",
+    prompt:
+      "on a city rooftop at dusk, skyline lights softly blurred in the background",
   },
 ];
 
@@ -139,9 +191,10 @@ export function composeStarter(
   s?: StarterBlock | null,
 ): { prompt: string; label: string } | null {
   if (!c && !s) return null;
+  // House rule: every face is above-average attractive, even the fallback.
   const subject =
     c?.prompt ??
-    "A young woman in her early 20s with a natural everyday look, casual outfit";
+    "A very attractive young woman in her early 20s, naturally beautiful features, fresh glowing skin, fit figure, casual outfit";
   const where =
     s?.prompt ?? "sitting in a softly lit room with a lived-in background";
   return {
