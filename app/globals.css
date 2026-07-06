@@ -1565,6 +1565,31 @@ button {
   gap: 16px;
 }
 
+/* ── full archive overlay ───────────────────────── */
+
+.archive-overlay {
+  position: fixed;
+  inset: 0 0 0 52px;
+  background: #040405;
+  z-index: 52;
+  overflow-y: auto;
+}
+
+.archive-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 32px 80px;
+}
+
+.archive-group {
+  margin-top: 36px;
+}
+
+.archive-group > .label {
+  display: block;
+  margin-bottom: 14px;
+}
+
 /* ── spend chart ────────────────────────────────── */
 
 .spend-hero {

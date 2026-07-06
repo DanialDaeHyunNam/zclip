@@ -390,6 +390,20 @@ All entries 2026-07-06 (single build session, owner: Dan).
 - Rights note for the owner: only transfer performances you own or have
   license to imitate; identity never copies, but choreography does.
 
+## 25. Spend in header, archive as rail overlay, retro-pricing
+
+- Spend chart lives in a popover off a chart icon next to SESSION (mini
+  total always visible); the big bottom section is gone. "+N?" meant
+  clips saved before a provider's pricing existed — boot now BACKFILLS
+  costUsd from stored duration x current rates, so old Grok takes get
+  real prices retroactively (seedance stays unpriced).
+- Archive restructured: the chat page shows only the CURRENT session's
+  takes; a new ▦ rail icon opens a full-screen overlay with every take
+  grouped by owning session (Clear All lives there). Card markup
+  extracted into ClipCardView. First splice attempt corrupted JSX —
+  recovered via git checkout + component-based rewrite (lesson: never
+  string-slice JSX blocks; extract components instead).
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

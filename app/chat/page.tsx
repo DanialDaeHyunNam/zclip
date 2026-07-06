@@ -122,6 +122,62 @@ const fmtCost = (c?: number) => (c != null ? `$${c.toFixed(2)}` : null);
 
 const cssAspect = (a: AspectRatio) => (a === "16:9" ? "16 / 9" : "9 / 16");
 
+/** One archive card — shared by the session strip and the full-archive
+ *  overlay. */
+function ClipCardView({
+  clip,
+  withPw,
+  onDownload,
+  onRemove,
+}: {
+  clip: Clip;
+  withPw: (u: string) => string;
+  onDownload: (u: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <div className="card">
+      <div className="thumb" style={{ aspectRatio: cssAspect(clip.aspectRatio) }}>
+        {clip.videoUrl ? (
+          <video
+            src={withPw(clip.videoUrl)}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+            onMouseLeave={(e) => e.currentTarget.pause()}
+          />
+        ) : (
+          <span className="thumb-state">Unavailable</span>
+        )}
+      </div>
+      <div className="card-meta">
+        <div className="card-row">
+          <span>
+            {PROVIDERS[clip.provider]?.label ?? clip.provider} ·{" "}
+            {clip.variantLabel}
+          </span>
+          <span>{fmtCost(clip.costUsd) ?? ""}</span>
+        </div>
+        <p className="card-prompt" title={clip.prompt}>
+          {clip.note ?? clip.prompt}
+        </p>
+        <div className="card-actions">
+          {clip.videoUrl && (
+            <button className="link-btn" onClick={() => onDownload(clip.videoUrl!)}>
+              Download
+            </button>
+          )}
+          <button className="link-btn danger" onClick={() => onRemove(clip.jobId)}>
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── page ────────────────────────────────────────── */
 
 export default function Home() {
@@ -185,6 +241,7 @@ export default function Home() {
   // session sidebar — closed by default, Claude-style
   const [sideOpen, setSideOpen] = useState(false);
   const [spendOpen, setSpendOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -244,7 +301,22 @@ export default function Home() {
 
   /* boot: restore state, check password gate, resume interrupted work */
   useEffect(() => {
-    setClips(loadJson<Clip[]>(GALLERY_KEY, []));
+    // Backfill costs for clips saved before a provider's pricing landed.
+    setClips(
+      loadJson<Clip[]>(GALLERY_KEY, []).map((c) =>
+        c.costUsd == null && c.provider && c.durationSeconds
+          ? {
+              ...c,
+              costUsd:
+                estimateCostUsd(
+                  c.provider,
+                  c.resolution ?? "720p",
+                  c.durationSeconds,
+                ) ?? undefined,
+            }
+          : c,
+      ),
+    );
     setSessions(loadJson<StoredSession[]>(SESSIONS_KEY, []));
     setCustom(
       loadJson(ASSETS_KEY, { characters: [], settings: [] } as {
@@ -494,16 +566,17 @@ export default function Home() {
 
   /* Escape closes overlays */
   useEffect(() => {
-    if (!sideOpen && !spendOpen) return;
+    if (!sideOpen && !spendOpen && !archiveOpen) return;
     const h = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSideOpen(false);
         setSpendOpen(false);
+        setArchiveOpen(false);
       }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [sideOpen, spendOpen]);
+  }, [sideOpen, spendOpen, archiveOpen]);
 
   /* actions */
 
@@ -1166,6 +1239,30 @@ export default function Home() {
 
   const frameAspect = cssAspect(previewTurn?.aspectRatio ?? aspect);
 
+  /* archive views: this session's takes below the chat; everything,
+     grouped by owning session, in the rail overlay */
+  const sessionClips = clips.filter((c) => c.sessionId === sessionId);
+  const archiveGroups = (() => {
+    const m = new Map<string, Clip[]>();
+    for (const c of clips) {
+      const k = c.sessionId ?? "earlier";
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(c);
+    }
+    return [...m.entries()]
+      .map(([key, list]) => ({
+        key,
+        label:
+          key === sessionId
+            ? "Current session"
+            : sessions.find((s) => s.id === key)?.title ??
+              (key === "earlier" ? "Earlier takes" : "Removed session"),
+        list,
+        latest: Math.max(...list.map((c) => c.createdAt)),
+      }))
+      .sort((a, b) => b.latest - a.latest);
+  })();
+
   /* spend rollup: archive is the ledger (append-only, survives rewinds) */
   const spend = (() => {
     const bySession = new Map<
@@ -1255,6 +1352,17 @@ export default function Home() {
           ≡
         </button>
         <button
+          className={`rail-btn ${archiveOpen ? "on" : ""}`}
+          onClick={() => {
+            setArchiveOpen((o) => !o);
+            setSideOpen(false);
+          }}
+          title="Archive — every take, grouped by session"
+          aria-label="Toggle archive"
+        >
+          ▦
+        </button>
+        <button
           className="rail-btn"
           onClick={() => {
             newSession();
@@ -1323,6 +1431,54 @@ export default function Home() {
           ))}
         </div>
       </aside>
+
+      {archiveOpen && (
+        <div className="archive-overlay fade">
+          <div className="archive-page">
+            <div className="archive-head">
+              <span className="label">
+                Archive · All Sessions · {clips.length}
+              </span>
+              <span className="session-tools">
+                {clips.length > 0 && (
+                  <button className="link-btn danger" onClick={clearArchive}>
+                    Clear All
+                  </button>
+                )}
+                <button className="link-btn" onClick={() => setArchiveOpen(false)}>
+                  ✕ Close
+                </button>
+              </span>
+            </div>
+            <p className="archive-note">
+              Every finished take, grouped by the session it came from.
+              Stored in this browser only; providers purge source files
+              (~2 days on Veo) — download anything you want to keep.
+            </p>
+            {clips.length === 0 && (
+              <p className="hint">Nothing archived yet.</p>
+            )}
+            {archiveGroups.map((g) => (
+              <div key={g.key} className="archive-group">
+                <span className="label">
+                  {g.label} · {g.list.length}
+                </span>
+                <div className="gallery-grid">
+                  {g.list.map((c) => (
+                    <ClipCardView
+                      key={c.jobId}
+                      clip={c}
+                      withPw={withPw}
+                      onDownload={download}
+                      onRemove={removeClip}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="shell">
       <header className="top">
@@ -2123,75 +2279,31 @@ export default function Home() {
         </section>
       </main>
 
-      {/* archive — append-only, survives rewinds */}
+      {/* archive — this session's takes; the rail icon opens everything */}
       <section className="archive">
         <div className="archive-head">
-          <span className="label">Archive · {clips.length}</span>
-          {clips.length > 0 && (
-            <button className="link-btn danger" onClick={clearArchive}>
-              Clear All
-            </button>
-          )}
+          <span className="label">
+            Archive · This Session · {sessionClips.length}
+          </span>
+          <button className="link-btn" onClick={() => setArchiveOpen(true)}>
+            All takes ({clips.length}) →
+          </button>
         </div>
-        <p className="archive-note">
-          Every finished take lands here, even after a rewind. Stored in this
-          browser only; providers delete source files after a retention
-          window (~2 days on Veo) — download anything you want to keep.
-        </p>
-
-        {clips.length === 0 ? (
-          <p className="hint">Finished takes collect here for A/B comparison.</p>
+        {sessionClips.length === 0 ? (
+          <p className="hint">
+            No finished takes in this session yet
+            {clips.length > 0 ? " — the ▦ icon in the rail has everything" : ""}.
+          </p>
         ) : (
           <div className="gallery-grid">
-            {clips.map((clip) => (
-              <div className="card" key={clip.jobId}>
-                <div
-                  className="thumb"
-                  style={{ aspectRatio: cssAspect(clip.aspectRatio) }}
-                >
-                  {clip.videoUrl ? (
-                    <video
-                      src={withPw(clip.videoUrl)}
-                      muted
-                      loop
-                      playsInline
-                      preload="metadata"
-                      onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
-                      onMouseLeave={(e) => e.currentTarget.pause()}
-                    />
-                  ) : (
-                    <span className="thumb-state">Unavailable</span>
-                  )}
-                </div>
-                <div className="card-meta">
-                  <div className="card-row">
-                    <span>
-                      {PROVIDERS[clip.provider]?.label ?? clip.provider} ·{" "}
-                      {clip.variantLabel}
-                    </span>
-                    <span>{fmtCost(clip.costUsd) ?? ""}</span>
-                  </div>
-                  <p className="card-prompt" title={clip.prompt}>
-                    {clip.note ?? clip.prompt}
-                  </p>
-                  <div className="card-actions">
-                    {clip.videoUrl && (
-                      <button
-                        className="link-btn"
-                        onClick={() => download(clip.videoUrl!)}
-                      >
-                        Download
-                      </button>
-                    )}
-                    <button
-                      className="link-btn danger"
-                      onClick={() => removeClip(clip.jobId)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
+            {sessionClips.map((c) => (
+              <ClipCardView
+                key={c.jobId}
+                clip={c}
+                withPw={withPw}
+                onDownload={download}
+                onRemove={removeClip}
+              />
             ))}
           </div>
         )}
