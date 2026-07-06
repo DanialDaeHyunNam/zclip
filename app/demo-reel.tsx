@@ -43,6 +43,14 @@ export default function DemoReel() {
             muted
             loop
             playsInline
+            // React sets `muted` as a property, which can miss the autoplay
+            // policy check — force it and kick playback explicitly.
+            ref={(el) => {
+              if (el) {
+                el.muted = true;
+                el.play().catch(() => {});
+              }
+            }}
           />
         ) : render1 ? (
           <>
