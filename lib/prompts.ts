@@ -71,8 +71,8 @@ export const CHARACTERS: Character[] = [
       "A gorgeous Latina woman in her mid-20s, warm tan skin, glossy dark waves, striking features, subtle gold hoops, fit figure, casual cropped cardigan",
   },
   {
-    id: "mom",
-    label: "Mom 1",
+    id: "brunette",
+    label: "Brunette 1",
     desc: "LATE 30S · KNIT TOP",
     pronoun: "She",
     prompt:

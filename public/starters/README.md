@@ -3,8 +3,9 @@
 Drop a `<asset-id>.jpg` here and the matching starter card shows it
 automatically (cards fall back to text-only when the file is missing).
 
-Built-in ids — characters: `blonde` `korean` `freckles` `redhead` `guy`
-`mom` · settings: `bedroom` `cafe` `car` `kitchen` `desk` `dorm`
+Built-in ids — characters: `blonde` `korean` `redhead` `black-f` `latina`
+`brunette` `guy` `black-m` `asian-m` · settings: `bedroom` `cafe` `car`
+`kitchen` `desk` `dorm` `park` `mountain` `beach` `rooftop`
 (source of truth: `lib/prompts.ts`).
 
 Two ways to fill this folder:
