@@ -325,6 +325,20 @@ All entries 2026-07-06 (single build session, owner: Dan).
   past 65s = RPD cap, resets ~midnight PT; failed submits cost nothing).
   Run the script when quota resets, then eyeball frames.
 
+## 21. Demo takes 2/3 regenerated on Grok — expression finally held
+
+- Veo daily quota stayed exhausted after billing payment (payment != 
+  quota reset; RPD resets midnight PT). Owner: "그냥 grok 써" — reran the
+  expression-hold prompts through the Grok adapter (text->image->video).
+  Frame check: T2 wide-eyed mid-'whaaaat', friends neutral, dusk skyline;
+  T3 leather jacket + same rooftop, reaction held (no smile). The
+  emotion-contagion fixes (neutral background friends, doubled
+  expression, counter-negatives) worked on the first try.
+- Demo labels: takes 2/3 now say GROK (also demos model-swap); spend
+  line "$0.40+ · VEO + GROK". regen script accepts PROVIDER env.
+- Ops note: two zombie next-server processes + a dead port after the
+  earlier pkill; setsid doesn't exist on macOS — plain nohup works.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

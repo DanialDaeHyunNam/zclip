@@ -5,9 +5,8 @@ import { useEffect, useState } from "react";
 /**
  * Animated product demo — a miniature studio session that plays like a
  * screen recording, on a ~15s loop. The three clips in /public/demo/ are
- * REAL ZCLIP output made with the actual pipeline (composeStarter →
- * refine → Veo, each take seeded with a frame of the previous one), so
- * the "evolve the same take" story is genuine.
+ * REAL ZCLIP output made with the actual pipeline — take 1 on Veo, takes
+ * 2/3 on Grok after a Veo daily-quota hit (a nice ad for model-swap).
  */
 
 const MSG1 = "Asian girl in her bedroom — quiet 'wait, what?' at her phone";
@@ -96,7 +95,7 @@ export default function DemoReel() {
         {sent2 && (
           <div className="demo-take">
             <span className={`dot ${done2 ? "done" : "live"}`} />
-            {render2 ? `RENDERING ${timer(66)}` : "TAKE 2 · CTX T1 · $0.40"}
+            {render2 ? `RENDERING ${timer(66)}` : "TAKE 2 · GROK · CTX T1"}
           </div>
         )}
         {pin2 && <div className="demo-chip fade">❐ Take 2 · pinned as context</div>}
@@ -109,11 +108,11 @@ export default function DemoReel() {
         {sent3 && (
           <div className="demo-take">
             <span className={`dot ${done3 ? "done" : "live"}`} />
-            {render3 ? `RENDERING ${timer(109)}` : "TAKE 3 · CTX T2 · $0.40"}
+            {render3 ? `RENDERING ${timer(109)}` : "TAKE 3 · GROK · CTX T2"}
           </div>
         )}
         {done3 && (
-          <div className="demo-spend fade">SESSION SPEND $1.20 · VEO ▮▮▮▮▮▮▮▮</div>
+          <div className="demo-spend fade">SESSION SPEND $0.40+ · VEO + GROK ▮▮▮▮▮▮</div>
         )}
       </div>
       <figcaption className="demo-cap">
