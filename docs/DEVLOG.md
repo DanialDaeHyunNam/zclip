@@ -371,6 +371,25 @@ All entries 2026-07-06 (single build session, owner: Dan).
   for verification; the owner runs dev on :3000, singleton lock blocks
   a second instance.
 
+## 24. Performance transfer (video = how, card = who)
+
+- Owner asked for face-swap-style motion keep. Honest ceiling with our
+  APIs (no provider takes driving video + identity image): dense-sample
+  the reference video (up to 10 evenly spaced frames at 640px), have
+  the multimodal refiner TRANSCRIBE the performance into a timestamped
+  beat map (expression/gaze/head/hands/camera per segment, scaled to
+  the effective take length), and generate with the CHARACTER CARD as
+  the identity reference. Trigger is implicit: video attached + card
+  selected on the first take => transfer mode (chip says "performance
+  source (face from card)"); refiner is forbidden from carrying the
+  source person's identity. Attaching a video also nudges duration to
+  the nearest 4/8/12 of the source length; refine frame cap raised to 12.
+- NOT pixel motion transfer — it's transcription + recast. True driving-
+  video tools (Runway Act-One etc.) or Sora characters/edits endpoints
+  are future options; Sora characters need consent verification.
+- Rights note for the owner: only transfer performances you own or have
+  license to imitate; identity never copies, but choreography does.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

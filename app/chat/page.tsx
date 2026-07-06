@@ -171,6 +171,7 @@ export default function Home() {
     mimeType: string;
     thumb: string;
     kind: "image" | "video";
+    srcSeconds?: number;
   } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -553,23 +554,32 @@ export default function Home() {
           new Promise<string>((res, rej) => {
             v.onseeked = () => {
               try {
-                res(toJpeg(v, v.videoWidth, v.videoHeight, 768, 0.8));
+                res(toJpeg(v, v.videoWidth, v.videoHeight, 640, 0.75));
               } catch (e) {
                 rej(e);
               }
             };
             v.currentTime = Math.max(0, Math.min(t, dur - 0.05));
           });
+        // Dense, evenly spaced sampling — enough for the refiner to
+        // transcribe the PERFORMANCE beat by beat, not just the look.
+        const count = Math.min(10, Math.max(3, Math.round(dur)));
         const frames: string[] = [];
-        for (const f of [0.15, 0.5, 0.85]) {
-          frames.push((await grab(dur * f)).split(",")[1]);
+        for (let i = 0; i < count; i++) {
+          frames.push((await grab((dur * (i + 0.5)) / count)).split(",")[1]);
         }
         setAttach({
           frames,
           mimeType: "image/jpeg",
           thumb: toJpeg(v, v.videoWidth, v.videoHeight, 120, 0.7),
           kind: "video",
+          srcSeconds: dur,
         });
+        // Nudge the take length toward the source video's length.
+        const nearest = [4, 8, 12].reduce((a, b) =>
+          Math.abs(b - dur) < Math.abs(a - dur) ? b : a,
+        );
+        setDuration(nearest);
       } finally {
         URL.revokeObjectURL(url);
       }
@@ -750,11 +760,16 @@ export default function Home() {
       !manual && continuity
         ? [...turns].reverse().find((t) => t.snapshot)?.snapshot
         : undefined;
+    // Video attach + character card = PERFORMANCE TRANSFER: the video
+    // drives the choreography (via transcription), the card supplies the
+    // identity — so asset refs stay live even with a manual video.
     const assetImages =
-      !manual && starterText
+      (!manual || manual.kind === "video") && starterText
         ? ((await Promise.all([assetRefB64(selChar), assetRefB64(selSetting)]))
             .filter(Boolean) as string[])
         : [];
+    const transfer =
+      manual?.kind === "video" && assetImages.length > 0 && !!starterText;
     const assetThumb = starterText
       ? selChar
         ? "custom" in selChar && selChar.custom
@@ -786,8 +801,9 @@ export default function Home() {
           : lastSnap
             ? [{ base64: lastSnap.split(",")[1], mimeType: "image/jpeg" }]
             : undefined;
-    const rawPrimary =
-      manual && refImages
+    const rawPrimary = transfer
+      ? { base64: assetImages[0], mimeType: "image/jpeg" } // identity = card
+      : manual && refImages
         ? refImages[Math.floor((refImages.length - 1) / 2)]
         : refImages?.[0];
     const primaryImage = rawPrimary
@@ -850,15 +866,21 @@ export default function Home() {
           body: JSON.stringify({
             base,
             history,
+            mode: transfer ? "transfer" : undefined,
+            targetSeconds: transfer
+              ? effectiveSeconds(providerId, duration, resolution)
+              : undefined,
             contexts: ctxTurns.map((c) => ({
               take: c.take,
               prompt: c.turn.prompt!,
             })),
             message:
               text ||
-              (ctxTurns.length
-                ? "Blend the pinned context takes into one take."
-                : "Use the attached image as the visual reference for the clip."),
+              (transfer
+                ? "Recreate the attached video's performance with the base prompt's subject."
+                : ctxTurns.length
+                  ? "Blend the pinned context takes into one take."
+                  : "Use the attached image as the visual reference for the clip."),
             images: refImages,
           }),
         });
@@ -1654,7 +1676,9 @@ export default function Home() {
                   <span className="sel-chip fade">
                     <img src={attach.thumb} alt="attached reference" />
                     {attach.kind === "video"
-                      ? `Video · ${attach.frames.length} frames`
+                      ? turns.length === 0 && (selChar || selSetting)
+                        ? `Video · performance source (face from card)`
+                        : `Video · ${attach.frames.length} frames`
                       : "Image reference"}
                     <button
                       className="link-btn danger"

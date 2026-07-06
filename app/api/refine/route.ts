@@ -19,7 +19,7 @@ Rules:
 - Keep explicit negatives like "no gasping, no panting, no frantic gestures, slow and natural" (a slow hand-to-mouth IS allowed in the long arc).
 - When the user wants the reaction/expression KEPT while changing scene, people or wardrobe: copy the action sentence VERBATIM, do not give background characters emotional actions that could bleed onto the subject (no "friends laughing"), and add explicit counters ("she does not smile", "holds this expression from first frame to last") — scene mood otherwise overrides a kept expression.
 - NEVER remove the realism clauses (hyper-realistic, visible pores, no beauty filter, no airbrushed smoothing, real found-footage look) or the natural-motion language — carry them into every rewrite; add them if missing.
-- If images are attached, they are the visual reference — ground the subject, styling and scene in what they actually show, then apply the requested change. Multiple frames come from a reference video (beginning/middle/end): infer the subject, scene and motion arc across them.
+- If images are attached, they are the visual reference — ground the subject, styling and scene in what they actually show, then apply the requested change. Multiple frames come from a reference video and are IN TIME ORDER — read them as a performance timeline (expression by expression), not just a look.
 - Always write the prompt in English (video models follow English best), regardless of the request's language.
 - Under 900 characters.
 - Output ONLY the final prompt text. No quotes, no markdown, no explanation.`;
@@ -35,9 +35,9 @@ export async function POST(req: Request) {
     );
   }
 
-  let base: unknown, message: unknown, images: unknown, history: unknown, contexts: unknown;
+  let base: unknown, message: unknown, images: unknown, history: unknown, contexts: unknown, mode: unknown, targetSeconds: unknown;
   try {
-    ({ base, message, images, history, contexts } = await req.json());
+    ({ base, message, images, history, contexts, mode, targetSeconds } = await req.json());
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -85,17 +85,23 @@ export async function POST(req: Request) {
     }
   }
 
+  const secs =
+    typeof targetSeconds === "number" && targetSeconds >= 1 ? targetSeconds : 8;
+  const transferBlock =
+    mode === "transfer"
+      ? `PERFORMANCE TRANSFER MODE: the attached frames sample a reference video IN TIME ORDER. Transcribe its performance precisely — per-segment facial expression, gaze direction, head angle, mouth shape, hand positions and camera drift — as a timestamped beat map scaled to ${secs} seconds. Do NOT carry over the source person's identity, face, hair, clothing or room; the subject and setting come from the BASE PROMPT. Output the final prompt as: base subject + setting, performing exactly this transcribed choreography, plus the usual realism clauses.\n\n`
+      : "";
   const user =
     typeof base === "string" && base.trim()
-      ? `${ctxBlock}${historyBlock}BASE PROMPT (latest take — edit this one):\n${base}\n\nREQUESTED CHANGE:\n${message}`
-      : `${ctxBlock}${historyBlock}Write a complete video prompt from this description:\n${message}`;
+      ? `${transferBlock}${ctxBlock}${historyBlock}BASE PROMPT (latest take — edit this one):\n${base}\n\nREQUESTED CHANGE:\n${message}`
+      : `${transferBlock}${ctxBlock}${historyBlock}Write a complete video prompt from this description:\n${message}`;
 
   // Gemini Flash is multimodal — pass attached reference frames inline so
   // the rewrite can describe what's actually in them. A video reference
   // arrives as several extracted frames.
   const parts: Array<Record<string, unknown>> = [{ text: user }];
   if (Array.isArray(images)) {
-    for (const im of images.slice(0, 4)) {
+    for (const im of images.slice(0, 12)) {
       if (
         im &&
         typeof im === "object" &&
