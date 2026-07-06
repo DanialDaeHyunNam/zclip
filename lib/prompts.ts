@@ -29,80 +29,140 @@ export interface Setting {
   prompt: string; // location/lighting fragment ("sitting in …")
 }
 
-export const CHARACTERS: Character[] = [
+/** Each concept ships 3 numbered variants (Blonde 1/2/3 …). Tone target:
+ *  very pretty/handsome in an everyday, approachable way — the
+ *  best-looking person you might actually know, not a celebrity. All
+ *  cast members are in their 20s; ask for age changes in the chat
+ *  ("make her look ten years older") and the refiner applies it. */
+interface CharBase {
+  idBase: string;
+  labelBase: string;
+  pronoun: "She" | "He";
+  desc: string;
+  core: string; // shared subject core
+  variants: string[]; // per-variant hair/outfit details
+}
+
+const CHAR_BASES: CharBase[] = [
   {
-    id: "blonde",
-    label: "Blonde 1",
-    desc: "EARLY 20S · HOODIE",
+    idBase: "blonde",
+    labelBase: "Blonde",
     pronoun: "She",
-    prompt:
-      "A strikingly beautiful blonde woman in her early 20s, long wavy blonde hair, luminous fair skin, light natural makeup, fit slim figure, casual oversized hoodie",
+    desc: "EARLY 20S · CASUAL",
+    core: "A very pretty blonde woman in her early 20s with an approachable girl-next-door look, natural realistic skin",
+    variants: [
+      "long wavy blonde hair, light natural makeup, oversized grey hoodie",
+      "blonde hair in a claw-clip updo with loose strands, minimal makeup, white ribbed tank under an open flannel",
+      "shoulder-length blonde bob, soft freckles, cream knit sweater",
+    ],
   },
   {
-    id: "korean",
-    label: "Korean 1",
-    desc: "GLASS SKIN · CARDIGAN",
+    idBase: "korean",
+    labelBase: "Korean",
     pronoun: "She",
-    prompt:
-      "A strikingly beautiful young Korean woman in her early-to-mid 20s, dewy glass skin, subtle K-beauty makeup, long dark hair with soft balayage, slim elegant figure, cozy cream oversized cardigan",
+    desc: "EARLY-MID 20S · NATURAL",
+    core: "A very pretty young Korean woman in her early-to-mid 20s with a fresh natural look, clear realistic skin",
+    variants: [
+      "long dark hair with soft balayage, subtle K-beauty makeup, cozy cream oversized cardigan",
+      "chin-length dark bob, barely-there makeup, oversized white tee",
+      "long straight black hair half-tied, thin wire glasses, beige hoodie",
+    ],
   },
   {
-    id: "redhead",
-    label: "Redhead 1",
-    desc: "COPPER CURLS · BAND TEE",
+    idBase: "redhead",
+    labelBase: "Redhead",
     pronoun: "She",
-    prompt:
-      "A gorgeous woman in her mid-20s with curly copper-red hair, striking green eyes, flawless pale skin, fit figure, vintage band t-shirt",
+    desc: "MID 20S · CASUAL",
+    core: "A very pretty woman in her mid-20s with natural copper-red hair and light freckles, realistic skin",
+    variants: [
+      "curly copper hair worn loose, green eyes, vintage band t-shirt",
+      "straight auburn hair with curtain bangs, black turtleneck",
+      "copper hair in a messy bun, denim jacket over a white tee",
+    ],
   },
   {
-    id: "black-f",
-    label: "Black Woman 1",
-    desc: "CURLS · KNIT TOP",
+    idBase: "black-f",
+    labelBase: "Black Woman",
     pronoun: "She",
-    prompt:
-      "A stunningly beautiful Black woman in her early 20s, radiant deep skin, defined curls in a loose updo, elegant features, fit figure, ribbed knit top",
+    desc: "EARLY 20S · NATURAL",
+    core: "A very pretty Black woman in her early 20s with warm friendly features and natural realistic skin",
+    variants: [
+      "defined curls in a loose updo, ribbed knit top",
+      "long box braids, small gold studs, cropped sweatshirt",
+      "short natural afro, minimal makeup, satin blouse",
+    ],
   },
   {
-    id: "latina",
-    label: "Latina 1",
-    desc: "DARK WAVES · GOLD HOOPS",
+    idBase: "latina",
+    labelBase: "Latina",
     pronoun: "She",
-    prompt:
-      "A gorgeous Latina woman in her mid-20s, warm tan skin, glossy dark waves, striking features, subtle gold hoops, fit figure, casual cropped cardigan",
+    desc: "MID 20S · WARM",
+    core: "A very pretty Latina woman in her mid-20s with a warm approachable look and natural realistic skin",
+    variants: [
+      "glossy dark waves, subtle gold hoops, casual cropped cardigan",
+      "dark hair in a sleek low bun, small hoops, white blouse",
+      "loose dark curls, sun-kissed freckles, olive henley",
+    ],
   },
   {
-    id: "brunette",
-    label: "Brunette 1",
-    desc: "LATE 30S · KNIT TOP",
+    idBase: "brunette",
+    labelBase: "Brunette",
     pronoun: "She",
-    prompt:
-      "A beautiful warm woman in her late 30s, elegant features, shoulder-length brown hair, soft glowing skin, fit figure, comfortable knit top",
+    desc: "MID 20S · RELATABLE",
+    core: "A very pretty brunette woman in her mid-20s with a warm relatable look and natural realistic skin",
+    variants: [
+      "shoulder-length brown hair, comfortable knit top",
+      "brown hair in a loose ponytail, striped long-sleeve tee",
+      "layered brown hair, thin gold necklace, chambray shirt",
+    ],
   },
   {
-    id: "guy",
-    label: "White Man 1",
-    desc: "JAWLINE · CREWNECK",
+    idBase: "guy",
+    labelBase: "White Man",
     pronoun: "He",
-    prompt:
-      "An exceptionally handsome white man in his mid-20s, chiseled jawline, piercing blue eyes, tousled dark-blond hair, light stubble, athletic build, fitted heather-gray crewneck",
+    desc: "MID 20S · CASUAL",
+    core: "A handsome white man in his mid-20s with an easygoing approachable look and natural realistic skin",
+    variants: [
+      "tousled dark-blond hair, light stubble, heather-gray crewneck",
+      "short brown hair, clean shave, navy henley",
+      "medium wavy hair, casual glasses, plain black tee",
+    ],
   },
   {
-    id: "black-m",
-    label: "Black Man 1",
-    desc: "FADE · WHITE TEE",
+    idBase: "black-m",
+    labelBase: "Black Man",
     pronoun: "He",
-    prompt:
-      "A strikingly handsome Black man in his mid-20s, sharp jawline, short fade haircut, warm confident eyes, athletic build, fitted white t-shirt",
+    desc: "MID 20S · CASUAL",
+    core: "A handsome Black man in his mid-20s with a warm confident look and natural realistic skin",
+    variants: [
+      "short fade haircut, fitted white t-shirt",
+      "short twists, light beard, olive crewneck",
+      "buzz cut, clean look, denim overshirt",
+    ],
   },
   {
-    id: "asian-m",
-    label: "Asian Man 1",
-    desc: "SHARP · BLACK CREWNECK",
+    idBase: "asian-m",
+    labelBase: "Asian Man",
     pronoun: "He",
-    prompt:
-      "A very handsome East Asian man in his mid-20s, sharp features, styled black hair, clear skin, lean athletic build, minimal black crewneck",
+    desc: "MID 20S · CLEAN",
+    core: "A handsome East Asian man in his mid-20s with a clean approachable look and natural realistic skin",
+    variants: [
+      "neatly styled black hair, minimal black crewneck",
+      "middle-part black hair, thin wire glasses, white oxford shirt",
+      "short textured crop, light stubble, charcoal hoodie",
+    ],
   },
 ];
+
+export const CHARACTERS: Character[] = CHAR_BASES.flatMap((b) =>
+  b.variants.map((v, i) => ({
+    id: `${b.idBase}-${i + 1}`,
+    label: `${b.labelBase} ${i + 1}`,
+    desc: b.desc,
+    pronoun: b.pronoun,
+    prompt: `${b.core}, ${v}`,
+  })),
+);
 
 export const SETTINGS: Setting[] = [
   {
@@ -191,10 +251,10 @@ export function composeStarter(
   s?: StarterBlock | null,
 ): { prompt: string; label: string } | null {
   if (!c && !s) return null;
-  // House rule: every face is above-average attractive, even the fallback.
+  // Casting default matches the built-in cast: photogenic, natural.
   const subject =
     c?.prompt ??
-    "A very attractive young woman in her early 20s, naturally beautiful features, fresh glowing skin, fit figure, casual outfit";
+    "A very pretty young woman in her early 20s with an approachable natural look, realistic skin, casual outfit";
   const where =
     s?.prompt ?? "sitting in a softly lit room with a lived-in background";
   return {

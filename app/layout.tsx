@@ -21,7 +21,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HOOK LAB",
+  title: "ZCLIP",
   description: "Reaction-hook clip generator",
 };
 

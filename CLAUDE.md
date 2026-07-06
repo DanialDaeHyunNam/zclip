@@ -1,4 +1,4 @@
-# HOOK LAB — agent handoff notes
+# ZCLIP — agent handoff notes (formerly HOOK LAB)
 
 Internal tool that mass-produces short vertical UGC "reaction hook" clips
 via a chat-driven iterate loop. Built 2026-07-06 in one session; this file
@@ -73,7 +73,7 @@ do NOT store full images/videos in localStorage (5MB quota).
   `lib/prompts.ts`); picking one attaches a chip to the composer like a
   multimodal attachment. Composing fills a VISIBLE editable base-prompt
   textarea (`starterDraft`) — that exact text runs as take 1's base (no
-  hidden prompt; house rule: all faces above-average attractive, neutral
+  hidden prompt; cast is photogenic and camera-ready, neutral
   "Blonde 1"-style naming). Card images:
   `/public/starters/<id>.jpg` (bake via `bun scripts/bake-starters.mjs`
   or drop files); "+ Custom" assets live in localStorage

@@ -173,8 +173,7 @@ All entries 2026-07-06 (single build session, owner: Dan).
 
 - Baked all 12 starter images via `scripts/bake-starters.mjs`
   (gemini-2.5-flash-image worked as-is, 3:4 aspect config accepted).
-  Prompts tuned for attractive/photogenic but tasteful output; owner
-  reviews visually — re-bake singles with
+  Prompts tuned for photogenic, natural output; owner reviews visually — re-bake singles with
   `bun scripts/bake-starters.mjs <id> --force`.
 - Design refresh (owner: "too boxy/boring"): Grok-style ambient
   backdrop (inline-SVG starfield + one soft accent glow on body::before),
@@ -188,9 +187,8 @@ All entries 2026-07-06 (single build session, owner: Dan).
 ## 12. Asset library v2 + input-first picker
 
 - Characters diversified to 9 (Blonde/Korean/Redhead/Black Girl/Latina/
-  Mom + White/Black/Asian Guy), ALL prompts upgraded to above-average
-  attractive ("strikingly beautiful", "exceptionally handsome", fit) —
-  house rule: even the no-selection fallback subject is attractive.
+  Mom + White/Black/Asian Guy), ALL prompts tuned to a photogenic,
+  camera-ready cast (fallback subject included).
   Neutral catalog naming ("Blonde 1", "Black Guy 1") per owner.
 - Settings expanded to 10 (added Park/Mountain/Beach/Rooftop 1).
   All 19 card images re-baked (male-specific bake wrapper; one 503
@@ -203,6 +201,24 @@ All entries 2026-07-06 (single build session, owner: Dan).
   "BASE PROMPT · YOURS TO EDIT" textarea (`starterDraft`) — that exact
   text (user edits included) is what take 1 runs on; the message field
   layers the action on top via refine.
+
+## 13. Cast v3 (realistic texture, 27 variants), ZCLIP rebrand, UI declutter
+
+- Rebrand: HOOK LAB -> ZCLIP ("clips for the Z feed"). localStorage keys
+  intentionally stay `hooklab.*` so existing browser data survives.
+- Cast: every concept now ships 3 numbered variants (27 portraits),
+  generated from CHAR_BASES in lib/prompts.ts. ALL ages unified to 20s —
+  age shifts are a chat instruction ("make her look ten years older").
+- Texture realism: bake wrappers rewritten to candid unedited iPhone
+  selfie (visible pores, no beauty filter/retouching, everyday light);
+  tone calibrated to "best-looking person you actually know", not
+  celebrity. All 27 re-baked; backgrounds unchanged.
+- Expression audit (owner request): repo-wide scan for blunt
+  appearance/Korean phrasing — code, prompts and docs now use neutral
+  casting language ("photogenic, camera-ready"); scan clean.
+- UI declutter (owner): removed the prompt-rule hint under the input,
+  the dashed empty-state guidance box, and the header model-meta line
+  (model/aspect/duration already live in the params panel).
 
 ## Verification ledger (what was actually exercised)
 

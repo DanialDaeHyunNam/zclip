@@ -13,12 +13,7 @@ import {
   type AspectRatio,
   type Resolution,
 } from "@/lib/config";
-import {
-  CHARACTERS,
-  SETTINGS,
-  composeStarter,
-  PROMPT_RULE,
-} from "@/lib/prompts";
+import { CHARACTERS, SETTINGS, composeStarter } from "@/lib/prompts";
 
 /* ── types & storage ─────────────────────────────── */
 
@@ -1144,10 +1139,7 @@ export default function Home() {
       <div className="shell">
       <header className="top">
         <div className="wordmark">
-          HOOK LAB<span>_</span>
-        </div>
-        <div className="top-meta">
-          {providerInfo.modelId.toUpperCase()} · {aspect} · {duration}S
+          ZCLIP<span>_</span>
         </div>
       </header>
 
@@ -1173,14 +1165,6 @@ export default function Home() {
           </div>
 
           <div className="thread">
-            {turns.length === 0 && (
-              <p className="hint thread-empty">
-                Compose a starting point below — pick a character and/or a
-                setting, optionally type the action — or just describe the
-                whole clip in your own words. Every message becomes a new
-                take; rewind to any point to branch from there.
-              </p>
-            )}
             {turns.map((t, i) => (
               <div
                 key={t.id}
@@ -1582,7 +1566,6 @@ export default function Home() {
             </div>
           )}
 
-          <p className="hint">{PROMPT_RULE}</p>
         </section>
 
         {/* preview + controls — rendered into the LEFT column via CSS order */}

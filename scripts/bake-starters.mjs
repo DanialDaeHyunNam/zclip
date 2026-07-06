@@ -35,8 +35,8 @@ const jobs = [
     id: c.id,
     text:
       c.pronoun === "He"
-        ? `Stunning amateur smartphone selfie-style photo portrait of ${c.prompt}. Exceptionally handsome and photogenic, strong masculine features, sharp jawline, clear skin, athletic physique, tastefully styled, relaxed confident expression, looking at the camera. Soft flattering natural light, realistic skin texture, shot on an iPhone front camera, vertical framing, no text, no watermark.`
-        : `Stunning amateur smartphone selfie-style photo portrait of ${c.prompt}. Exceptionally attractive and photogenic with naturally beautiful facial features, clear glowing skin, fit healthy physique, tastefully styled, subtle confident smile, looking at the camera. Soft flattering natural light, realistic skin texture, shot on an iPhone front camera, vertical framing, no text, no watermark.`,
+        ? `Candid unedited amateur iPhone front-camera selfie photo of ${c.prompt}. Handsome in an everyday approachable way — not a model or celebrity look. Hyper-realistic natural skin texture with visible pores, stubble detail and small imperfections, no retouching, no airbrushed smoothing, everyday soft lighting, slightly imperfect candid framing, relaxed easy expression, looking at the camera. Vertical, no text, no watermark.`
+        : `Candid unedited amateur iPhone front-camera selfie photo of ${c.prompt}. Very pretty in an everyday approachable way — like the best-looking person in a friend group, not a celebrity or a model. Hyper-realistic natural skin texture with visible pores and small imperfections, no beauty filter, no retouching, no airbrushed smoothing, everyday soft lighting, slightly imperfect candid framing, relaxed subtle smile, looking at the camera. Vertical, no text, no watermark.`,
   })),
   ...SETTINGS.map((s) => ({
     id: s.id,

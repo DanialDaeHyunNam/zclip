@@ -1,4 +1,4 @@
-# HOOK LAB
+# ZCLIP
 
 Internal tool that mass-produces short vertical UGC-style "reaction hook"
 clips (the surprised-reaction first half of a TikTok/Reels reaction ad)
