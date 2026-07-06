@@ -273,7 +273,8 @@ export async function GET(req: Request) {
   const gate = devOnly();
   if (gate) return gate;
 
-  const f = new URL(req.url).searchParams.get("f") ?? "";
+  const params = new URL(req.url).searchParams;
+  const f = params.get("f") ?? "";
   if (!FILE_NAME.test(f)) {
     return Response.json({ error: "Bad file name" }, { status: 400 });
   }
@@ -286,6 +287,9 @@ export async function GET(req: Request) {
         "content-type": "video/mp4",
         "content-length": String(info.size),
         "cache-control": "no-store",
+        ...(params.get("dl") && {
+          "content-disposition": `attachment; filename="${f}"`,
+        }),
       },
     });
   } catch {

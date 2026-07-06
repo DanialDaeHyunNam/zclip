@@ -53,7 +53,9 @@ interface Turn {
 interface Clip {
   jobId: string;
   sessionId?: string;
-  provider: ProviderName;
+  /** "grab" marks a reference video pulled with the GRAB tool — archived
+   *  alongside takes but excluded from the spend ledger. */
+  provider: ProviderName | "grab";
   prompt: string;
   note?: string;
   variantLabel: string;
@@ -129,11 +131,13 @@ function ClipCardView({
   withPw,
   onDownload,
   onRemove,
+  onUse,
 }: {
   clip: Clip;
   withPw: (u: string) => string;
   onDownload: (u: string) => void;
   onRemove: (id: string) => void;
+  onUse?: (clip: Clip) => void;
 }) {
   return (
     <div className="card">
@@ -155,15 +159,22 @@ function ClipCardView({
       <div className="card-meta">
         <div className="card-row">
           <span>
-            {PROVIDERS[clip.provider]?.label ?? clip.provider} ·{" "}
-            {clip.variantLabel}
+            {clip.provider === "grab"
+              ? "GRAB"
+              : PROVIDERS[clip.provider]?.label ?? clip.provider}{" "}
+            · {clip.variantLabel}
           </span>
-          <span>{fmtCost(clip.costUsd) ?? ""}</span>
+          <span>{clip.provider === "grab" ? "" : fmtCost(clip.costUsd) ?? ""}</span>
         </div>
         <p className="card-prompt" title={clip.prompt}>
           {clip.note ?? clip.prompt}
         </p>
         <div className="card-actions">
+          {clip.provider === "grab" && clip.videoUrl && onUse && (
+            <button className="link-btn ctx-on" onClick={() => onUse(clip)}>
+              → Use as reference
+            </button>
+          )}
           {clip.videoUrl && (
             <button className="link-btn" onClick={() => onDownload(clip.videoUrl!)}>
               Download
@@ -271,9 +282,6 @@ export default function Home() {
   const [grabPick, setGrabPick] = useState<string | null>(null);
   const [grabBusy, setGrabBusy] = useState<"scan" | "fetch" | "attach" | null>(null);
   const [grabErr, setGrabErr] = useState<string | null>(null);
-  const [grabResult, setGrabResult] = useState<
-    { name: string; url: string; bytes: number } | null
-  >(null);
 
   const providerInfo = PROVIDERS[providerId];
   const estCostUsd = estimateCostUsd(providerId, resolution, duration);
@@ -319,7 +327,7 @@ export default function Home() {
     // Backfill costs for clips saved before a provider's pricing landed.
     setClips(
       loadJson<Clip[]>(GALLERY_KEY, []).map((c) =>
-        c.costUsd == null && c.provider && c.durationSeconds
+        c.costUsd == null && c.provider && c.provider !== "grab" && c.durationSeconds
           ? {
               ...c,
               costUsd:
@@ -770,7 +778,6 @@ export default function Home() {
     if (!url || grabBusy) return;
     setGrabErr(null);
     setGrabVideos(null);
-    setGrabResult(null);
     if (/^https?:\/\/(www\.)?(x|twitter)\.com\//i.test(url)) {
       setGrabBusy("scan");
       try {
@@ -796,13 +803,13 @@ export default function Home() {
     await grabFetch(null);
   };
 
-  /** GRAB step 2 — download (and optionally trim) on the server. */
+  /** GRAB step 2 — download (and optionally trim) on the server. The
+   *  result lands in the archive as a GRAB card and the view moves there. */
   const grabFetch = async (videoUrl: string | null) => {
     const url = videoUrl ?? grabPick ?? grabUrl.trim();
     if (!url || grabBusy) return;
     setGrabBusy("fetch");
     setGrabErr(null);
-    setGrabResult(null);
     try {
       const start = grabStart.trim() === "" ? null : Number(grabStart);
       const end = grabEnd.trim() === "" ? null : Number(grabEnd);
@@ -815,7 +822,31 @@ export default function Home() {
       });
       const b = await r.json();
       if (!r.ok) throw new Error(b.error ?? "Download failed");
-      setGrabResult(b);
+      const source = grabUrl.trim();
+      setClips((cs) => [
+        {
+          jobId: b.name,
+          sessionId,
+          provider: "grab",
+          prompt: source,
+          note: `Reference · ${source.replace(/^https?:\/\/(www\.)?/, "")}${
+            start != null && end != null ? ` · ${start}–${end}s` : ""
+          }`,
+          variantLabel: "Reference",
+          createdAt: Date.now(),
+          status: "done",
+          aspectRatio: "9:16",
+          durationSeconds: start != null && end != null ? end - start : 0,
+          resolution: "720p",
+          videoUrl: b.url,
+          costUsd: 0,
+        },
+        ...cs,
+      ]);
+      setGrabUrl("");
+      setGrabVideos(null);
+      setGrabOpen(false);
+      setArchiveOpen(true);
     } catch (e) {
       setGrabErr(e instanceof Error ? e.message : "Download failed");
     } finally {
@@ -823,24 +854,25 @@ export default function Home() {
     }
   };
 
-  /** GRAB step 3 — feed the grabbed clip into the normal attach pipeline
-   *  (frames, transfer mode, the lot) and return to the composer. */
-  const grabUse = async () => {
-    if (!grabResult || grabBusy) return;
-    setGrabBusy("attach");
-    setGrabErr(null);
+  /** Feed an archived GRAB clip into the normal attach pipeline (frames,
+   *  transfer mode, the lot) and return to the composer. */
+  const useClipAsRef = async (clip: Clip) => {
+    if (!clip.videoUrl) return;
+    setError(null);
     try {
-      const r = await fetch(grabResult.url, { headers: pwHeaders({}) });
-      if (!r.ok) throw new Error("Could not read the grabbed file");
+      const r = await fetch(clip.videoUrl, { headers: pwHeaders({}) });
+      if (!r.ok) throw new Error();
       const blob = await r.blob();
       await attachMediaFile(
-        new File([blob], grabResult.name, { type: "video/mp4" }),
+        new File([blob], `${clip.jobId}.mp4`, { type: "video/mp4" }),
       );
+      setArchiveOpen(false);
       setGrabOpen(false);
-    } catch (e) {
-      setGrabErr(e instanceof Error ? e.message : "Attach failed");
-    } finally {
-      setGrabBusy(null);
+    } catch {
+      setError(
+        "Could not load that reference — the grabbed file may have been cleaned up. Grab it again.",
+      );
+      setArchiveOpen(false);
     }
   };
 
@@ -1380,6 +1412,7 @@ export default function Home() {
       }
     >();
     for (const c of clips) {
+      if (c.provider === "grab") continue; // references are free — not spend
       const key = c.sessionId ?? "earlier";
       let g = bySession.get(key);
       if (!g) {
@@ -1453,6 +1486,7 @@ export default function Home() {
             setArchiveOpen(false);
             setSideOpen(false);
             setSpendOpen(false);
+            setGrabOpen(false);
           }}
           title="Back to the studio"
           aria-label="Home"
@@ -1461,7 +1495,11 @@ export default function Home() {
         </button>
         <button
           className={`rail-btn ${sideOpen ? "on" : ""}`}
-          onClick={() => setSideOpen((o) => !o)}
+          onClick={() => {
+            setSideOpen((o) => !o);
+            setArchiveOpen(false);
+            setGrabOpen(false);
+          }}
           title="Sessions"
           aria-label="Toggle session sidebar"
         >
@@ -1472,6 +1510,7 @@ export default function Home() {
           onClick={() => {
             setArchiveOpen((o) => !o);
             setSideOpen(false);
+            setGrabOpen(false);
           }}
           title="Archive — every take, grouped by session"
           aria-label="Toggle archive"
@@ -1483,6 +1522,7 @@ export default function Home() {
           onClick={() => {
             setGrabOpen((o) => !o);
             setSideOpen(false);
+            setArchiveOpen(false);
           }}
           title="Grab — download a reference video from YouTube / X / a direct link"
           aria-label="Toggle video grabber"
@@ -1601,6 +1641,7 @@ export default function Home() {
                       withPw={withPw}
                       onDownload={download}
                       onRemove={removeClip}
+                      onUse={useClipAsRef}
                     />
                   ))}
                 </div>
@@ -1700,28 +1741,10 @@ export default function Home() {
               )}
             </div>
             {grabErr && <div className="error-box">{grabErr}</div>}
-            {grabResult && (
-              <div className="grab-result">
-                <span className="mono">
-                  {grabResult.name} · {(grabResult.bytes / 1_000_000).toFixed(1)}MB
-                </span>
-                <span className="turn-spacer" />
-                <button
-                  className="btn-primary"
-                  onClick={grabUse}
-                  disabled={Boolean(grabBusy)}
-                >
-                  {grabBusy === "attach" ? "ATTACHING…" : "USE AS REFERENCE"}
-                </button>
-                <a
-                  className="link-btn"
-                  href={`${grabResult.url}${pw ? `&pw=${encodeURIComponent(pw)}` : ""}`}
-                  download={grabResult.name}
-                >
-                  ⇩ Save file
-                </a>
-              </div>
-            )}
+            <p className="hint">
+              Finished grabs land in the archive (▦) with a
+              &quot;use as reference&quot; button.
+            </p>
           </div>
         </div>
       )}
@@ -2561,6 +2584,7 @@ export default function Home() {
                 withPw={withPw}
                 onDownload={download}
                 onRemove={removeClip}
+                onUse={useClipAsRef}
               />
             ))}
           </div>
