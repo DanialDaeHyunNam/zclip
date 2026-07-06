@@ -67,7 +67,11 @@ const STEPS = [
 ];
 
 export default function Landing() {
-  const cast = CHARACTERS.filter((_, i) => i % 3 === 0).slice(0, 6);
+  // Balanced sample of the cast — 3 women, 3 men.
+  const castIds = ["blonde-1", "guy-1", "asian-f-1", "black-m-1", "latina-1", "asian-m-1"];
+  const cast = castIds
+    .map((id) => CHARACTERS.find((c) => c.id === id))
+    .filter((c): c is NonNullable<typeof c> => Boolean(c));
   return (
     <div className="landing">
       <nav className="ld-nav">
