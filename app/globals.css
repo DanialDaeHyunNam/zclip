@@ -1616,6 +1616,230 @@ button {
   }
 }
 
+/* ── landing page ───────────────────────────────── */
+
+.landing {
+  margin-left: -52px; /* landing has no session rail */
+  padding: 0 32px 90px;
+}
+
+.landing > * {
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ld-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 26px 0;
+}
+
+.ld-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+
+.ld-nav-cta {
+  padding: 10px 22px;
+}
+
+.ld-hero {
+  text-align: center;
+  padding: 90px 0 70px;
+}
+
+.ld-badge {
+  display: inline-block;
+  border: 1px solid rgba(111, 220, 255, 0.35);
+  border-radius: var(--r-pill);
+  color: var(--accent);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  margin-bottom: 30px;
+}
+
+.ld-hero h1 {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(44px, 6.4vw, 78px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.03;
+  margin-bottom: 24px;
+}
+
+.ld-hero h1 span {
+  background: linear-gradient(100deg, var(--accent), #b7ecff 55%, #ffffff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.ld-hero > p {
+  color: var(--dim);
+  font-size: 16.5px;
+  line-height: 1.75;
+  max-width: 62ch;
+  margin: 0 auto 36px;
+}
+
+.ld-cta-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+}
+
+.ld-cta {
+  width: auto;
+  padding: 16px 34px;
+  font-size: 12px;
+}
+
+.ld-stats {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.ld-section {
+  padding: 60px 0 10px;
+}
+
+.ld-section > .label {
+  display: block;
+  margin-bottom: 26px;
+}
+
+.ld-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.ld-card {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.015);
+  transition: border-color 0.3s ease;
+}
+
+.ld-card:hover {
+  border-color: var(--hair-strong);
+}
+
+.ld-card h3 {
+  font-family: var(--font-display), sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.ld-card p {
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.ld-cast {
+  display: flex;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.ld-cast img {
+  width: 44px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--hair-strong);
+}
+
+.ld-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.ld-step {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  padding: 24px;
+}
+
+.ld-step-n {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+}
+
+.ld-step h3 {
+  font-family: var(--font-display), sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 12px 0 10px;
+}
+
+.ld-step p {
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.ld-step a,
+.ld-note a,
+.ld-footer a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(111, 220, 255, 0.3);
+}
+
+.ld-step a {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.ld-note {
+  margin-top: 26px;
+  color: var(--dim);
+  font-size: 13.5px;
+  line-height: 1.75;
+  max-width: 70ch;
+}
+
+.ld-footer {
+  margin-top: 90px;
+  border-top: 1px solid var(--hair);
+  padding-top: 34px;
+  text-align: center;
+}
+
+.ld-footer p {
+  color: var(--dim);
+  font-size: 13.5px;
+  margin-top: 16px;
+}
+
+.ld-fine {
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px !important;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint) !important;
+  margin-top: 14px !important;
+}
+
 /* ── password gate ──────────────────────────────── */
 
 .gate {

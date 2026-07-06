@@ -1189,6 +1189,9 @@ export default function Home() {
         <div className="wordmark">
           ZCLIP<span>_</span>
         </div>
+        <a className="link-btn" href="/landing">
+          About
+        </a>
       </header>
 
       {turns.length === 0 && (
