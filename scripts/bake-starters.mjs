@@ -77,7 +77,7 @@ async function bake(job, key) {
 }
 
 // Usage: bun scripts/bake-starters.mjs [ids…] [--force]
-// ids filter lets you re-bake just the ugly ones: `… blonde cafe --force`
+// ids filter re-bakes specific cards only: `… blonde-1 cafe --force`
 const force = process.argv.includes("--force");
 const idFilter = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const key = apiKey();

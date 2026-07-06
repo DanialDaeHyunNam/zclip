@@ -5,8 +5,10 @@
  * into a 3s window makes video models overact.
  */
 
-const STYLE_PREFIX =
-  "Vertical 9:16 amateur front-camera selfie video, handheld iPhone.";
+const stylePrefix = (aspect: string) =>
+  aspect === "16:9"
+    ? "Horizontal 16:9 amateur selfie-style video, handheld iPhone held sideways."
+    : "Vertical 9:16 amateur front-camera selfie video, handheld iPhone.";
 
 const STYLE_SUFFIX =
   "Hyper-realistic, indistinguishable from real found iPhone footage: natural skin texture with visible pores, no beauty filter, no airbrushed smoothing, authentic unpolished UGC look, subtle handheld camera shake, slightly imperfect exposure, no cinematic color grading. Natural micro-expressions, natural blinking, relaxed lifelike body language. 3 seconds.";
@@ -249,6 +251,7 @@ export interface StarterBlock {
 export function composeStarter(
   c?: StarterBlock | null,
   s?: StarterBlock | null,
+  aspect: string = "9:16",
 ): { prompt: string; label: string } | null {
   if (!c && !s) return null;
   // Casting default matches the built-in cast: photogenic, natural.
@@ -258,7 +261,7 @@ export function composeStarter(
   const where =
     s?.prompt ?? "sitting in a softly lit room with a lived-in background";
   return {
-    prompt: `${STYLE_PREFIX} ${subject}, ${where}. ${defaultAction(c?.pronoun ?? "She")} ${STYLE_SUFFIX}`,
+    prompt: `${stylePrefix(aspect)} ${subject}, ${where}. ${defaultAction(c?.pronoun ?? "She")} ${STYLE_SUFFIX}`,
     label: [c?.label, s?.label].filter(Boolean).join(" · "),
   };
 }

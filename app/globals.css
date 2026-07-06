@@ -1330,6 +1330,25 @@ button {
 
 .panel-controls {
   margin-top: 26px;
+  position: relative; /* anchors the key popover */
+}
+
+.key-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: #0b0b0d;
+  border-color: var(--hair-strong);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7);
+  margin-bottom: 0;
+}
+
+.key-popover-close {
+  opacity: 1;
+  top: 12px;
+  right: 12px;
 }
 
 .panel-controls .field {

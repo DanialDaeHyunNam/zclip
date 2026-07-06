@@ -191,6 +191,7 @@ export default function Home() {
   const [keyInput, setKeyInput] = useState("");
   const [keySaving, setKeySaving] = useState(false);
   const [keyMsg, setKeyMsg] = useState("");
+  const [keyPanelHidden, setKeyPanelHidden] = useState(false);
 
   const providerInfo = PROVIDERS[providerId];
   const estCostUsd = estimateCostUsd(providerId, resolution, duration);
@@ -476,10 +477,10 @@ export default function Home() {
   /* recompose the visible base prompt whenever blocks change */
   useEffect(() => {
     if (turns.length) return;
-    const s = composeStarter(selChar, selSetting);
+    const s = composeStarter(selChar, selSetting, aspect);
     setStarterDraft(s ? s.prompt : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charId, settingId, custom, turns.length]);
+  }, [charId, settingId, custom, turns.length, aspect]);
 
   /* close the sidebar on Escape */
   useEffect(() => {
@@ -673,7 +674,7 @@ export default function Home() {
     const starterText =
       turns.length === 0 && starterDraft?.trim() ? starterDraft.trim() : null;
     const starterLabel = starterText
-      ? composeStarter(selChar, selSetting)?.label ?? "Custom base"
+      ? composeStarter(selChar, selSetting, aspect)?.label ?? "Custom base"
       : undefined;
     if (busyTurn || (!text && !starterText && !manual) || keyMissing) return;
     setError(null);
@@ -1650,6 +1651,7 @@ export default function Home() {
                     setProviderId(e.target.value as ProviderName);
                     setKeyMsg("");
                     setKeyInput("");
+                    setKeyPanelHidden(false);
                   }}
                 >
                   {(Object.keys(PROVIDERS) as ProviderName[]).map((p) => (
@@ -1722,8 +1724,15 @@ export default function Home() {
               </span>
             </div>
 
-            {keyMissing && (
-              <div className="stub-note fade">
+            {keyMissing && !keyPanelHidden && (
+              <div className="stub-note key-popover fade">
+                <button
+                  className="side-del key-popover-close"
+                  onClick={() => setKeyPanelHidden(true)}
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
                 <span className="label">
                   {providerInfo.label} · API key required
                 </span>
