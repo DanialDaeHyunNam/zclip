@@ -1629,6 +1629,91 @@ button {
   padding: 36px 32px 80px;
 }
 
+/* GRAB tool — compact card on the archive-overlay backdrop */
+.grab-card {
+  max-width: 680px;
+  margin: 10vh auto 0;
+  padding: 32px 32px 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: rgba(10, 10, 12, 0.92);
+}
+
+.grab-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.grab-input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg);
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+}
+
+.grab-input:focus {
+  outline: none;
+  border-color: rgba(111, 220, 255, 0.4);
+}
+
+.grab-trim .label {
+  margin-right: 4px;
+}
+
+.grab-num {
+  width: 90px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg);
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+}
+
+.grab-num:focus {
+  outline: none;
+  border-color: rgba(111, 220, 255, 0.4);
+}
+
+.grab-videos {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grab-video-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.grab-video-opt input {
+  accent-color: var(--accent);
+}
+
+.grab-result {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+  padding: 14px 18px;
+  border: 1px solid rgba(111, 220, 255, 0.25);
+  border-radius: var(--r-md);
+  font-size: 11px;
+  color: var(--dim);
+}
+
 .archive-group {
   margin-top: 36px;
 }

@@ -1,40 +1,21 @@
+version: 1
+updated: 2026-07-06T14:34:16.927Z
+
 files:
-  - path: app/api/auth/route.ts
-    source: claude
-    purpose: "Password-gate check endpoint"
-  - path: app/api/fetch-video/route.ts
-    source: claude
-    purpose: "SSRF-guarded proxy for direct video URLs"
-  - path: app/api/generate/route.ts
-    source: claude
-    purpose: "Submit generation job (validated, provider-dispatched)"
-  - path: app/api/keys/route.ts
-    source: claude
-    purpose: "Key presence booleans; dev-only .env.local writer"
-  - path: app/api/refine/route.ts
-    source: claude
-    purpose: "Gemini Flash prompt rewriter (history/context/transfer modes)"
-  - path: app/api/status/route.ts
-    source: claude
-    purpose: "Poll provider job state"
-  - path: app/api/video/route.ts
-    source: claude
-    purpose: "Streams MP4s needing auth headers (Veo/Sora/remote CDNs)"
-  - path: app/chat/page.tsx
-    source: claude
-    purpose: "Studio UI — chat takes, sessions, archive, spend, key panel"
-  - path: app/demo-reel.tsx
-    source: claude
-    purpose: "Animated demo playing real ZCLIP takes on a ~15s loop"
-  - path: app/globals.css
-    source: claude
-    purpose: "Whole design system: tokens, starfield, chat pill, charts"
-  - path: app/icon.svg
-    source: claude
-    purpose: "Favicon — cyan underscore on black"
-  - path: app/layout.tsx
-    source: claude
-    purpose: "Root layout: fonts (Inter/JetBrains/Space Grotesk), metadata"
-  - path: app/page.tsx
-    source: claude
-    purpose: "Public landing page (hero, differentiators, workflow, star CTA)"
+  "app/api/grab/route.ts":
+    status: active
+    source: "claude"
+    created: 2026-07-06
+    last_modified: 2026-07-06T14:34:16.927Z
+    change_count: 3
+    purpose: ""
+    change_log:
+      - date: 2026-07-06T14:34:16.927Z
+        action: edit
+        source: "claude"
+      - date: 2026-07-06T14:34:14.235Z
+        action: edit
+        source: "claude"
+      - date: 2026-07-06T14:34:10.974Z
+        action: edit
+        source: "claude"

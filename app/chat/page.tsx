@@ -260,6 +260,21 @@ export default function Home() {
   /** Turn ids pinned as context for the NEXT take. */
   const [ctxIds, setCtxIds] = useState<string[]>([]);
 
+  // GRAB — local reference-video fetcher (rail tool, dev only)
+  const [grabOpen, setGrabOpen] = useState(false);
+  const [grabUrl, setGrabUrl] = useState("");
+  const [grabStart, setGrabStart] = useState("");
+  const [grabEnd, setGrabEnd] = useState("");
+  const [grabVideos, setGrabVideos] = useState<
+    { id: string; url: string; res: string }[] | null
+  >(null);
+  const [grabPick, setGrabPick] = useState<string | null>(null);
+  const [grabBusy, setGrabBusy] = useState<"scan" | "fetch" | "attach" | null>(null);
+  const [grabErr, setGrabErr] = useState<string | null>(null);
+  const [grabResult, setGrabResult] = useState<
+    { name: string; url: string; bytes: number } | null
+  >(null);
+
   const providerInfo = PROVIDERS[providerId];
   const estCostUsd = estimateCostUsd(providerId, resolution, duration);
   const keyMissing = keysLoaded && !keys[providerInfo.envVar];
@@ -745,6 +760,87 @@ export default function Home() {
       setError("Could not fetch that URL.");
     } finally {
       setUrlFetching(false);
+    }
+  };
+
+  /** GRAB step 1 — X URLs get probed first (an article can hold several
+   *  videos); everything else goes straight to fetch. */
+  const grabScan = async () => {
+    const url = grabUrl.trim();
+    if (!url || grabBusy) return;
+    setGrabErr(null);
+    setGrabVideos(null);
+    setGrabResult(null);
+    if (/^https?:\/\/(www\.)?(x|twitter)\.com\//i.test(url)) {
+      setGrabBusy("scan");
+      try {
+        const r = await fetch("/api/grab", {
+          method: "POST",
+          headers: pwHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({ action: "probe", url }),
+        });
+        const b = await r.json();
+        if (!r.ok) throw new Error(b.error ?? "Scan failed");
+        if (b.videos) {
+          setGrabVideos(b.videos);
+          setGrabPick(b.videos[0]?.url ?? null);
+          return;
+        }
+      } catch (e) {
+        setGrabErr(e instanceof Error ? e.message : "Scan failed");
+        return;
+      } finally {
+        setGrabBusy(null);
+      }
+    }
+    await grabFetch(null);
+  };
+
+  /** GRAB step 2 — download (and optionally trim) on the server. */
+  const grabFetch = async (videoUrl: string | null) => {
+    const url = videoUrl ?? grabPick ?? grabUrl.trim();
+    if (!url || grabBusy) return;
+    setGrabBusy("fetch");
+    setGrabErr(null);
+    setGrabResult(null);
+    try {
+      const start = grabStart.trim() === "" ? null : Number(grabStart);
+      const end = grabEnd.trim() === "" ? null : Number(grabEnd);
+      if ((start != null && !Number.isFinite(start)) || (end != null && !Number.isFinite(end)))
+        throw new Error("Trim values must be seconds, e.g. 3 and 9.5");
+      const r = await fetch("/api/grab", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ action: "fetch", url, start, end }),
+      });
+      const b = await r.json();
+      if (!r.ok) throw new Error(b.error ?? "Download failed");
+      setGrabResult(b);
+    } catch (e) {
+      setGrabErr(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setGrabBusy(null);
+    }
+  };
+
+  /** GRAB step 3 — feed the grabbed clip into the normal attach pipeline
+   *  (frames, transfer mode, the lot) and return to the composer. */
+  const grabUse = async () => {
+    if (!grabResult || grabBusy) return;
+    setGrabBusy("attach");
+    setGrabErr(null);
+    try {
+      const r = await fetch(grabResult.url, { headers: pwHeaders({}) });
+      if (!r.ok) throw new Error("Could not read the grabbed file");
+      const blob = await r.blob();
+      await attachMediaFile(
+        new File([blob], grabResult.name, { type: "video/mp4" }),
+      );
+      setGrabOpen(false);
+    } catch (e) {
+      setGrabErr(e instanceof Error ? e.message : "Attach failed");
+    } finally {
+      setGrabBusy(null);
     }
   };
 
@@ -1383,6 +1479,17 @@ export default function Home() {
           ▦
         </button>
         <button
+          className={`rail-btn ${grabOpen ? "on" : ""}`}
+          onClick={() => {
+            setGrabOpen((o) => !o);
+            setSideOpen(false);
+          }}
+          title="Grab — download a reference video from YouTube / X / a direct link"
+          aria-label="Toggle video grabber"
+        >
+          ⤓
+        </button>
+        <button
           className="rail-btn"
           onClick={() => {
             newSession();
@@ -1499,6 +1606,122 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {grabOpen && (
+        <div className="archive-overlay fade">
+          <div className="grab-card">
+            <div className="archive-head">
+              <span className="label">Grab · Reference Video</span>
+              <button
+                className="btn-ghost overlay-back"
+                onClick={() => setGrabOpen(false)}
+              >
+                ← Back to Studio
+              </button>
+            </div>
+            <p className="archive-note">
+              Pulls a video onto this machine so it can drive a take —
+              YouTube link, X post (x.com/user/status/…), or a direct
+              .mp4 URL. Optional trim keeps only the beat you want.
+              Local dev tool; use sources you have the rights to reference.
+            </p>
+            <div className="grab-row">
+              <input
+                className="grab-input"
+                type="url"
+                placeholder="https://x.com/user/status/…  ·  youtube.com/watch?v=…  ·  …mp4"
+                value={grabUrl}
+                onChange={(e) => setGrabUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && grabScan()}
+                disabled={Boolean(grabBusy)}
+              />
+              <button
+                className="btn-ghost"
+                onClick={grabScan}
+                disabled={!grabUrl.trim() || Boolean(grabBusy)}
+              >
+                {grabBusy === "scan" ? "SCANNING…" : grabBusy === "fetch" ? "FETCHING…" : "FETCH"}
+              </button>
+            </div>
+            {grabVideos && (
+              <div className="grab-videos">
+                <span className="label">
+                  {grabVideos.length} video{grabVideos.length > 1 ? "s" : ""} in this post
+                </span>
+                {grabVideos.map((v, i) => (
+                  <label key={v.id} className="grab-video-opt">
+                    <input
+                      type="radio"
+                      name="grab-pick"
+                      checked={grabPick === v.url}
+                      onChange={() => setGrabPick(v.url)}
+                    />
+                    <span className="mono">
+                      VIDEO {i + 1} · {v.res}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div className="grab-row grab-trim">
+              <span className="label">Trim (optional)</span>
+              <input
+                className="grab-num"
+                type="number"
+                min={0}
+                step={0.5}
+                placeholder="from s"
+                value={grabStart}
+                onChange={(e) => setGrabStart(e.target.value)}
+                disabled={Boolean(grabBusy)}
+              />
+              <span className="mono">→</span>
+              <input
+                className="grab-num"
+                type="number"
+                min={0}
+                step={0.5}
+                placeholder="to s"
+                value={grabEnd}
+                onChange={(e) => setGrabEnd(e.target.value)}
+                disabled={Boolean(grabBusy)}
+              />
+              {grabVideos && (
+                <button
+                  className="btn-ghost"
+                  onClick={() => grabFetch(null)}
+                  disabled={!grabPick || Boolean(grabBusy)}
+                >
+                  {grabBusy === "fetch" ? "FETCHING…" : "DOWNLOAD"}
+                </button>
+              )}
+            </div>
+            {grabErr && <div className="error-box">{grabErr}</div>}
+            {grabResult && (
+              <div className="grab-result">
+                <span className="mono">
+                  {grabResult.name} · {(grabResult.bytes / 1_000_000).toFixed(1)}MB
+                </span>
+                <span className="turn-spacer" />
+                <button
+                  className="btn-primary"
+                  onClick={grabUse}
+                  disabled={Boolean(grabBusy)}
+                >
+                  {grabBusy === "attach" ? "ATTACHING…" : "USE AS REFERENCE"}
+                </button>
+                <a
+                  className="link-btn"
+                  href={`${grabResult.url}${pw ? `&pw=${encodeURIComponent(pw)}` : ""}`}
+                  download={grabResult.name}
+                >
+                  ⇩ Save file
+                </a>
+              </div>
+            )}
           </div>
         </div>
       )}
