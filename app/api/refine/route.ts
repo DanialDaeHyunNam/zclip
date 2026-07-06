@@ -15,7 +15,7 @@ Rules:
 - EARLIER TAKES may be listed for context. When the request references one (e.g. "use take 1's background", "blend with take 1"), pull those concrete details out of that take's prompt into the rewrite. Blending happens at the prompt level — you cannot mix actual video pixels.
 - If there is no base, compose a complete video prompt from the description, following UGC best practice: handheld phone look, natural skin texture, no cinematic grading.
 - Keep any reaction to ONE single held beat; keep explicit negatives like "no gasping, no panting, no hand movements, slow and natural".
-- If an image is attached, it is the visual reference the video starts from — ground the subject, styling and scene in what the image actually shows, then apply the requested change.
+- If images are attached, they are the visual reference — ground the subject, styling and scene in what they actually show, then apply the requested change. Multiple frames come from a reference video (beginning/middle/end): infer the subject, scene and motion arc across them.
 - Always write the prompt in English (video models follow English best), regardless of the request's language.
 - Under 900 characters.
 - Output ONLY the final prompt text. No quotes, no markdown, no explanation.`;
@@ -31,9 +31,9 @@ export async function POST(req: Request) {
     );
   }
 
-  let base: unknown, message: unknown, image: unknown, history: unknown;
+  let base: unknown, message: unknown, images: unknown, history: unknown;
   try {
-    ({ base, message, image, history } = await req.json());
+    ({ base, message, images, history } = await req.json());
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -68,18 +68,22 @@ export async function POST(req: Request) {
       ? `${historyBlock}BASE PROMPT (latest take — edit this one):\n${base}\n\nREQUESTED CHANGE:\n${message}`
       : `${historyBlock}Write a complete video prompt from this description:\n${message}`;
 
-  // Gemini Flash is multimodal — pass the attached reference inline so the
-  // rewrite can describe what's actually in the image.
+  // Gemini Flash is multimodal — pass attached reference frames inline so
+  // the rewrite can describe what's actually in them. A video reference
+  // arrives as several extracted frames.
   const parts: Array<Record<string, unknown>> = [{ text: user }];
-  if (
-    image &&
-    typeof image === "object" &&
-    typeof (image as Record<string, unknown>).base64 === "string" &&
-    typeof (image as Record<string, unknown>).mimeType === "string"
-  ) {
-    const { base64, mimeType } = image as { base64: string; mimeType: string };
-    if (base64.length <= 4_000_000) {
-      parts.push({ inline_data: { mime_type: mimeType, data: base64 } });
+  if (Array.isArray(images)) {
+    for (const im of images.slice(0, 4)) {
+      if (
+        im &&
+        typeof im === "object" &&
+        typeof (im as Record<string, unknown>).base64 === "string" &&
+        typeof (im as Record<string, unknown>).mimeType === "string" &&
+        (im as { base64: string }).base64.length <= 4_000_000
+      ) {
+        const { base64, mimeType } = im as { base64: string; mimeType: string };
+        parts.push({ inline_data: { mime_type: mimeType, data: base64 } });
+      }
     }
   }
 

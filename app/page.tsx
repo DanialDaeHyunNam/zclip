@@ -68,6 +68,17 @@ interface Clip {
   costUsd?: number;
 }
 
+/** User-created starter block. `image` doubles as the card visual AND the
+ *  generation reference for the first take. */
+interface CustomAsset {
+  id: string;
+  label: string;
+  desc?: string;
+  prompt: string;
+  pronoun?: "She" | "He";
+  image?: string; // small dataURL
+}
+
 /** A saved conversation — sessions auto-save and are switchable. */
 interface StoredSession {
   id: string;
@@ -77,6 +88,7 @@ interface StoredSession {
 }
 
 const THREAD_KEY = "hooklab.thread";
+const ASSETS_KEY = "hooklab.customAssets";
 const SESSIONS_KEY = "hooklab.sessions";
 const SESSION_ID_KEY = "hooklab.sessionId";
 const GALLERY_KEY = "hooklab.gallery";
@@ -136,10 +148,26 @@ export default function Home() {
   // visual starter blocks (empty-thread only)
   const [charId, setCharId] = useState<string | null>(null);
   const [settingId, setSettingId] = useState<string | null>(null);
+  // user-created assets, persisted; images stored as small dataURL thumbs
+  const [custom, setCustom] = useState<{
+    characters: CustomAsset[];
+    settings: CustomAsset[];
+  }>({ characters: [], settings: [] });
+  // inline "add custom asset" form
+  const [assetForm, setAssetForm] = useState<"char" | "setting" | null>(null);
+  const [afLabel, setAfLabel] = useState("");
+  const [afPrompt, setAfPrompt] = useState("");
+  const [afPronoun, setAfPronoun] = useState<"She" | "He">("She");
+  const [afImage, setAfImage] = useState<string | null>(null);
+  const assetFileRef = useRef<HTMLInputElement>(null);
+  // Attached reference: an image is one frame; a video is compacted into
+  // a few extracted frames (all go to the refiner, the middle one to the
+  // video model, which accepts a single image).
   const [attach, setAttach] = useState<{
-    base64: string;
+    frames: string[]; // base64 JPEGs, no data: prefix
     mimeType: string;
     thumb: string;
+    kind: "image" | "video";
   } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -207,6 +235,12 @@ export default function Home() {
   useEffect(() => {
     setClips(loadJson<Clip[]>(GALLERY_KEY, []));
     setSessions(loadJson<StoredSession[]>(SESSIONS_KEY, []));
+    setCustom(
+      loadJson(ASSETS_KEY, { characters: [], settings: [] } as {
+        characters: CustomAsset[];
+        settings: CustomAsset[];
+      }),
+    );
     const sid = localStorage.getItem(SESSION_ID_KEY) ?? `s${Date.now()}`;
     localStorage.setItem(SESSION_ID_KEY, sid);
     setSessionId(sid);
@@ -237,6 +271,17 @@ export default function Home() {
       .catch(() => setError("Could not reach the API — refresh to retry."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /* persist custom assets */
+  useEffect(() => {
+    if (
+      custom.characters.length ||
+      custom.settings.length ||
+      localStorage.getItem(ASSETS_KEY)
+    ) {
+      localStorage.setItem(ASSETS_KEY, JSON.stringify(custom));
+    }
+  }, [custom]);
 
   /* persist (snapshots compacted to the newest few turns) */
   useEffect(() => {
@@ -412,6 +457,22 @@ export default function Home() {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [turns.length, busyTurn?.status]);
 
+  /* hide starter-card images that 404'd BEFORE hydration (React's onError
+     misses those) — onError on the element covers late failures */
+  useEffect(() => {
+    if (turns.length) return;
+    const t = setTimeout(() => {
+      document
+        .querySelectorAll<HTMLImageElement>(".starter-img img")
+        .forEach((img) => {
+          if (img.complete && img.naturalWidth === 0) {
+            (img.parentElement as HTMLElement).style.display = "none";
+          }
+        });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [turns.length, custom]);
+
   /* close the sidebar on Escape */
   useEffect(() => {
     if (!sideOpen) return;
@@ -422,30 +483,133 @@ export default function Home() {
 
   /* actions */
 
-  /** Downscale client-side so payloads stay small: 1280px for the API,
-   *  120px thumb for the thread. Re-encoded as JPEG either way. */
-  const attachImageFile = async (file: File) => {
+  /** Draw any drawable source to a JPEG data URL, capped to `max` px. */
+  const toJpeg = (
+    src: HTMLVideoElement | ImageBitmap,
+    w: number,
+    h: number,
+    max: number,
+    q = 0.85,
+  ) => {
+    const r = Math.min(1, max / Math.max(w, h));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * r));
+    canvas.height = Math.max(1, Math.round(h * r));
+    canvas.getContext("2d")!.drawImage(src, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", q);
+  };
+
+  /** Image → one frame. Video → 3 frames (start/mid/end), compacted the
+   *  same way take-snapshots are. Everything re-encoded as small JPEGs. */
+  const attachMediaFile = async (file: File) => {
+    try {
+      if (file.type.startsWith("image/")) {
+        const bmp = await createImageBitmap(file);
+        setAttach({
+          frames: [toJpeg(bmp, bmp.width, bmp.height, 1280).split(",")[1]],
+          mimeType: "image/jpeg",
+          thumb: toJpeg(bmp, bmp.width, bmp.height, 120, 0.7),
+          kind: "image",
+        });
+        return;
+      }
+      if (!file.type.startsWith("video/")) return;
+
+      const url = URL.createObjectURL(file);
+      try {
+        const v = document.createElement("video");
+        v.muted = true;
+        v.playsInline = true;
+        v.preload = "auto";
+        v.src = url;
+        await new Promise<void>((res, rej) => {
+          v.onloadedmetadata = () => res();
+          v.onerror = () => rej(new Error("bad video"));
+        });
+        // MediaRecorder-produced webm can report Infinity — seek far to
+        // force the real duration.
+        if (!isFinite(v.duration)) {
+          await new Promise<void>((res) => {
+            v.onseeked = () => res();
+            v.currentTime = 1e9;
+          });
+        }
+        const dur = isFinite(v.duration) ? v.duration : v.currentTime || 1;
+        const grab = (t: number) =>
+          new Promise<string>((res, rej) => {
+            v.onseeked = () => {
+              try {
+                res(toJpeg(v, v.videoWidth, v.videoHeight, 768, 0.8));
+              } catch (e) {
+                rej(e);
+              }
+            };
+            v.currentTime = Math.max(0, Math.min(t, dur - 0.05));
+          });
+        const frames: string[] = [];
+        for (const f of [0.15, 0.5, 0.85]) {
+          frames.push((await grab(dur * f)).split(",")[1]);
+        }
+        setAttach({
+          frames,
+          mimeType: "image/jpeg",
+          thumb: toJpeg(v, v.videoWidth, v.videoHeight, 120, 0.7),
+          kind: "video",
+        });
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      setError("Could not read that file as an image or video.");
+    }
+  };
+
+  /* custom starter assets */
+
+  const attachAssetImage = async (file: File) => {
     if (!file.type.startsWith("image/")) return;
     try {
-      const bitmap = await createImageBitmap(file);
-      const scale = (max: number) => {
-        const r = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(bitmap.width * r));
-        canvas.height = Math.max(1, Math.round(bitmap.height * r));
-        canvas
-          .getContext("2d")!
-          .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-        return canvas.toDataURL("image/jpeg", 0.85);
-      };
-      setAttach({
-        base64: scale(1280).split(",")[1],
-        mimeType: "image/jpeg",
-        thumb: scale(120),
-      });
+      const bmp = await createImageBitmap(file);
+      setAfImage(toJpeg(bmp, bmp.width, bmp.height, 256, 0.75));
     } catch {
       setError("Could not read that image.");
     }
+  };
+
+  const saveAsset = () => {
+    const label = afLabel.trim();
+    const prompt = afPrompt.trim();
+    if (!label || !prompt || !assetForm) return;
+    const asset: CustomAsset = {
+      id: `c${Date.now()}`,
+      label,
+      desc: "CUSTOM",
+      prompt,
+      image: afImage ?? undefined,
+      ...(assetForm === "char" ? { pronoun: afPronoun } : {}),
+    };
+    setCustom((cu) =>
+      assetForm === "char"
+        ? { ...cu, characters: [...cu.characters, asset] }
+        : { ...cu, settings: [...cu.settings, asset] },
+    );
+    if (assetForm === "char") setCharId(asset.id);
+    else setSettingId(asset.id);
+    setAssetForm(null);
+    setAfLabel("");
+    setAfPrompt("");
+    setAfImage(null);
+    setAfPronoun("She");
+  };
+
+  const removeAsset = (kind: "char" | "setting", id: string) => {
+    setCustom((cu) =>
+      kind === "char"
+        ? { ...cu, characters: cu.characters.filter((c) => c.id !== id) }
+        : { ...cu, settings: cu.settings.filter((s) => s.id !== id) },
+    );
+    if (kind === "char" && charId === id) setCharId(null);
+    if (kind === "setting" && settingId === id) setSettingId(null);
   };
 
   const unlock = async (e: React.FormEvent) => {
@@ -470,24 +634,63 @@ export default function Home() {
     }
   };
 
+  /* merged pickable lists (built-ins + custom) and current selection */
+  const allCharacters: Array<
+    (typeof CHARACTERS)[number] | (CustomAsset & { custom: true })
+  > = [
+    ...CHARACTERS,
+    ...custom.characters.map((c) => ({ ...c, custom: true as const })),
+  ];
+  const allSettings: Array<
+    (typeof SETTINGS)[number] | (CustomAsset & { custom: true })
+  > = [
+    ...SETTINGS,
+    ...custom.settings.map((s) => ({ ...s, custom: true as const })),
+  ];
+  const selChar = charId
+    ? (allCharacters.find((c) => c.id === charId) as
+        | (CustomAsset & { custom?: true })
+        | undefined)
+    : undefined;
+  const selSetting = settingId
+    ? (allSettings.find((s) => s.id === settingId) as
+        | (CustomAsset & { custom?: true })
+        | undefined)
+    : undefined;
+
   const send = async () => {
     const text = draft.trim();
     const manual = attach;
     const starter =
-      turns.length === 0 ? composeStarter(charId, settingId) : null;
+      turns.length === 0 ? composeStarter(selChar, selSetting) : null;
     if (busyTurn || (!text && !starter && !manual) || keyMissing) return;
     setError(null);
 
-    // Reference precedence: manual attachment > continuity snapshot.
+    // Reference precedence: manual attachment > starter-asset images >
+    // continuity snapshot. Refine sees every frame; the video model gets
+    // one primary frame (middle of a video, character over setting).
     const lastSnap =
       !manual && continuity
         ? [...turns].reverse().find((t) => t.snapshot)?.snapshot
         : undefined;
-    const refImage = manual
-      ? { base64: manual.base64, mimeType: manual.mimeType }
-      : lastSnap
-        ? { base64: lastSnap.split(",")[1], mimeType: "image/jpeg" }
-        : undefined;
+    const assetImages =
+      !manual && starter
+        ? ([selChar?.image, selSetting?.image].filter(Boolean) as string[])
+        : [];
+    const refImages = manual
+      ? manual.frames.map((b) => ({ base64: b, mimeType: manual.mimeType }))
+      : assetImages.length
+        ? assetImages.map((d) => ({
+            base64: d.split(",")[1],
+            mimeType: "image/jpeg",
+          }))
+        : lastSnap
+          ? [{ base64: lastSnap.split(",")[1], mimeType: "image/jpeg" }]
+          : undefined;
+    const primaryImage =
+      manual && refImages
+        ? refImages[Math.floor((refImages.length - 1) / 2)]
+        : refImages?.[0];
 
     const id = `t${Date.now()}`;
     const createdAt = Date.now();
@@ -515,8 +718,8 @@ export default function Home() {
       createdAt,
       status: "refining",
       costUsd: estCostUsd ?? undefined,
-      imageThumb: manual?.thumb,
-      usedContinuity: Boolean(lastSnap && !manual),
+      imageThumb: manual?.thumb ?? assetImages[0],
+      usedContinuity: Boolean(lastSnap && !manual && !assetImages.length),
     };
     setTurns((ts) => [...ts, turn]);
     setDraft("");
@@ -536,7 +739,7 @@ export default function Home() {
             history,
             message:
               text || "Use the attached image as the visual reference for the clip.",
-            image: refImage,
+            images: refImages,
           }),
         });
         const b = await r.json();
@@ -562,7 +765,7 @@ export default function Home() {
           aspectRatio: aspect,
           durationSeconds: duration,
           resolution,
-          image: refImage,
+          image: primaryImage,
         }),
       });
       const body = await res.json();
@@ -810,7 +1013,7 @@ export default function Home() {
     return { rows, total, max, providers };
   })();
   const starterPick =
-    turns.length === 0 ? composeStarter(charId, settingId) : null;
+    turns.length === 0 ? composeStarter(selChar, selSetting) : null;
   const canSend =
     !busyTurn &&
     ready &&
@@ -1023,44 +1226,167 @@ export default function Home() {
 
           {turns.length === 0 && (
             <div className="starter fade">
-              <div className="starter-group">
-                <span className="label">
-                  Character{charId ? "" : " · optional"}
-                </span>
-                <div className="starter-grid">
-                  {CHARACTERS.map((c) => (
+              {(
+                [
+                  {
+                    kind: "char" as const,
+                    title: "Character",
+                    items: allCharacters,
+                    selId: charId,
+                    toggle: (id: string) =>
+                      setCharId((cur) => (cur === id ? null : id)),
+                  },
+                  {
+                    kind: "setting" as const,
+                    title: "Setting",
+                    items: allSettings,
+                    selId: settingId,
+                    toggle: (id: string) =>
+                      setSettingId((cur) => (cur === id ? null : id)),
+                  },
+                ]
+              ).map((group) => (
+                <div className="starter-group" key={group.kind}>
+                  <span className="label">
+                    {group.title}
+                    {group.selId ? "" : " · optional"}
+                  </span>
+                  <div className="starter-grid">
+                    {group.items.map((item) => {
+                      const isCustom = "custom" in item && item.custom;
+                      const imgSrc = isCustom
+                        ? (item as CustomAsset).image
+                        : `/starters/${item.id}.jpg`;
+                      return (
+                        <button
+                          key={item.id}
+                          className={`starter-card ${group.selId === item.id ? "sel" : ""}`}
+                          onClick={() => group.toggle(item.id)}
+                        >
+                          {imgSrc && (
+                            <span className="starter-img">
+                              {/* baked asset may not exist — hide on 404 */}
+                              <img
+                                src={imgSrc}
+                                alt=""
+                                loading="lazy"
+                                onError={(e) =>
+                                  (e.currentTarget.parentElement!.style.display =
+                                    "none")
+                                }
+                              />
+                            </span>
+                          )}
+                          <span className="starter-name">{item.label}</span>
+                          <span className="starter-desc">
+                            {item.desc ?? "CUSTOM"}
+                          </span>
+                          {isCustom && (
+                            <span
+                              className="starter-del"
+                              role="button"
+                              title="Delete custom asset"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeAsset(group.kind, item.id);
+                              }}
+                            >
+                              ✕
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                     <button
-                      key={c.id}
-                      className={`starter-card ${charId === c.id ? "sel" : ""}`}
+                      className="starter-card add"
                       onClick={() =>
-                        setCharId((cur) => (cur === c.id ? null : c.id))
+                        setAssetForm((f) =>
+                          f === group.kind ? null : group.kind,
+                        )
                       }
                     >
-                      <span className="starter-name">{c.label}</span>
-                      <span className="starter-desc">{c.desc}</span>
+                      <span className="starter-name">＋ Custom</span>
+                      <span className="starter-desc">
+                        YOUR OWN {group.title.toUpperCase()}
+                      </span>
                     </button>
-                  ))}
+                  </div>
+
+                  {assetForm === group.kind && (
+                    <div className="asset-form fade">
+                      <div className="asset-form-row">
+                        <input
+                          value={afLabel}
+                          onChange={(e) => setAfLabel(e.target.value)}
+                          placeholder="Name"
+                          aria-label="Asset name"
+                        />
+                        {group.kind === "char" && (
+                          <div className="select-wrap small">
+                            <select
+                              aria-label="Pronoun"
+                              value={afPronoun}
+                              onChange={(e) =>
+                                setAfPronoun(e.target.value as "She" | "He")
+                              }
+                            >
+                              <option value="She">SHE</option>
+                              <option value="He">HE</option>
+                            </select>
+                          </div>
+                        )}
+                        <button
+                          className="btn-ghost"
+                          onClick={() => assetFileRef.current?.click()}
+                        >
+                          {afImage ? "Image ✓" : "Image…"}
+                        </button>
+                        <input
+                          ref={assetFileRef}
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) attachAssetImage(f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </div>
+                      <textarea
+                        rows={2}
+                        value={afPrompt}
+                        onChange={(e) => setAfPrompt(e.target.value)}
+                        placeholder={
+                          group.kind === "char"
+                            ? "Subject description — e.g. A tall man in his 30s with round glasses, denim shirt"
+                            : "Location description — e.g. sitting on a sunny apartment balcony with plants"
+                        }
+                        aria-label="Asset prompt"
+                      />
+                      <div className="asset-form-actions">
+                        {afImage && (
+                          <img className="asset-form-thumb" src={afImage} alt="" />
+                        )}
+                        <span className="turn-spacer" />
+                        <button
+                          className="link-btn"
+                          onClick={() => setAssetForm(null)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="btn-ghost"
+                          onClick={saveAsset}
+                          disabled={!afLabel.trim() || !afPrompt.trim()}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="starter-group">
-                <span className="label">
-                  Setting{settingId ? "" : " · optional"}
-                </span>
-                <div className="starter-grid">
-                  {SETTINGS.map((s) => (
-                    <button
-                      key={s.id}
-                      className={`starter-card ${settingId === s.id ? "sel" : ""}`}
-                      onClick={() =>
-                        setSettingId((cur) => (cur === s.id ? null : s.id))
-                      }
-                    >
-                      <span className="starter-name">{s.label}</span>
-                      <span className="starter-desc">{s.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              ))}
             </div>
           )}
 
@@ -1075,13 +1401,17 @@ export default function Home() {
               e.preventDefault();
               setDragOver(false);
               const f = e.dataTransfer.files?.[0];
-              if (f) attachImageFile(f);
+              if (f) attachMediaFile(f);
             }}
           >
             {attach && (
               <div className="attach-chip fade">
                 <img src={attach.thumb} alt="attached reference" />
-                <span className="label">Image reference · goes with the next take</span>
+                <span className="label">
+                  {attach.kind === "video"
+                    ? `Video reference · ${attach.frames.length} frames extracted`
+                    : "Image reference · goes with the next take"}
+                </span>
                 <button className="link-btn danger" onClick={() => setAttach(null)}>
                   Remove
                 </button>
@@ -1099,11 +1429,11 @@ export default function Home() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 hidden
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) attachImageFile(f);
+                  if (f) attachMediaFile(f);
                   e.target.value = "";
                 }}
               />
@@ -1125,7 +1455,7 @@ export default function Home() {
                   const f = item?.getAsFile();
                   if (f) {
                     e.preventDefault();
-                    attachImageFile(f);
+                    attachMediaFile(f);
                   }
                 }}
                 placeholder={

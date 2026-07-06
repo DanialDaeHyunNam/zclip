@@ -145,6 +145,30 @@ All entries 2026-07-06 (single build session, owner: Dan).
   STYLE_PREFIX + subject + setting + action + STYLE_SUFFIX. Old
   `VARIANTS` removed.
 
+## 10. Video references + visual/custom starter assets
+
+- **Video attach**: drop/paste/pick a video → client extracts 3 frames
+  (15/50/85%, 768px JPEG — same "compact" idea as take snapshots).
+  All frames go to the refiner (`images[]`, Gemini reads subject/scene/
+  motion arc); the MIDDLE frame goes to the video model (they accept one
+  image). Handles MediaRecorder-webm's Infinity-duration quirk (seek-far
+  hack). Verified headless with a synthesized webm → chip shows
+  "Video reference · 3 frames extracted".
+- **Visual starter cards**: cards render `/starters/<id>.jpg` when
+  present (drop your own or bake with `bun scripts/bake-starters.mjs`,
+  ~$0.04/image via gemini-2.5-flash-image — model id unverified, marked
+  in script). Missing files fall back to text-only cards; note images
+  that 404 BEFORE hydration escape React's onError — a post-mount scan
+  hides them (naturalWidth===0 check).
+- **Custom assets**: "+ Custom" card in each grid → inline form (name,
+  pronoun for characters, prompt fragment, optional image downscaled to
+  256px). Stored in localStorage `hooklab.customAssets`; deletable on
+  hover. A selected asset's image is auto-attached as the FIRST take's
+  generation reference (priority: manual attach > asset images >
+  continuity snapshot; refine receives both char+setting images).
+- Verified headless: custom character saved + auto-selected, video drop
+  extraction, broken-image fallback (0 visible wrappers).
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

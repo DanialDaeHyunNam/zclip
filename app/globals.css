@@ -897,6 +897,115 @@ button {
   text-overflow: ellipsis;
 }
 
+.starter-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.starter-img {
+  display: block;
+  aspect-ratio: 4 / 3;
+  margin: -11px -12px 9px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--hair);
+  background: #0a0a0b;
+}
+
+.starter-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(0.85);
+  transition: filter 0.3s ease;
+}
+
+.starter-card.sel .starter-img img,
+.starter-card:hover .starter-img img {
+  filter: none;
+}
+
+.starter-card.add {
+  border-style: dashed;
+  border-left-style: dashed;
+  color: var(--dim);
+}
+
+.starter-card.add:hover {
+  color: var(--fg);
+}
+
+.starter-del {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 10px;
+  color: var(--faint);
+  opacity: 0;
+  transition: opacity 0.3s ease, color 0.3s ease;
+  z-index: 1;
+}
+
+.starter-card:hover .starter-del {
+  opacity: 1;
+}
+
+.starter-del:hover {
+  color: var(--error);
+}
+
+.asset-form {
+  border: 1px solid var(--hair-strong);
+  padding: 14px;
+  margin-top: 12px;
+}
+
+.asset-form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.asset-form input[type="text"],
+.asset-form input:not([type]) {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--hair);
+  border-radius: 0;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 10px 12px;
+  transition: border-color 0.3s ease;
+}
+
+.asset-form input:focus {
+  outline: none;
+  border-color: var(--hair-strong);
+}
+
+.asset-form textarea {
+  min-height: 0;
+  font-size: 12px;
+  padding: 10px 12px;
+}
+
+.asset-form .btn-ghost {
+  padding: 0 16px;
+}
+
+.asset-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.asset-form-thumb {
+  height: 34px;
+  border: 1px solid var(--hair-strong);
+}
+
 .chat-zone.dragover .chat-input,
 .chat-zone.dragover .attach-btn {
   border-color: var(--accent);

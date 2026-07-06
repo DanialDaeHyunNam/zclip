@@ -125,15 +125,20 @@ export const SETTINGS: Setting[] = [
   },
 ];
 
+/** Any pickable block — built-in or user-created custom asset. */
+export interface StarterBlock {
+  label: string;
+  prompt: string;
+  pronoun?: "She" | "He";
+}
+
 /** Build a full starter prompt from picked blocks. Missing halves fall
  *  back to neutral defaults so either card works alone. */
 export function composeStarter(
-  charId?: string | null,
-  settingId?: string | null,
+  c?: StarterBlock | null,
+  s?: StarterBlock | null,
 ): { prompt: string; label: string } | null {
-  if (!charId && !settingId) return null;
-  const c = charId ? CHARACTERS.find((x) => x.id === charId) : undefined;
-  const s = settingId ? SETTINGS.find((x) => x.id === settingId) : undefined;
+  if (!c && !s) return null;
   const subject =
     c?.prompt ??
     "A young woman in her early 20s with a natural everyday look, casual outfit";

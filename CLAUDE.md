@@ -72,6 +72,15 @@ do NOT store full images/videos in localStorage (5MB quota).
   picker (`lib/prompts.ts` — `CHARACTERS`/`SETTINGS`/`composeStarter`).
   Either half optional; chat text = the action (empty → default
   quiet-surprise beat). Free-form text with no blocks still works.
+  Card images: `/public/starters/<id>.jpg` (bake via
+  `bun scripts/bake-starters.mjs` or drop files — see that folder's
+  README); users add their own assets via "+ Custom" (localStorage
+  `hooklab.customAssets`, image doubles as the first take's generation
+  reference).
+- **Attachments are images OR videos** — a video is compacted client-side
+  into 3 frames; refine sees all frames, the video model gets the middle
+  one. Reference priority: manual attach > starter-asset images >
+  continuity snapshot.
 - **Costs are computed estimates** (duration × published $/s), not billing
   API readouts. Sora bills min 8s. Spend chart groups the archive by
   sessionId, stacked by provider, colors from `PROVIDERS[p].chartColor`
