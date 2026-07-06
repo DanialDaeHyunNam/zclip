@@ -217,7 +217,9 @@ export default function Home() {
    *  Whatever is in here is exactly what take 1 builds on. */
   const [starterDraft, setStarterDraft] = useState<string | null>(null);
   /** Which asset carousel is open under the input (Grok-pill style). */
-  const [pickerOpen, setPickerOpen] = useState<"char" | "setting" | null>(null);
+  const [pickerOpen, setPickerOpen] = useState<
+    "char" | "setting" | "library" | null
+  >(null);
   // user-created assets, persisted; images stored as small dataURL thumbs
   const [custom, setCustom] = useState<{
     characters: CustomAsset[];
@@ -1444,7 +1446,17 @@ export default function Home() {
     const providers = (Object.keys(PROVIDERS) as ProviderName[]).filter((p) =>
       rows.some((r) => r.parts.has(p)),
     );
-    return { rows, total, unpriced, max, providers };
+    // The header shows THIS session only — a fresh session starts at $0.
+    const cur = bySession.get(sessionId);
+    return {
+      rows,
+      total,
+      unpriced,
+      max,
+      providers,
+      current: cur?.total ?? 0,
+      currentUnpriced: cur?.unpriced ?? 0,
+    };
   })();
   const starterReady = turns.length === 0 && Boolean(starterDraft?.trim());
   const canSend =
@@ -1549,6 +1561,9 @@ export default function Home() {
       <aside className={`side-panel ${sideOpen ? "open" : ""}`}>
         <div className="side-head">
           <span className="label">Sessions</span>
+          <a className="link-btn" href="/dashboard">
+            Dashboard
+          </a>
           <button
             className="link-btn"
             onClick={() => {
@@ -1783,9 +1798,12 @@ export default function Home() {
               )}
               {clips.length > 0 && (
                 <>
-                  <span className="spend-mini" title="Estimated session spend">
-                    ${spend.total.toFixed(2)}
-                    {spend.unpriced > 0 ? ` +${spend.unpriced}?` : ""}
+                  <span
+                    className="spend-mini"
+                    title="Estimated spend — this session only"
+                  >
+                    ${spend.current.toFixed(2)}
+                    {spend.currentUnpriced > 0 ? ` +${spend.currentUnpriced}?` : ""}
                   </span>
                   <button
                     className={`chart-btn ${spendOpen ? "on" : ""}`}
@@ -1819,7 +1837,11 @@ export default function Home() {
                     {spend.unpriced > 0 && (
                       <span className="spend-unpriced"> +{spend.unpriced} unpriced</span>
                     )}
+                    <span className="spend-unpriced"> all sessions</span>
                   </div>
+                  <a className="link-btn" href="/dashboard">
+                    Full dashboard →
+                  </a>
                   <div className="spend-legend">
                     {spend.providers.map((p) => (
                       <span key={p} className="spend-chip">
@@ -1983,7 +2005,59 @@ export default function Home() {
                 >
                   ◫ Background{selSetting ? ` · ${selSetting.label}` : ""}
                 </button>
+                <button
+                  className={`pill-btn ${pickerOpen === "library" ? "on" : ""}`}
+                  onClick={() =>
+                    setPickerOpen((p) => (p === "library" ? null : "library"))
+                  }
+                >
+                  ▤ Library{attach ? " · attached" : ""}
+                </button>
               </div>
+              {pickerOpen === "library" && (
+                <div className="starter-group">
+                  <div className="starter-carousel">
+                    {clips.filter((c) => c.videoUrl).map((c) => (
+                      <button
+                        key={c.jobId}
+                        className="starter-card"
+                        title="Attach this clip as the motion reference"
+                        onClick={() => {
+                          setPickerOpen(null);
+                          useClipAsRef(c);
+                        }}
+                      >
+                        <span className="starter-img">
+                          <video
+                            src={withPw(c.videoUrl!)}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            onMouseEnter={(e) =>
+                              e.currentTarget.play().catch(() => {})
+                            }
+                            onMouseLeave={(e) => e.currentTarget.pause()}
+                          />
+                        </span>
+                        <span className="starter-name">
+                          {c.provider === "grab"
+                            ? "GRAB"
+                            : PROVIDERS[c.provider]?.label ?? c.provider}
+                        </span>
+                        <span className="starter-desc">
+                          {(c.note ?? c.prompt).slice(0, 42)}
+                        </span>
+                      </button>
+                    ))}
+                    {clips.filter((c) => c.videoUrl).length === 0 && (
+                      <p className="hint">
+                        Archive is empty — finished takes and GRABs (⤓ in the
+                        rail) appear here as motion references.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               {(
                 [
                   {

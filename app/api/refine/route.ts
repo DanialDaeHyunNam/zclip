@@ -89,7 +89,22 @@ export async function POST(req: Request) {
     typeof targetSeconds === "number" && targetSeconds >= 1 ? targetSeconds : 8;
   const transferBlock =
     mode === "transfer"
-      ? `PERFORMANCE TRANSFER MODE: the attached frames sample a reference video IN TIME ORDER. Transcribe its performance precisely — per-segment facial expression, gaze direction, head angle, mouth shape, hand positions and camera drift — as a timestamped beat map scaled to ${secs} seconds. Do NOT carry over the source person's identity, face, hair, clothing or room; the subject and setting come from the BASE PROMPT. Output the final prompt as: base subject + setting, performing exactly this transcribed choreography, plus the usual realism clauses.\n\n`
+      ? `PERFORMANCE TRANSFER MODE — the attached frames sample a reference video IN TIME ORDER. Produce a MOTION-FAITHFUL transcription: the output take must move exactly like the reference; the ONLY things that change are WHO performs it and WHERE.
+
+Transcribe interval by interval (frames are evenly spaced across the source — map them linearly onto ${secs} seconds):
+- facial expression and intensity, brow/blink timing
+- gaze direction and every gaze shift
+- head angle and turns
+- mouth shape (talking / open / pressed / smile width)
+- BOTH hands: position, gesture, when they enter or leave frame
+- body lean and shoulder movement
+- camera: shot distance, framing, handheld drift, any push-in or pan — copy it
+
+HARD RULES:
+- Do NOT invent, reorder, drop, merge or embellish beats. If the reference holds still, the output holds still. Same beat order, same relative timing.
+- Keep the reference's shot type and camera distance for the whole take.
+- REPLACE ONLY the performer's identity/appearance (use the BASE PROMPT's subject wording verbatim) and the location (use the BASE PROMPT's setting wording verbatim). Never describe the source person's face, hair, clothing, or room.
+- Output shape: one line of subject + setting from the base prompt, then a timestamped beat map "(0-1.5s) ..." covering all ${secs} seconds with no gaps, then the realism clauses.\n\n`
       : "";
   const user =
     typeof base === "string" && base.trim()

@@ -1201,7 +1201,8 @@ button {
   background: #0a0a0b;
 }
 
-.starter-img img {
+.starter-img img,
+.starter-img video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1627,6 +1628,143 @@ button {
   max-width: 1180px;
   margin: 0 auto;
   padding: 36px 32px 80px;
+}
+
+/* ── dashboard page ─────────────────────────────── */
+.dash-page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 32px 90px;
+}
+
+.dash-page .wordmark {
+  text-decoration: none;
+  color: inherit;
+}
+
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin: 26px 0 22px;
+}
+
+.dash-stat {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dash-num {
+  font-family: var(--font-mono), monospace;
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--fg);
+}
+
+.dash-num em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.dash-section {
+  margin-top: 40px;
+}
+
+.dash-section > .label {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.dash-cols {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 160px;
+  padding-bottom: 22px;
+  position: relative;
+}
+
+.dash-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
+}
+
+.dash-col-bar {
+  flex: 1;
+  width: 100%;
+  max-width: 42px;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  border-bottom: 1px solid var(--line);
+}
+
+.dash-col-bar i {
+  display: block;
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  margin-top: 2px; /* 2px surface gap between stacked segments */
+  min-height: 2px;
+}
+
+.dash-col-label {
+  position: absolute;
+  bottom: -22px;
+  font-family: var(--font-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+
+.dash-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.dash-table th {
+  text-align: left;
+  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 8px 14px 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.dash-table td {
+  padding: 10px 14px 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--fg);
+}
+
+.dash-table td.mono {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  color: var(--dim);
+}
+
+.dash-ok {
+  color: #3aa468;
+}
+
+.dash-miss {
+  color: var(--dim);
+}
+
+.dash-config .hint {
+  margin-top: 16px;
+  line-height: 1.7;
 }
 
 /* GRAB tool — compact card on the archive-overlay backdrop */
