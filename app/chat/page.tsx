@@ -1060,6 +1060,14 @@ export default function Home() {
     setSelectedId(id);
   };
 
+  /** Drop a failed take from the thread. Failed takes never reach the
+   *  archive, so nothing else references them — no confirm needed. */
+  const deleteTurn = (id: string) => {
+    setTurns((ts) => ts.filter((t) => t.id !== id));
+    setCtxIds((ids) => ids.filter((x) => x !== id));
+    if (selectedId === id) setSelectedId(null);
+  };
+
   /** Current thread is already auto-saved — just move to a fresh id. */
   const newSession = () => {
     if (busyTurn) return;
@@ -1672,7 +1680,7 @@ export default function Home() {
                       }}
                       title="Pin this take as context for the next message"
                     >
-                      {ctxIds.includes(t.id) ? "❐ In context" : "❐ Context"}
+                      {ctxIds.includes(t.id) ? "❐ In context" : "+ ❐ Context"}
                     </button>
                   )}
                   {t.status !== "refining" && t.status !== "pending" && (
@@ -1685,6 +1693,18 @@ export default function Home() {
                       title="Continue the conversation from this take"
                     >
                       ↩ Rewind
+                    </button>
+                  )}
+                  {t.status === "error" && (
+                    <button
+                      className="link-btn danger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteTurn(t.id);
+                      }}
+                      title="Remove this failed take from the thread"
+                    >
+                      ✕ Delete
                     </button>
                   )}
                 </div>

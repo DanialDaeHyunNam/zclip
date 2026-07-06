@@ -895,10 +895,38 @@ button {
 .turn-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   font-size: 9.5px;
   letter-spacing: 0.16em;
   color: var(--dim);
+}
+
+/* Turn-row actions read as real buttons, not bare links. */
+.turn-status .link-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--r-pill);
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  transition:
+    color 0.3s ease,
+    border-color 0.3s ease,
+    background 0.3s ease;
+}
+
+.turn-status .link-btn:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.turn-status .link-btn.danger:hover {
+  border-color: rgba(255, 95, 86, 0.5);
+  background: rgba(255, 95, 86, 0.08);
+}
+
+.turn-status .link-btn.ctx-on {
+  border-color: rgba(111, 220, 255, 0.4);
+  background: rgba(111, 220, 255, 0.07);
 }
 
 .turn-status .mono {
