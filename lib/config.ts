@@ -64,9 +64,9 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     docsUrl: "https://docs.x.ai/docs/guides/video-generations",
     keyUrl: "https://console.x.ai/",
     adapterFile: "lib/providers/grok.ts",
-    costPerSecondUsd: null,
+    costPerSecondUsd: { "720p": 0.08, "1080p": 0.08 }, // $0.08/s flat (docs.x.ai pricing)
     chartColor: "#BF7A22",
-    note: "xAI has no direct text-to-video — runs text→image→video (two billed steps). Aspect follows the prompt text.",
+    note: "With a reference image the card face is animated directly ($0.08/s). Text-only adds a $0.05 image step.",
   },
   seedance: {
     label: "Seedance 1.0 Pro",

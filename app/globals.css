@@ -1576,6 +1576,12 @@ button {
   margin-bottom: 22px;
 }
 
+.spend-unpriced {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
 .spend-legend {
   display: flex;
   gap: 22px;

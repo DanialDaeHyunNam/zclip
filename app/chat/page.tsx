@@ -174,6 +174,9 @@ export default function Home() {
     srcSeconds?: number;
   } | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // pasted video URL waiting to be fetched into the reference pipeline
+  const [urlCandidate, setUrlCandidate] = useState<string | null>(null);
+  const [urlFetching, setUrlFetching] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   /** Carry each take's snapshot into the next take automatically. */
   const [continuity, setContinuity] = useState(true);
@@ -634,6 +637,36 @@ export default function Home() {
     );
     if (kind === "char" && charId === id) setCharId(null);
     if (kind === "setting" && settingId === id) setSettingId(null);
+  };
+
+  /** Pull a direct video URL through the server proxy and feed it into
+   *  the normal attach pipeline (frames, transfer mode, the lot). */
+  const attachFromUrl = async () => {
+    if (!urlCandidate || urlFetching) return;
+    setUrlFetching(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/fetch-video?url=${encodeURIComponent(urlCandidate)}${
+          pw ? `&pw=${encodeURIComponent(pw)}` : ""
+        }`,
+      );
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        setError(b.error ?? "Could not fetch that URL.");
+        return;
+      }
+      const blob = await res.blob();
+      await attachMediaFile(
+        new File([blob], "reference.mp4", { type: blob.type || "video/mp4" }),
+      );
+      setDraft((d) => (d.trim() === urlCandidate ? "" : d));
+      setUrlCandidate(null);
+    } catch {
+      setError("Could not fetch that URL.");
+    } finally {
+      setUrlFetching(false);
+    }
   };
 
   /** Cover-crop a reference image to the target aspect. Mismatched
@@ -1131,10 +1164,15 @@ export default function Home() {
   const spend = (() => {
     const bySession = new Map<
       string,
-      { label: string; latest: number; total: number; parts: Map<ProviderName, number> }
+      {
+        label: string;
+        latest: number;
+        total: number;
+        unpriced: number;
+        parts: Map<ProviderName, number>;
+      }
     >();
     for (const c of clips) {
-      if (c.costUsd == null) continue;
       const key = c.sessionId ?? "earlier";
       let g = bySession.get(key);
       if (!g) {
@@ -1146,21 +1184,27 @@ export default function Home() {
                 (key === "earlier" ? "Earlier takes" : "Removed session"),
           latest: 0,
           total: 0,
+          unpriced: 0,
           parts: new Map(),
         };
         bySession.set(key, g);
       }
       g.latest = Math.max(g.latest, c.createdAt);
-      g.total += c.costUsd;
-      g.parts.set(c.provider, (g.parts.get(c.provider) ?? 0) + c.costUsd);
+      if (c.costUsd == null) {
+        g.unpriced += 1; // provider didn't publish pricing when saved
+      } else {
+        g.total += c.costUsd;
+        g.parts.set(c.provider, (g.parts.get(c.provider) ?? 0) + c.costUsd);
+      }
     }
     const rows = [...bySession.values()].sort((a, b) => b.latest - a.latest);
     const total = rows.reduce((s, r) => s + r.total, 0);
+    const unpriced = rows.reduce((s, r) => s + r.unpriced, 0);
     const max = Math.max(...rows.map((r) => r.total), 0.01);
     const providers = (Object.keys(PROVIDERS) as ProviderName[]).filter((p) =>
       rows.some((r) => r.parts.has(p)),
     );
-    return { rows, total, max, providers };
+    return { rows, total, unpriced, max, providers };
   })();
   const starterReady = turns.length === 0 && Boolean(starterDraft?.trim());
   const canSend =
@@ -1609,8 +1653,28 @@ export default function Home() {
           >
             {(attach ||
               ctxIds.length > 0 ||
+              urlCandidate ||
               (turns.length === 0 && (selChar || selSetting))) && (
               <div className="chips-row">
+                {urlCandidate && (
+                  <span className="sel-chip fade">
+                    🔗 {urlCandidate.replace(/^https?:\/\//, "").slice(0, 34)}…
+                    <button
+                      className="link-btn"
+                      onClick={attachFromUrl}
+                      disabled={urlFetching}
+                    >
+                      {urlFetching ? "Fetching…" : "Attach video"}
+                    </button>
+                    <button
+                      className="link-btn danger"
+                      onClick={() => setUrlCandidate(null)}
+                      aria-label="Dismiss URL"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
                 {ctxIds.map((id) => {
                   const idx = turns.findIndex((t) => t.id === id);
                   if (idx < 0) return null;
@@ -1730,7 +1794,10 @@ export default function Home() {
                   if (f) {
                     e.preventDefault();
                     attachMediaFile(f);
+                    return;
                   }
+                  const txt = e.clipboardData.getData("text").trim();
+                  if (/^https?:\/\/\S+$/.test(txt)) setUrlCandidate(txt);
                 }}
                 placeholder={
                   busyTurn
@@ -1969,7 +2036,7 @@ export default function Home() {
       </main>
 
       {/* spend — estimated, per session, stacked by model */}
-      {spend.total > 0 && (
+      {clips.length > 0 && (
         <section className="archive spend">
           <div className="archive-head">
             <span className="label">Spend · Estimated</span>
@@ -1978,7 +2045,12 @@ export default function Home() {
             Computed as duration × published per-second price for each finished
             take — providers don&apos;t report billed totals per request.
           </p>
-          <div className="spend-hero">${spend.total.toFixed(2)}</div>
+          <div className="spend-hero">
+            ${spend.total.toFixed(2)}
+            {spend.unpriced > 0 && (
+              <span className="spend-unpriced"> +{spend.unpriced} unpriced</span>
+            )}
+          </div>
           <div className="spend-legend">
             {spend.providers.map((p) => (
               <span key={p} className="spend-chip">
@@ -2009,7 +2081,10 @@ export default function Home() {
                     );
                   })}
                 </div>
-                <span className="spend-total">${r.total.toFixed(2)}</span>
+                <span className="spend-total">
+                  ${r.total.toFixed(2)}
+                  {r.unpriced > 0 ? ` +${r.unpriced}?` : ""}
+                </span>
               </div>
             ))}
           </div>
