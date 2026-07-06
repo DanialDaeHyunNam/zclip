@@ -308,6 +308,23 @@ All entries 2026-07-06 (single build session, owner: Dan).
   the phone (prompt-chain only, deliberate). Demo copy now matches the
   clips; loop tightened 27s -> ~15s (typing 3 chars/tick, ~1.4s renders).
 
+## 20. Expression-drift diagnosis + Veo daily quota hit
+
+- Owner: takes 2/3 lost the 'wait-what' expression. Diagnosis with
+  evidence: refine had preserved the action sentence VERBATIM (checked
+  P1 vs P2 text) — the model ignored it. Root cause is scene-emotion
+  contagion: "friends laughing behind her" primes the subject to smile;
+  "chic leather jacket" primes editorial-calm. A mid-prompt action line
+  loses to scene mood priors.
+- Fixes: (a) refine SYSTEM now instructs — keep action verbatim, no
+  emotional actions on background characters, add explicit counters
+  ("she does not smile", "first frame to last") when a kept expression
+  is requested; (b) scripts/regen-demo-takes.sh holds the hand-tuned
+  final prompts (neutral friends, expression doubled in subject+action,
+  counter-negatives) — BLOCKED on Veo daily request quota (429 persisted
+  past 65s = RPD cap, resets ~midnight PT; failed submits cost nothing).
+  Run the script when quota resets, then eyeball frames.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.
