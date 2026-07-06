@@ -6,6 +6,7 @@
 Public landing at `/` (studio moved to /chat): OpusClip-style pitch with an
 animated demo reel that plays REAL ZCLIP-generated takes, differentiator list,
 cut.donkeyuse.com workflow, open-source star CTA. Brand renamed HOOK LAB → ZCLIP.
+Shipped open-source 2026-07-07: github.com/DanialDaeHyunNam/zclip (MIT).
 
 ## Context
 - **Background**: Dan wants the repo public + a landing that explains the tool
@@ -35,8 +36,21 @@ cut.donkeyuse.com workflow, open-source star CTA. Brand renamed HOOK LAB → ZCL
 **Learned**: the demo IS the pitch — "REAL OUTPUT, each built on the last" only
 works because the pipeline actually did it.
 
+### 2026-07-07
+**Focus**: Shipped open-source — repo public with a real README + license.
+- Full README rewrite (was internal-tool notes): quickstart, requirements
+  table, "why not the playground", provider/pricing table, security model,
+  add-a-provider guide, Vercel deploy, troubleshooting, synthetic-people/FTC
+- MIT LICENSE added
+- Secrets audit clean across all tracked files AND full history (35 commits)
+- Commit identity rewritten local-hostname → GitHub noreply, then
+  `gh repo create zclip --public --source . --push`
+- REPO_URL placeholder replaced with the live repo in app/page.tsx
+
+**Learned**: `git filter-branch --env-filter` is the clean way to scrub a
+local-hostname committer identity before a first public push.
+
 ## Pending
-- [ ] Replace REPO_URL placeholder once the GitHub repo exists
 - [ ] Owner eyeball pass on all 37 baked card photos (re-bake singles as needed)
 
 ## Notes

@@ -8,7 +8,7 @@ files:
     created: 2026-07-06
     last_modified: 2026-07-06T14:38:10.786Z
     change_count: 2
-    purpose: ""
+    purpose: "Open-source README: quickstart, requirements, why-not-the-playground, GRAB tool, provider/pricing table, security model, add-a-provider guide, deploy, troubleshooting"
     change_log:
       - date: 2026-07-06T14:38:10.786Z
         action: edit
@@ -22,7 +22,7 @@ files:
     created: 2026-07-06
     last_modified: 2026-07-06T14:37:43.353Z
     change_count: 1
-    purpose: ""
+    purpose: "MIT License (Copyright 2026 Danial Nam)"
     change_log:
       - date: 2026-07-06T14:37:43.353Z
         action: write

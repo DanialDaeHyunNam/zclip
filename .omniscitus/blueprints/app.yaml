@@ -8,7 +8,7 @@ files:
     created: 2026-07-06
     last_modified: 2026-07-06T14:46:01.523Z
     change_count: 4
-    purpose: ""
+    purpose: "Dev-only reference-video fetcher: YouTube via yt-dlp, X posts/articles via guest GraphQL, direct .mp4; optional ffmpeg trim; serves grabbed files back"
     change_log:
       - date: 2026-07-06T14:46:01.523Z
         action: edit
@@ -28,7 +28,7 @@ files:
     created: 2026-07-06
     last_modified: 2026-07-06T14:38:25.313Z
     change_count: 1
-    purpose: ""
+    purpose: "Public landing page: hero, numbered differentiators, real-output demo reel, cut.donkeyuse.com workflow, star-the-repo CTA"
     change_log:
       - date: 2026-07-06T14:38:25.313Z
         action: edit
@@ -39,7 +39,7 @@ files:
     created: 2026-07-06
     last_modified: 2026-07-06T14:53:43.886Z
     change_count: 19
-    purpose: ""
+    purpose: "The entire studio UI (one client component): chat thread, rewind, sessions, archive, spend popover, starter carousels + Library pill, GRAB panel, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
       - date: 2026-07-06T14:53:43.886Z
         action: edit
@@ -104,7 +104,7 @@ files:
     created: 2026-07-06
     last_modified: 2026-07-06T14:54:24.145Z
     change_count: 1
-    purpose: ""
+    purpose: "Gemini Flash prompt refiner: history/context-aware rewrite, multimodal (reads attached frames), and hard-ruled performance-transfer mode (motion transcription, replace performer+location only)"
     change_log:
       - date: 2026-07-06T14:54:24.145Z
         action: edit
@@ -115,7 +115,7 @@ files:
     created: 2026-07-06
     last_modified: 2026-07-06T14:55:21.167Z
     change_count: 1
-    purpose: ""
+    purpose: "Read-only spend & config dashboard: stat tiles, 14-day stacked columns, by-session and by-model bars, provider/pricing/key config table — all from the localStorage ledger"
     change_log:
       - date: 2026-07-06T14:55:21.167Z
         action: write
@@ -126,7 +126,7 @@ files:
     created: 2026-07-06
     last_modified: 2026-07-06T14:56:12.163Z
     change_count: 2
-    purpose: ""
+    purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
       - date: 2026-07-06T14:56:12.163Z
         action: edit

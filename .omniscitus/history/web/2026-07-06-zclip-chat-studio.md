@@ -5,7 +5,8 @@
 ## Summary
 Chat-driven UGC reaction-hook video studio (/chat): message → prompt refine →
 provider generation → iterate. Sessions, rewind, pinned-take context, continuity
-snapshots, multimodal references, spend tracking, in-UI API keys.
+snapshots, multimodal references, spend tracking, in-UI API keys. Plus a GRAB
+reference-video toolchain (YouTube/X/direct + trim) and a `/dashboard` spend page.
 
 ## Context
 - **Background**: Dan needed to mass-produce the "surprised reaction" first 3s of
@@ -45,12 +46,37 @@ snapshots, multimodal references, spend tracking, in-UI API keys.
 scene emotion contaminates the subject's face; aspect-mismatched i2v references
 tile the frame; JSX must be refactored via components, never string-sliced.
 
+### 2026-07-07
+**Focus**: Post-launch UX + a reference-video toolchain + a real dashboard.
+- Turn-row actions: DELETE on failed takes (no archive ref → no confirm),
+  pill-styled buttons scoped to `.turn-status`, `+ Context` affordance
+- GRAB tool (rail ⤓, `app/api/grab`): pull reference videos onto the machine
+  from YouTube (yt-dlp), X posts AND X articles (guest GraphQL with
+  `withArticleRichContentState` — reaches article-embedded media yt-dlp can't),
+  or direct .mp4; optional ffmpeg trim; dev-only route, `.grabs/` gitignored
+- Rail overlays (sessions/archive/grab) made mutually exclusive (radio)
+- GRABs land in the archive as zero-cost `provider:"grab"` cards (excluded from
+  the spend ledger), view auto-jumps there, card has "use as reference"
+- Header spend scoped to the CURRENT session ($0 on a new session); popover
+  keeps all-session view + links to the new dashboard
+- `/dashboard` page: stat tiles, 14-day stacked columns, by-session + by-model
+  bars, provider/pricing/key config table — all from the localStorage ledger
+- Library starter pill: attach any archived take/GRAB as a motion reference
+- Transfer mode rewritten as hard-ruled motion transcription (no invented/
+  reordered beats, same shot type, replace ONLY performer + location)
+
+**Learned**: X articles are a hidden toggle on the tweet API, not a separate
+endpoint — undici's default UA gets filtered, needs a browser UA (curl worked,
+server didn't); the archive-as-ledger design meant the dashboard needed zero
+new storage; transfer is transcription+seed-frame re-performance, so i2v
+choreography fidelity is the hard ceiling — best is max transcription fidelity
++ a ban on invented beats (verified: still-image ref now holds pose vs. inventing).
+
 ## Pending
-- [ ] `gh repo create` + push (secrets audited clean; local commits ready)
-- [ ] Set real REPO_URL in app/page.tsx after repo creation
 - [ ] Verify Seedance adapter end-to-end (endpoint/model id unconfirmed)
 - [ ] Optional: re-generate demo takes 2/3 on Veo after quota reset (script ready)
 - [ ] Set APP_PASSWORD before any public Vercel deploy
+- [ ] GRAB job files in `.grabs/` are never garbage-collected (fine for local dev)
 
 ## Notes
 Full engineering record in docs/DEVLOG.md (#1–25) and CLAUDE.md handoff.
