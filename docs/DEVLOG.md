@@ -238,6 +238,22 @@ All entries 2026-07-06 (single build session, owner: Dan).
   select max-width + ellipsis); big MODEL field, params grid and 1080p
   hint are gone. Starter pills/carousel moved back ABOVE the input.
 
+## 15. Pinned take context (multimodal-style)
+
+- Any finished take now has a "❐ Context" button: pinning attaches it to
+  the composer as a chip (snapshot thumb + "Take N"), send works with
+  pins alone ("Blend take 2 + take 4" default message).
+- Backend: /api/refine gets `contexts: [{take, prompt}]` as PINNED
+  CONTEXT TAKES — system prompt treats them as primary source material
+  (higher priority than ambient history). Pinned takes' snapshots feed
+  the refiner images AND the generation reference (precedence: manual
+  attach > pinned snapshots > starter assets > continuity).
+- Resulting turn is tagged "CTX T2 T4". Pins clear on send/rewind/
+  session switch. Soft warning (amber) at >3 pins — beyond that the
+  refiner averages references into mush; no hard cap by design.
+- Verified: chips + warning + ctx-only send headless; curl refine with a
+  pinned take pulled its subject/room into the rewrite exactly.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

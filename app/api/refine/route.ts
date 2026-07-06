@@ -12,6 +12,7 @@ const SYSTEM = `You write prompts for a text-to-video model that generates short
 
 Rules:
 - If a BASE PROMPT is given, apply the REQUESTED CHANGE with minimal edits — preserve everything not mentioned.
+- PINNED CONTEXT TAKES are takes the user explicitly attached — treat them as primary source material: draw their subjects, settings and details directly into the rewrite (blending happens at the prompt level).
 - EARLIER TAKES may be listed for context. When the request references one (e.g. "use take 1's background", "blend with take 1"), pull those concrete details out of that take's prompt into the rewrite. Blending happens at the prompt level — you cannot mix actual video pixels.
 - If there is no base, compose a complete video prompt from the description, following UGC best practice: handheld phone look, natural skin texture, no cinematic grading.
 - Keep any reaction to ONE single held beat; keep explicit negatives like "no gasping, no panting, no hand movements, slow and natural".
@@ -32,14 +33,32 @@ export async function POST(req: Request) {
     );
   }
 
-  let base: unknown, message: unknown, images: unknown, history: unknown;
+  let base: unknown, message: unknown, images: unknown, history: unknown, contexts: unknown;
   try {
-    ({ base, message, images, history } = await req.json());
+    ({ base, message, images, history, contexts } = await req.json());
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   if (typeof message !== "string" || !message.trim()) {
     return Response.json({ error: "Message is empty" }, { status: 400 });
+  }
+
+  // Takes the user explicitly pinned as context — highest-priority material.
+  let ctxBlock = "";
+  if (Array.isArray(contexts)) {
+    const entries = contexts
+      .slice(0, 6)
+      .filter(
+        (c): c is { take: number; prompt: string } =>
+          c &&
+          typeof c === "object" &&
+          typeof c.take === "number" &&
+          typeof c.prompt === "string",
+      )
+      .map((c) => `Take ${c.take} prompt: ${c.prompt.slice(0, 1200)}`);
+    if (entries.length) {
+      ctxBlock = `PINNED CONTEXT TAKES (user attached these — draw from them directly):\n${entries.join("\n\n")}\n\n`;
+    }
   }
 
   // Session context so "take 1's background" resolves to something real.
@@ -66,8 +85,8 @@ export async function POST(req: Request) {
 
   const user =
     typeof base === "string" && base.trim()
-      ? `${historyBlock}BASE PROMPT (latest take — edit this one):\n${base}\n\nREQUESTED CHANGE:\n${message}`
-      : `${historyBlock}Write a complete video prompt from this description:\n${message}`;
+      ? `${ctxBlock}${historyBlock}BASE PROMPT (latest take — edit this one):\n${base}\n\nREQUESTED CHANGE:\n${message}`
+      : `${ctxBlock}${historyBlock}Write a complete video prompt from this description:\n${message}`;
 
   // Gemini Flash is multimodal — pass attached reference frames inline so
   // the rewrite can describe what's actually in them. A video reference

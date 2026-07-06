@@ -572,6 +572,17 @@ button {
   color: var(--error);
 }
 
+.link-btn.ctx-on {
+  color: var(--accent);
+}
+
+.ctx-warn {
+  margin-top: 10px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #d9a441;
+}
+
 .link-btn:disabled {
   opacity: 0.35;
   cursor: default;

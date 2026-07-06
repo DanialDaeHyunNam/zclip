@@ -44,6 +44,8 @@ interface Turn {
   snapshot?: string;
   /** This take was generated from the previous take's snapshot. */
   usedContinuity?: boolean;
+  /** Labels of takes the user pinned as context for this one, e.g. "T2 T4". */
+  ctxLabel?: string;
 }
 
 /** Append-only archive entry — survives rewinds. */
@@ -192,6 +194,8 @@ export default function Home() {
   const [keySaving, setKeySaving] = useState(false);
   const [keyMsg, setKeyMsg] = useState("");
   const [keyPanelHidden, setKeyPanelHidden] = useState(false);
+  /** Turn ids pinned as context for the NEXT take. */
+  const [ctxIds, setCtxIds] = useState<string[]>([]);
 
   const providerInfo = PROVIDERS[providerId];
   const estCostUsd = estimateCostUsd(providerId, resolution, duration);
@@ -676,7 +680,17 @@ export default function Home() {
     const starterLabel = starterText
       ? composeStarter(selChar, selSetting, aspect)?.label ?? "Custom base"
       : undefined;
-    if (busyTurn || (!text && !starterText && !manual) || keyMissing) return;
+    const ctxTurns = ctxIds
+      .map((id) => ({ idx: turns.findIndex((t) => t.id === id) }))
+      .filter(({ idx }) => idx >= 0 && turns[idx].prompt)
+      .sort((a, b) => a.idx - b.idx)
+      .map(({ idx }) => ({ take: idx + 1, turn: turns[idx] }));
+    if (
+      busyTurn ||
+      (!text && !starterText && !manual && !ctxTurns.length) ||
+      keyMissing
+    )
+      return;
     setError(null);
 
     // Reference precedence: manual attachment > starter-asset images >
@@ -690,16 +704,26 @@ export default function Home() {
       !manual && starterText
         ? ([selChar?.image, selSetting?.image].filter(Boolean) as string[])
         : [];
+    const ctxImages = manual
+      ? []
+      : (ctxTurns
+          .map(({ turn }) => turn.snapshot)
+          .filter(Boolean) as string[]);
     const refImages = manual
       ? manual.frames.map((b) => ({ base64: b, mimeType: manual.mimeType }))
-      : assetImages.length
-        ? assetImages.map((d) => ({
+      : ctxImages.length
+        ? ctxImages.map((d) => ({
             base64: d.split(",")[1],
             mimeType: "image/jpeg",
           }))
-        : lastSnap
-          ? [{ base64: lastSnap.split(",")[1], mimeType: "image/jpeg" }]
-          : undefined;
+        : assetImages.length
+          ? assetImages.map((d) => ({
+              base64: d.split(",")[1],
+              mimeType: "image/jpeg",
+            }))
+          : lastSnap
+            ? [{ base64: lastSnap.split(",")[1], mimeType: "image/jpeg" }]
+            : undefined;
     const primaryImage =
       manual && refImages
         ? refImages[Math.floor((refImages.length - 1) / 2)]
@@ -720,9 +744,11 @@ export default function Home() {
       id,
       userText:
         text ||
-        (starterText
-          ? `Start: ${starterLabel}`
-          : "Use the attached image as the reference."),
+        (ctxTurns.length
+          ? `Blend ${ctxTurns.map((c) => `take ${c.take}`).join(" + ")}`
+          : starterText
+            ? `Start: ${starterLabel}`
+            : "Use the attached image as the reference."),
       presetLabel: starterLabel,
       provider: providerId,
       aspectRatio: aspect,
@@ -732,16 +758,22 @@ export default function Home() {
       status: "refining",
       costUsd: estCostUsd ?? undefined,
       imageThumb: manual?.thumb ?? assetImages[0],
-      usedContinuity: Boolean(lastSnap && !manual && !assetImages.length),
+      usedContinuity: Boolean(
+        lastSnap && !manual && !assetImages.length && !ctxImages.length,
+      ),
+      ctxLabel: ctxTurns.length
+        ? ctxTurns.map((c) => `T${c.take}`).join(" ")
+        : undefined,
     };
     setTurns((ts) => [...ts, turn]);
     setDraft("");
     setAttach(null);
+    setCtxIds([]);
     setSelectedId(id);
 
     try {
       let prompt: string;
-      if (!text && starterText && !manual) {
+      if (!text && starterText && !manual && !ctxTurns.length) {
         prompt = starterText; // the visible base, exactly as shown/edited
       } else {
         const r = await fetch("/api/refine", {
@@ -750,8 +782,15 @@ export default function Home() {
           body: JSON.stringify({
             base,
             history,
+            contexts: ctxTurns.map((c) => ({
+              take: c.take,
+              prompt: c.turn.prompt!,
+            })),
             message:
-              text || "Use the attached image as the visual reference for the clip.",
+              text ||
+              (ctxTurns.length
+                ? "Blend the pinned context takes into one take."
+                : "Use the attached image as the visual reference for the clip."),
             images: refImages,
           }),
         });
@@ -797,6 +836,11 @@ export default function Home() {
     }
   };
 
+  const toggleCtx = (id: string) =>
+    setCtxIds((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+    );
+
   /** Claude-style rewind: cut the thread after this turn and continue the
    *  conversation from there. Finished clips stay in the archive below. */
   const rewindTo = (id: string) => {
@@ -810,6 +854,7 @@ export default function Home() {
     )
       return;
     setTurns((ts) => ts.slice(0, idx + 1));
+    setCtxIds((ids) => ids.filter((x) => turns.slice(0, idx + 1).some((t) => t.id === x)));
     setSelectedId(id);
   };
 
@@ -821,6 +866,7 @@ export default function Home() {
     setSessionId(nid);
     setTurns([]);
     setSelectedId(null);
+    setCtxIds([]);
     setCharId(null);
     setSettingId(null);
     setError(null);
@@ -834,6 +880,7 @@ export default function Home() {
     setSessionId(id);
     setTurns(found.turns);
     setSelectedId(null);
+    setCtxIds([]);
     setError(null);
   };
 
@@ -1030,7 +1077,7 @@ export default function Home() {
     !busyTurn &&
     ready &&
     !keyMissing &&
-    Boolean(draft.trim() || attach || starterReady);
+    Boolean(draft.trim() || attach || starterReady || ctxIds.length);
 
   /* ── render ────────────────────────────────────── */
 
@@ -1201,6 +1248,11 @@ export default function Home() {
                       CONT
                     </span>
                   )}
+                  {t.ctxLabel && (
+                    <span className="cont-tag" title="Built from pinned context takes">
+                      CTX {t.ctxLabel}
+                    </span>
+                  )}
                   <span className="turn-spacer" />
                   {t.status === "error" && (
                     <button
@@ -1213,6 +1265,18 @@ export default function Home() {
                       title="Retry this take with the currently selected model & params"
                     >
                       ↻ Retry
+                    </button>
+                  )}
+                  {t.prompt && t.status !== "refining" && t.status !== "pending" && (
+                    <button
+                      className={`link-btn ${ctxIds.includes(t.id) ? "ctx-on" : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleCtx(t.id);
+                      }}
+                      title="Pin this take as context for the next message"
+                    >
+                      {ctxIds.includes(t.id) ? "❐ In context" : "❐ Context"}
                     </button>
                   )}
                   {t.status !== "refining" && t.status !== "pending" && (
@@ -1450,8 +1514,29 @@ export default function Home() {
               if (f) attachMediaFile(f);
             }}
           >
-            {(attach || (turns.length === 0 && (selChar || selSetting))) && (
+            {(attach ||
+              ctxIds.length > 0 ||
+              (turns.length === 0 && (selChar || selSetting))) && (
               <div className="chips-row">
+                {ctxIds.map((id) => {
+                  const idx = turns.findIndex((t) => t.id === id);
+                  if (idx < 0) return null;
+                  const t = turns[idx];
+                  const img = t.snapshot ?? t.imageThumb;
+                  return (
+                    <span key={id} className="sel-chip fade">
+                      {img && <img src={img} alt="" />}
+                      Take {idx + 1}
+                      <button
+                        className="link-btn danger"
+                        onClick={() => toggleCtx(id)}
+                        aria-label={`Unpin take ${idx + 1}`}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  );
+                })}
                 {turns.length === 0 && selChar && (
                   <span className="sel-chip fade">
                     <img
@@ -1567,6 +1652,12 @@ export default function Home() {
                 {starterReady && !draft.trim() ? "Start" : "Send"}
               </button>
             </div>
+            {ctxIds.length > 3 && (
+              <p className="ctx-warn fade">
+                {ctxIds.length} takes pinned — blends this wide usually come
+                out muddy. 2–3 pinned takes keep each reference recognizable.
+              </p>
+            )}
           </div>
         </section>
 
