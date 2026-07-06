@@ -56,7 +56,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: "black-f",
-    label: "Black Girl 1",
+    label: "Black Woman 1",
     desc: "CURLS · KNIT TOP",
     pronoun: "She",
     prompt:
@@ -80,7 +80,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: "guy",
-    label: "White Guy 1",
+    label: "White Man 1",
     desc: "JAWLINE · CREWNECK",
     pronoun: "He",
     prompt:
@@ -88,7 +88,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: "black-m",
-    label: "Black Guy 1",
+    label: "Black Man 1",
     desc: "FADE · WHITE TEE",
     pronoun: "He",
     prompt:
@@ -96,7 +96,7 @@ export const CHARACTERS: Character[] = [
   },
   {
     id: "asian-m",
-    label: "Asian Guy 1",
+    label: "Asian Man 1",
     desc: "SHARP · BLACK CREWNECK",
     pronoun: "He",
     prompt:
