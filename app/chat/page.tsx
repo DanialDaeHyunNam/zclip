@@ -6,8 +6,7 @@ import {
   DEFAULT_PROVIDER,
   DEFAULTS,
   ASPECT_RATIOS,
-  DURATION_MIN,
-  DURATION_MAX,
+  DURATION_CHOICES,
   RESOLUTIONS,
   estimateCostUsd,
   effectiveSeconds,
@@ -1839,25 +1838,22 @@ export default function Home() {
                   ))}
                 </select>
               </div>
-              <div
-                className="duration-gauge"
-                title="Requested length — each model snaps to what it supports (Veo 4/6/8, Sora 8, Grok 1–15)"
-              >
-                <input
-                  type="range"
+              <div className="select-wrap bare">
+                <select
                   aria-label="Duration"
-                  min={DURATION_MIN}
-                  max={DURATION_MAX}
-                  step={1}
+                  title="Each model snaps to what it supports (Veo 4/6/8 · Sora 8 · Grok 1–15)"
                   value={duration}
                   onChange={(e) => setDuration(Number(e.target.value))}
-                />
-                <span className="gauge-val">
-                  {duration}S
-                  {effectiveSeconds(providerId, duration, resolution) !== duration
-                    ? ` → ${effectiveSeconds(providerId, duration, resolution)}S`
-                    : ""}
-                </span>
+                >
+                  {DURATION_CHOICES.map((d) => {
+                    const eff = effectiveSeconds(providerId, d, resolution);
+                    return (
+                      <option key={d} value={d}>
+                        {d}S{eff !== d ? ` → ${eff}S` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
               <div className="select-wrap bare">
                 <select

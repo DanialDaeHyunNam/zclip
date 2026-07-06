@@ -100,6 +100,8 @@ export const KEY_ENV_VARS = [
 export const ASPECT_RATIOS: AspectRatio[] = ["9:16", "16:9"];
 export const DURATION_MIN = 1;
 export const DURATION_MAX = 15;
+/** Preset choices shown in the UI (server still accepts 1–15). */
+export const DURATION_CHOICES = [4, 8, 12];
 export const RESOLUTIONS: Resolution[] = ["720p", "1080p"];
 
 /** The slider is a REQUEST; providers only bill/support certain lengths.
