@@ -169,6 +169,22 @@ All entries 2026-07-06 (single build session, owner: Dan).
 - Verified headless: custom character saved + auto-selected, video drop
   extraction, broken-image fallback (0 visible wrappers).
 
+## 11. Baked assets + fluid design refresh
+
+- Baked all 12 starter images via `scripts/bake-starters.mjs`
+  (gemini-2.5-flash-image worked as-is, 3:4 aspect config accepted).
+  Prompts tuned for attractive/photogenic but tasteful output; owner
+  reviews visually — re-bake singles with
+  `bun scripts/bake-starters.mjs <id> --force`.
+- Design refresh (owner: "too boxy/boring"): Grok-style ambient
+  backdrop (inline-SVG starfield + one soft accent glow on body::before),
+  OpusClip-style fluid shapes — radius tokens (--r-sm/md/lg/pill) across
+  all controls, pill buttons, Grok-style single-container chat pill with
+  focus ring. New display font Space Grotesk (--font-display) for the
+  wordmark + a landing-style hero on the empty session ("Make the hook."
+  with gradient accent). The old square-corner rule in CLAUDE.md is
+  superseded by this.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

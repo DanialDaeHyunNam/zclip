@@ -1135,6 +1135,19 @@ export default function Home() {
         </div>
       </header>
 
+      {turns.length === 0 && (
+        <section className="hero fade">
+          <h1>
+            Make the <span>hook</span>.
+          </h1>
+          <p>
+            Pick a face, pick a room, type the beat — vertical UGC reaction
+            clips land in about a minute. Iterate by chat, rewind any take,
+            A/B everything.
+          </p>
+        </section>
+      )}
+
       <main className="grid-main">
         {/* session thread */}
         <section className="session-col">

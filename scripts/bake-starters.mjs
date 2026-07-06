@@ -33,25 +33,34 @@ function apiKey() {
 const jobs = [
   ...CHARACTERS.map((c) => ({
     id: c.id,
-    text: `Amateur smartphone selfie-style photo portrait of ${c.prompt}, looking at the camera, soft natural indoor light, realistic skin texture, no text, no watermark.`,
+    text: `Stunning amateur smartphone selfie-style photo portrait of ${c.prompt}. Exceptionally attractive and photogenic with naturally beautiful facial features, clear glowing skin, fit healthy physique, tastefully styled, subtle confident smile, looking at the camera. Soft flattering natural indoor light, realistic skin texture, shot on an iPhone front camera, vertical framing, no text, no watermark.`,
   })),
   ...SETTINGS.map((s) => ({
     id: s.id,
-    text: `Amateur smartphone photo of the place described, empty, no people: ${s.prompt}. Natural light, realistic, slightly imperfect framing, no text, no watermark.`,
+    text: `Beautiful cozy amateur smartphone photo of the place described, empty, no people: ${s.prompt}. Aesthetically pleasing and inviting, warm tones, natural light, realistic, tidy but lived-in, no text, no watermark.`,
   })),
 ];
 
-async function bake(job, key) {
-  const res = await fetch(
+async function call(job, key, withAspect) {
+  return fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
     {
       method: "POST",
       headers: { "x-goog-api-key": key, "content-type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: job.text }] }],
+        ...(withAspect
+          ? { generationConfig: { imageConfig: { aspectRatio: "3:4" } } }
+          : {}),
       }),
     },
   );
+}
+
+async function bake(job, key) {
+  // Try portrait aspect first; fall back if the field is rejected.
+  let res = await call(job, key, true);
+  if (res.status === 400) res = await call(job, key, false);
   if (!res.ok) {
     throw new Error(`${job.id}: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
   }
@@ -64,11 +73,15 @@ async function bake(job, key) {
   writeFileSync(join(outDir, `${job.id}.jpg`), Buffer.from(inline.data, "base64"));
 }
 
+// Usage: bun scripts/bake-starters.mjs [ids…] [--force]
+// ids filter lets you re-bake just the ugly ones: `… blonde cafe --force`
 const force = process.argv.includes("--force");
+const idFilter = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const key = apiKey();
 mkdirSync(outDir, { recursive: true });
 
 for (const job of jobs) {
+  if (idFilter.length && !idFilter.includes(job.id)) continue;
   const file = join(outDir, `${job.id}.jpg`);
   if (!force && existsSync(file)) {
     console.log(`skip   ${job.id} (exists)`);

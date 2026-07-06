@@ -99,12 +99,15 @@ do NOT store full images/videos in localStorage (5MB quota).
 
 ## Design system (do not drift)
 
-Pure black `#000`, hairlines `rgba(255,255,255,.08)`, thin weights
-(Inter 200–500), JetBrains Mono 400 for technical text, ONE accent
-`#6FDCFF` (wordmark/status/scanline/CONT tag), errors `#ff5f56`,
-letterspaced uppercase labels, square corners (no border-radius),
-0.3s ease transitions only. Chart categorical colors are the separate
-validated set in config — they are data colors, not UI accents.
+Pure black `#000` with a faint starfield + one soft glow (body::before),
+hairlines `rgba(255,255,255,.08)`, Inter 200–500 body, Space Grotesk
+(--font-display) for wordmark/hero, JetBrains Mono 400 for technical
+text, ONE accent `#6FDCFF`, errors `#ff5f56`, letterspaced uppercase
+labels, 0.3s ease transitions. Shapes are FLUID: radius tokens
+--r-sm/--r-md/--r-lg/--r-pill (pill buttons, rounded cards/frames,
+Grok-style chat pill). Empty session shows the landing hero. Chart
+categorical colors are the separate validated set in config — data
+colors, not UI accents.
 
 ## How to verify changes (patterns that worked)
 
