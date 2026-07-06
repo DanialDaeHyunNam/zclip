@@ -1,0 +1,1463 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  PROVIDERS,
+  DEFAULT_PROVIDER,
+  DEFAULTS,
+  ASPECT_RATIOS,
+  DURATIONS,
+  RESOLUTIONS,
+  estimateCostUsd,
+  type ProviderName,
+  type AspectRatio,
+  type Resolution,
+} from "@/lib/config";
+import { VARIANTS, PROMPT_RULE } from "@/lib/prompts";
+
+/* ── types & storage ─────────────────────────────── */
+
+type TurnStatus = "refining" | "pending" | "done" | "error";
+
+/** One conversational step: the user's ask, the resolved prompt, and the
+ *  clip it produced. The thread of turns IS the session. */
+interface Turn {
+  id: string;
+  userText: string;
+  presetLabel?: string;
+  prompt?: string;
+  provider: ProviderName;
+  aspectRatio: AspectRatio;
+  durationSeconds: number;
+  resolution: Resolution;
+  createdAt: number;
+  status: TurnStatus;
+  jobId?: string;
+  videoUrl?: string;
+  costUsd?: number;
+  error?: string;
+  /** Tiny preview of an attached reference image (full image is sent to
+   *  the API but never persisted — localStorage quota is ~5MB). */
+  imageThumb?: string;
+  /** Mid-video frame captured after completion, used to carry visual
+   *  continuity into the next take. Pruned to the last few turns. */
+  snapshot?: string;
+  /** This take was generated from the previous take's snapshot. */
+  usedContinuity?: boolean;
+}
+
+/** Append-only archive entry — survives rewinds. */
+interface Clip {
+  jobId: string;
+  sessionId?: string;
+  provider: ProviderName;
+  prompt: string;
+  note?: string;
+  variantLabel: string;
+  createdAt: number;
+  status: "done";
+  aspectRatio: AspectRatio;
+  durationSeconds: number;
+  resolution: Resolution;
+  videoUrl?: string;
+  costUsd?: number;
+}
+
+/** A saved conversation — sessions auto-save and are switchable. */
+interface StoredSession {
+  id: string;
+  title: string;
+  updatedAt: number;
+  turns: Turn[];
+}
+
+const THREAD_KEY = "hooklab.thread";
+const SESSIONS_KEY = "hooklab.sessions";
+const SESSION_ID_KEY = "hooklab.sessionId";
+const GALLERY_KEY = "hooklab.gallery";
+const PW_KEY = "hooklab.pw";
+const POLL_MS = 3000;
+const GIVE_UP_MS = 12 * 60 * 1000;
+const MAX_SESSIONS = 20;
+
+const loadJson = <T,>(key: string, fallback: T): T => {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? "") ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+/** Storage-side compaction: keep full snapshots only on the newest few
+ *  turns so localStorage never fills up with frame data. */
+const SNAPSHOT_KEEP = 3;
+const compactTurns = (ts: Turn[]): Turn[] => {
+  const keep = new Set(
+    ts.filter((t) => t.snapshot).map((t) => t.id).slice(-SNAPSHOT_KEEP),
+  );
+  return ts.map((t) =>
+    t.snapshot && !keep.has(t.id) ? { ...t, snapshot: undefined } : t,
+  );
+};
+
+const fmtElapsed = (s: number) =>
+  `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+const fmtCost = (c?: number) => (c != null ? `$${c.toFixed(2)}` : null);
+
+const cssAspect = (a: AspectRatio) => (a === "16:9" ? "16 / 9" : "9 / 16");
+
+/* ── page ────────────────────────────────────────── */
+
+export default function Home() {
+  // password gate
+  const [gateOpen, setGateOpen] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pwInput, setPwInput] = useState("");
+  const [pwError, setPwError] = useState("");
+
+  // generation params (apply to the NEXT take)
+  const [providerId, setProviderId] = useState<ProviderName>(DEFAULT_PROVIDER);
+  const [aspect, setAspect] = useState<AspectRatio>(DEFAULTS.aspectRatio);
+  const [duration, setDuration] = useState(DEFAULTS.durationSeconds);
+  const [resolution, setResolution] = useState<Resolution>(DEFAULTS.resolution);
+
+  // chat session
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [sessionId, setSessionId] = useState("");
+  const [sessions, setSessions] = useState<StoredSession[]>([]);
+  const [draft, setDraft] = useState("");
+  const [attach, setAttach] = useState<{
+    base64: string;
+    mimeType: string;
+    thumb: string;
+  } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  /** Carry each take's snapshot into the next take automatically. */
+  const [continuity, setContinuity] = useState(true);
+  const snapCapturing = useRef(new Set<string>());
+
+  // session sidebar — closed by default, Claude-style
+  const [sideOpen, setSideOpen] = useState(false);
+  const [presetId, setPresetId] = useState("none");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const pollFails = useRef(0);
+  const threadEndRef = useRef<HTMLDivElement>(null);
+
+  // archive + keys
+  const [clips, setClips] = useState<Clip[]>([]);
+  const [keys, setKeys] = useState<Record<string, boolean>>({});
+  const [keysLoaded, setKeysLoaded] = useState(false);
+  const [keysWritable, setKeysWritable] = useState(false);
+  const [keyInput, setKeyInput] = useState("");
+  const [keySaving, setKeySaving] = useState(false);
+  const [keyMsg, setKeyMsg] = useState("");
+
+  const providerInfo = PROVIDERS[providerId];
+  const estCostUsd = estimateCostUsd(providerId, resolution, duration);
+  const keyMissing = keysLoaded && !keys[providerInfo.envVar];
+
+  const pwHeaders = useCallback(
+    (base: Record<string, string> = {}): Record<string, string> =>
+      pw ? { ...base, "x-app-password": pw } : base,
+    [pw],
+  );
+
+  /** Same-origin proxy URLs need the password as a query param (a <video>
+   *  tag can't send headers). Provider-hosted absolute URLs pass through. */
+  const withPw = useCallback(
+    (url: string) =>
+      url.startsWith("/") && pw ? `${url}&pw=${encodeURIComponent(pw)}` : url,
+    [pw],
+  );
+
+  const patchTurn = useCallback((id: string, patch: Partial<Turn>) => {
+    setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
+
+  const refreshKeys = useCallback(
+    (password?: string) =>
+      fetch("/api/keys", {
+        headers: password ?? pw ? { "x-app-password": password ?? pw } : {},
+      })
+        .then((r) => r.json())
+        .then((b) => {
+          if (b.keys) {
+            setKeys(b.keys);
+            setKeysWritable(Boolean(b.writable));
+            setKeysLoaded(true);
+          }
+        })
+        .catch(() => {}),
+    [pw],
+  );
+
+  /* boot: restore state, check password gate, resume interrupted work */
+  useEffect(() => {
+    setClips(loadJson<Clip[]>(GALLERY_KEY, []));
+    setSessions(loadJson<StoredSession[]>(SESSIONS_KEY, []));
+    const sid = localStorage.getItem(SESSION_ID_KEY) ?? `s${Date.now()}`;
+    localStorage.setItem(SESSION_ID_KEY, sid);
+    setSessionId(sid);
+    // A reload mid-refine/submit can't be resumed (no jobId yet) — mark it.
+    setTurns(
+      loadJson<Turn[]>(THREAD_KEY, []).map((t) =>
+        (t.status === "refining" || t.status === "pending") && !t.jobId
+          ? { ...t, status: "error" as const, error: "Interrupted by reload — send again" }
+          : t,
+      ),
+    );
+
+    const savedPw = localStorage.getItem(PW_KEY) ?? "";
+    fetch("/api/auth", {
+      headers: savedPw ? { "x-app-password": savedPw } : {},
+    })
+      .then((r) => r.json())
+      .then(({ required, ok }) => {
+        if (required && !ok) {
+          localStorage.removeItem(PW_KEY);
+          setGateOpen(true);
+        } else {
+          if (required) setPw(savedPw);
+          setReady(true);
+          refreshKeys(savedPw);
+        }
+      })
+      .catch(() => setError("Could not reach the API — refresh to retry."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* persist (snapshots compacted to the newest few turns) */
+  useEffect(() => {
+    if (turns.length || localStorage.getItem(THREAD_KEY)) {
+      localStorage.setItem(THREAD_KEY, JSON.stringify(compactTurns(turns)));
+    }
+  }, [turns]);
+
+  /* auto-save the current thread into the session history */
+  useEffect(() => {
+    if (!sessionId) return;
+    setSessions((prev) => {
+      let next = prev.filter((s) => s.id !== sessionId);
+      if (turns.length) {
+        next = [
+          {
+            id: sessionId,
+            title: turns[0].userText.slice(0, 60),
+            updatedAt: Date.now(),
+            turns: compactTurns(turns),
+          },
+          ...next,
+        ].slice(0, MAX_SESSIONS);
+      }
+      localStorage.setItem(SESSIONS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, [turns, sessionId]);
+
+  /* snapshot capture: once a take is done, grab a mid-video frame so the
+     next take can start from it (visual continuity). Cross-origin videos
+     without CORS headers simply skip this — the feature degrades quietly. */
+  useEffect(() => {
+    const t = turns.find(
+      (x) =>
+        x.status === "done" &&
+        x.videoUrl &&
+        !x.snapshot &&
+        !snapCapturing.current.has(x.id),
+    );
+    if (!t) return;
+    snapCapturing.current.add(t.id);
+    const v = document.createElement("video");
+    v.crossOrigin = "anonymous";
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.src = withPw(t.videoUrl!);
+    v.addEventListener("loadedmetadata", () => {
+      v.currentTime = Math.max(0, Math.min(v.duration * 0.5, v.duration - 0.1));
+    });
+    v.addEventListener("seeked", () => {
+      try {
+        const r = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(v.videoWidth * r));
+        canvas.height = Math.max(1, Math.round(v.videoHeight * r));
+        canvas.getContext("2d")!.drawImage(v, 0, 0, canvas.width, canvas.height);
+        patchTurn(t.id, { snapshot: canvas.toDataURL("image/jpeg", 0.72) });
+      } catch {
+        /* tainted canvas (no CORS) — no continuity for this take */
+      }
+      v.removeAttribute("src");
+      v.load();
+    });
+  }, [turns, withPw, patchTurn]);
+  useEffect(() => {
+    if (clips.length || localStorage.getItem(GALLERY_KEY)) {
+      localStorage.setItem(GALLERY_KEY, JSON.stringify(clips));
+    }
+  }, [clips]);
+
+  /* the one in-flight turn (single-flight session) */
+  const busyTurn = turns.find(
+    (t) => t.status === "refining" || t.status === "pending",
+  );
+  const pollTurn = busyTurn?.status === "pending" && busyTurn.jobId ? busyTurn : undefined;
+
+  /* elapsed ticker — from the send click through render completion */
+  useEffect(() => {
+    if (!busyTurn) return;
+    const startedAt = busyTurn.createdAt;
+    const update = () =>
+      setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    update();
+    const tick = setInterval(update, 1000);
+    return () => clearInterval(tick);
+  }, [busyTurn?.id, busyTurn?.status === "pending"]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* poll provider status while a video job is live */
+  useEffect(() => {
+    if (!pollTurn || !ready) return;
+    const { id, jobId, provider, createdAt } = pollTurn;
+    pollFails.current = 0;
+
+    const finish = (patch: Partial<Turn>, message?: string) => {
+      patchTurn(id, patch);
+      if (message) setError(message);
+    };
+
+    const poll = async () => {
+      if (Date.now() - createdAt > GIVE_UP_MS) {
+        finish({ status: "error", error: "Timed out after 12 minutes" });
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/status?id=${encodeURIComponent(jobId!)}&provider=${provider}`,
+          { headers: pwHeaders() },
+        );
+        if (res.status === 401) {
+          finish({ status: "error", error: "Password rejected" });
+          setGateOpen(true);
+          return;
+        }
+        const body = await res.json();
+        pollFails.current = 0;
+        if (body.state === "done") {
+          finish({ status: "done", videoUrl: body.videoUrl });
+        } else if (body.state === "error") {
+          finish({ status: "error", error: body.error }, body.error);
+        }
+      } catch {
+        if (++pollFails.current >= 5) {
+          finish(
+            { status: "error", error: "Lost connection" },
+            "Lost connection while polling — check your network.",
+          );
+        }
+      }
+    };
+
+    poll();
+    const iv = setInterval(poll, POLL_MS);
+    return () => clearInterval(iv);
+  }, [pollTurn?.jobId, ready, pwHeaders, patchTurn]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* archive every finished take (survives rewinds) */
+  useEffect(() => {
+    for (const t of turns) {
+      if (t.status !== "done" || !t.jobId || !t.videoUrl) continue;
+      const jobId = t.jobId;
+      setClips((cs) =>
+        cs.some((c) => c.jobId === jobId)
+          ? cs
+          : [
+              {
+                jobId,
+                sessionId,
+                provider: t.provider,
+                prompt: t.prompt ?? "",
+                note: t.userText,
+                variantLabel: t.presetLabel ?? "Chat",
+                createdAt: t.createdAt,
+                status: "done",
+                aspectRatio: t.aspectRatio,
+                durationSeconds: t.durationSeconds,
+                resolution: t.resolution,
+                videoUrl: t.videoUrl,
+                costUsd: t.costUsd,
+              },
+              ...cs,
+            ],
+      );
+    }
+  }, [turns]);
+
+  /* keep the thread scrolled to the latest turn */
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [turns.length, busyTurn?.status]);
+
+  /* close the sidebar on Escape */
+  useEffect(() => {
+    if (!sideOpen) return;
+    const h = (e: KeyboardEvent) => e.key === "Escape" && setSideOpen(false);
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [sideOpen]);
+
+  /* actions */
+
+  /** Downscale client-side so payloads stay small: 1280px for the API,
+   *  120px thumb for the thread. Re-encoded as JPEG either way. */
+  const attachImageFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const scale = (max: number) => {
+        const r = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(bitmap.width * r));
+        canvas.height = Math.max(1, Math.round(bitmap.height * r));
+        canvas
+          .getContext("2d")!
+          .drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL("image/jpeg", 0.85);
+      };
+      setAttach({
+        base64: scale(1280).split(",")[1],
+        mimeType: "image/jpeg",
+        thumb: scale(120),
+      });
+    } catch {
+      setError("Could not read that image.");
+    }
+  };
+
+  const unlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError("");
+    try {
+      const res = await fetch("/api/auth", {
+        headers: { "x-app-password": pwInput },
+      });
+      const { ok } = await res.json();
+      if (ok) {
+        localStorage.setItem(PW_KEY, pwInput);
+        setPw(pwInput);
+        setGateOpen(false);
+        setReady(true);
+        refreshKeys(pwInput);
+      } else {
+        setPwError("Wrong password.");
+      }
+    } catch {
+      setPwError("Could not reach the API.");
+    }
+  };
+
+  const send = async () => {
+    const text = draft.trim();
+    const manual = attach;
+    const preset =
+      turns.length === 0 && presetId !== "none"
+        ? VARIANTS.find((v) => v.id === presetId)
+        : undefined;
+    if (busyTurn || (!text && !preset && !manual) || keyMissing) return;
+    setError(null);
+
+    // Reference precedence: manual attachment > continuity snapshot.
+    const lastSnap =
+      !manual && continuity
+        ? [...turns].reverse().find((t) => t.snapshot)?.snapshot
+        : undefined;
+    const refImage = manual
+      ? { base64: manual.base64, mimeType: manual.mimeType }
+      : lastSnap
+        ? { base64: lastSnap.split(",")[1], mimeType: "image/jpeg" }
+        : undefined;
+
+    const id = `t${Date.now()}`;
+    const createdAt = Date.now();
+    const base = turns.length
+      ? [...turns].reverse().find((t) => t.prompt)?.prompt
+      : preset?.prompt;
+    // Earlier takes give the refiner context for "take 1's background" etc.
+    const history = turns
+      .map((t, i) => ({ take: i + 1, request: t.userText, prompt: t.prompt ?? "" }))
+      .filter((h) => h.prompt)
+      .slice(-6);
+
+    const turn: Turn = {
+      id,
+      userText:
+        text ||
+        (preset
+          ? `Start from preset: ${preset.label}`
+          : "Use the attached image as the reference."),
+      presetLabel: preset?.label,
+      provider: providerId,
+      aspectRatio: aspect,
+      durationSeconds: duration,
+      resolution,
+      createdAt,
+      status: "refining",
+      costUsd: estCostUsd ?? undefined,
+      imageThumb: manual?.thumb,
+      usedContinuity: Boolean(lastSnap && !manual),
+    };
+    setTurns((ts) => [...ts, turn]);
+    setDraft("");
+    setAttach(null);
+    setSelectedId(id);
+
+    try {
+      let prompt: string;
+      if (!text && preset && !manual) {
+        prompt = preset.prompt; // preset as-is, no LLM pass needed
+      } else {
+        const r = await fetch("/api/refine", {
+          method: "POST",
+          headers: pwHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({
+            base,
+            history,
+            message:
+              text || "Use the attached image as the visual reference for the clip.",
+            image: refImage,
+          }),
+        });
+        const b = await r.json();
+        if (r.status === 401) {
+          patchTurn(id, { status: "error", error: "Password rejected" });
+          setGateOpen(true);
+          return;
+        }
+        if (!r.ok) {
+          patchTurn(id, { status: "error", error: b.error ?? "Prompt rewrite failed" });
+          return;
+        }
+        prompt = b.prompt;
+      }
+      patchTurn(id, { prompt });
+
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          prompt,
+          provider: providerId,
+          aspectRatio: aspect,
+          durationSeconds: duration,
+          resolution,
+          image: refImage,
+        }),
+      });
+      const body = await res.json();
+      if (res.status === 401) {
+        patchTurn(id, { status: "error", error: "Password rejected" });
+        setGateOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        patchTurn(id, { status: "error", error: body.error ?? "Submit failed" });
+        return;
+      }
+      patchTurn(id, { status: "pending", jobId: body.jobId });
+    } catch {
+      patchTurn(id, { status: "error", error: "Network error — try again" });
+    }
+  };
+
+  /** Claude-style rewind: cut the thread after this turn and continue the
+   *  conversation from there. Finished clips stay in the archive below. */
+  const rewindTo = (id: string) => {
+    const idx = turns.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    if (
+      idx < turns.length - 1 &&
+      !window.confirm(
+        "Rewind here? Later turns leave the thread (finished clips stay in the archive).",
+      )
+    )
+      return;
+    setTurns((ts) => ts.slice(0, idx + 1));
+    setSelectedId(id);
+  };
+
+  /** Current thread is already auto-saved — just move to a fresh id. */
+  const newSession = () => {
+    if (busyTurn) return;
+    const nid = `s${Date.now()}`;
+    localStorage.setItem(SESSION_ID_KEY, nid);
+    setSessionId(nid);
+    setTurns([]);
+    setSelectedId(null);
+    setPresetId("none");
+    setError(null);
+  };
+
+  const openSession = (id: string) => {
+    if (!id || id === sessionId || busyTurn) return;
+    const found = sessions.find((s) => s.id === id);
+    if (!found) return;
+    localStorage.setItem(SESSION_ID_KEY, id);
+    setSessionId(id);
+    setTurns(found.turns);
+    setSelectedId(null);
+    setError(null);
+  };
+
+  const deleteSession = (id: string) => {
+    if (busyTurn && id === sessionId) return;
+    if (!window.confirm("Delete this session from history? Archived clips stay."))
+      return;
+    const next = sessions.filter((s) => s.id !== id);
+    setSessions(next);
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(next));
+    if (id === sessionId) {
+      const nid = `s${Date.now()}`;
+      localStorage.setItem(SESSION_ID_KEY, nid);
+      setSessionId(nid);
+      setTurns([]);
+      setSelectedId(null);
+      setError(null);
+    }
+  };
+
+  /** Re-run a failed take. Uses its saved prompt (or re-refines from its
+   *  message) with the CURRENTLY selected model/params — so you can flip
+   *  the model and retry the same take. */
+  const retryTurn = async (id: string) => {
+    if (busyTurn) return;
+    const idx = turns.findIndex((t) => t.id === id);
+    const turn = turns[idx];
+    if (!turn || turn.status !== "error") return;
+    setError(null);
+    setSelectedId(id);
+    patchTurn(id, {
+      status: "refining",
+      error: undefined,
+      jobId: undefined,
+      videoUrl: undefined,
+      createdAt: Date.now(),
+      provider: providerId,
+      aspectRatio: aspect,
+      durationSeconds: duration,
+      resolution,
+      costUsd: estCostUsd ?? undefined,
+    });
+    try {
+      let prompt = turn.prompt;
+      if (!prompt) {
+        const earlier = turns.slice(0, idx);
+        const base = [...earlier].reverse().find((t) => t.prompt)?.prompt;
+        const history = earlier
+          .map((t, i) => ({ take: i + 1, request: t.userText, prompt: t.prompt ?? "" }))
+          .filter((h) => h.prompt)
+          .slice(-6);
+        const r = await fetch("/api/refine", {
+          method: "POST",
+          headers: pwHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({ base, history, message: turn.userText }),
+        });
+        const b = await r.json();
+        if (!r.ok) {
+          patchTurn(id, { status: "error", error: b.error ?? "Prompt rewrite failed" });
+          return;
+        }
+        prompt = b.prompt;
+        patchTurn(id, { prompt });
+      }
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          prompt,
+          provider: providerId,
+          aspectRatio: aspect,
+          durationSeconds: duration,
+          resolution,
+        }),
+      });
+      const body = await res.json();
+      if (res.status === 401) {
+        patchTurn(id, { status: "error", error: "Password rejected" });
+        setGateOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        patchTurn(id, { status: "error", error: body.error ?? "Submit failed" });
+        return;
+      }
+      patchTurn(id, { status: "pending", jobId: body.jobId });
+    } catch {
+      patchTurn(id, { status: "error", error: "Network error — try again" });
+    }
+  };
+
+  const saveKey = async () => {
+    if (!keyInput.trim() || keySaving) return;
+    setKeySaving(true);
+    setKeyMsg("");
+    try {
+      const res = await fetch("/api/keys", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ envVar: providerInfo.envVar, value: keyInput.trim() }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setKeyMsg(body.error ?? "Could not save the key");
+      } else {
+        setKeyInput("");
+        setKeyMsg(`Saved to .env.local — ${providerInfo.label} is ready.`);
+        await refreshKeys();
+      }
+    } catch {
+      setKeyMsg("Network error — could not save the key.");
+    } finally {
+      setKeySaving(false);
+    }
+  };
+
+  const download = (videoUrl: string) => {
+    const a = document.createElement("a");
+    if (videoUrl.startsWith("/")) {
+      a.href = `${withPw(videoUrl)}&dl=1`;
+    } else {
+      a.href = videoUrl;
+      a.target = "_blank";
+      a.rel = "noreferrer";
+    }
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  const removeClip = (jobId: string) =>
+    setClips((cs) => cs.filter((c) => c.jobId !== jobId));
+
+  const clearArchive = () => {
+    if (window.confirm("Clear the whole archive?")) setClips([]);
+  };
+
+  /* derived: what the preview shows */
+  const previewTurn =
+    turns.find((t) => t.id === selectedId) ??
+    busyTurn ??
+    [...turns].reverse().find((t) => t.status === "done") ??
+    turns[turns.length - 1];
+  const previewBusy =
+    previewTurn && (previewTurn.status === "refining" || previewTurn.status === "pending");
+
+  const status = previewBusy
+    ? { text: previewTurn.status === "refining" ? "PREPARING" : "RENDERING", dot: "live" }
+    : previewTurn?.status === "done"
+      ? { text: "COMPLETE", dot: "done" }
+      : previewTurn?.status === "error"
+        ? { text: "FAULT", dot: "fault" }
+        : { text: "STANDBY", dot: "" };
+
+  const frameAspect = cssAspect(previewTurn?.aspectRatio ?? aspect);
+
+  /* spend rollup: archive is the ledger (append-only, survives rewinds) */
+  const spend = (() => {
+    const bySession = new Map<
+      string,
+      { label: string; latest: number; total: number; parts: Map<ProviderName, number> }
+    >();
+    for (const c of clips) {
+      if (c.costUsd == null) continue;
+      const key = c.sessionId ?? "earlier";
+      let g = bySession.get(key);
+      if (!g) {
+        g = {
+          label:
+            key === sessionId
+              ? "Current session"
+              : sessions.find((s) => s.id === key)?.title ??
+                (key === "earlier" ? "Earlier takes" : "Removed session"),
+          latest: 0,
+          total: 0,
+          parts: new Map(),
+        };
+        bySession.set(key, g);
+      }
+      g.latest = Math.max(g.latest, c.createdAt);
+      g.total += c.costUsd;
+      g.parts.set(c.provider, (g.parts.get(c.provider) ?? 0) + c.costUsd);
+    }
+    const rows = [...bySession.values()].sort((a, b) => b.latest - a.latest);
+    const total = rows.reduce((s, r) => s + r.total, 0);
+    const max = Math.max(...rows.map((r) => r.total), 0.01);
+    const providers = (Object.keys(PROVIDERS) as ProviderName[]).filter((p) =>
+      rows.some((r) => r.parts.has(p)),
+    );
+    return { rows, total, max, providers };
+  })();
+  const canSend =
+    !busyTurn &&
+    ready &&
+    !keyMissing &&
+    Boolean(
+      draft.trim() || attach || (turns.length === 0 && presetId !== "none"),
+    );
+
+  /* ── render ────────────────────────────────────── */
+
+  if (gateOpen) {
+    return (
+      <div className="gate">
+        <form className="gate-inner" onSubmit={unlock}>
+          <span className="label">Access · Enter shared password</span>
+          <input
+            type="password"
+            value={pwInput}
+            onChange={(e) => setPwInput(e.target.value)}
+            autoFocus
+            aria-label="Password"
+          />
+          <button type="submit" className="btn-primary">
+            Enter
+          </button>
+          {pwError && <div className="gate-error fade">{pwError}</div>}
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* left rail — always visible; panel slides out Claude-style */}
+      <aside className="rail">
+        <button
+          className={`rail-btn ${sideOpen ? "on" : ""}`}
+          onClick={() => setSideOpen((o) => !o)}
+          title="Sessions"
+          aria-label="Toggle session sidebar"
+        >
+          ≡
+        </button>
+        <button
+          className="rail-btn"
+          onClick={() => {
+            newSession();
+            setSideOpen(false);
+          }}
+          disabled={Boolean(busyTurn)}
+          title="New session"
+          aria-label="New session"
+        >
+          +
+        </button>
+      </aside>
+
+      {sideOpen && (
+        <div className="side-backdrop" onClick={() => setSideOpen(false)} />
+      )}
+      <aside className={`side-panel ${sideOpen ? "open" : ""}`}>
+        <div className="side-head">
+          <span className="label">Sessions</span>
+          <button
+            className="link-btn"
+            onClick={() => {
+              newSession();
+              setSideOpen(false);
+            }}
+            disabled={Boolean(busyTurn)}
+          >
+            + New
+          </button>
+        </div>
+        <div className="side-list">
+          {sessions.length === 0 && (
+            <p className="hint">Past sessions appear here automatically.</p>
+          )}
+          {sessions.map((s) => (
+            <div
+              key={s.id}
+              className={`side-item ${s.id === sessionId ? "active" : ""}`}
+              onClick={() => {
+                openSession(s.id);
+                setSideOpen(false);
+              }}
+            >
+              <div className="side-title">{s.title}</div>
+              <div className="side-sub">
+                {new Date(s.updatedAt).toLocaleString([], {
+                  month: "numeric",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                · {s.turns.length} takes
+              </div>
+              <button
+                className="side-del"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteSession(s.id);
+                }}
+                title="Delete session"
+                aria-label={`Delete session ${s.title}`}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      <div className="shell">
+      <header className="top">
+        <div className="wordmark">
+          HOOK LAB<span>_</span>
+        </div>
+        <div className="top-meta">
+          {providerInfo.modelId.toUpperCase()} · {aspect} · {duration}S
+        </div>
+      </header>
+
+      <main className="grid-main">
+        {/* session thread */}
+        <section className="session-col">
+          <div className="output-head">
+            <span className="label">Session</span>
+            <span className="status-line">{turns.length > 0 ? `${turns.length} TAKES` : ""}</span>
+          </div>
+
+          <div className="thread">
+            {turns.length === 0 && (
+              <p className="hint thread-empty">
+                Describe the clip you want in your own words — or pick a
+                preset below and just hit START. Every message becomes a new
+                take; rewind to any point to branch from there.
+              </p>
+            )}
+            {turns.map((t, i) => (
+              <div
+                key={t.id}
+                className={`turn ${previewTurn?.id === t.id ? "selected" : ""}`}
+                onClick={() => setSelectedId(t.id)}
+              >
+                {t.imageThumb && (
+                  <img className="turn-img" src={t.imageThumb} alt="reference" />
+                )}
+                <div className="turn-user">{t.userText}</div>
+                {t.prompt && (
+                  <details
+                    className="turn-prompt"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <summary>Prompt · Take {i + 1}</summary>
+                    <p>{t.prompt}</p>
+                  </details>
+                )}
+                <div className="turn-status">
+                  <span className={`dot ${
+                    t.status === "done" ? "done" : t.status === "error" ? "fault" : "live"
+                  }`} />
+                  <span className="mono">
+                    {t.status === "refining" && "PREPARING…"}
+                    {t.status === "pending" && `RENDERING ${busyTurn?.id === t.id ? fmtElapsed(elapsed) : ""}`}
+                    {t.status === "done" &&
+                      `TAKE ${i + 1} · ${PROVIDERS[t.provider].label.toUpperCase()}${fmtCost(t.costUsd) ? ` · ${fmtCost(t.costUsd)}` : ""}`}
+                    {t.status === "error" && "FAILED"}
+                  </span>
+                  {t.usedContinuity && (
+                    <span className="cont-tag" title="Started from the previous take's frame">
+                      CONT
+                    </span>
+                  )}
+                  <span className="turn-spacer" />
+                  {t.status === "error" && (
+                    <button
+                      className="link-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        retryTurn(t.id);
+                      }}
+                      disabled={Boolean(busyTurn)}
+                      title="Retry this take with the currently selected model & params"
+                    >
+                      ↻ Retry
+                    </button>
+                  )}
+                  {t.status !== "refining" && t.status !== "pending" && (
+                    <button
+                      className="link-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        rewindTo(t.id);
+                      }}
+                      title="Continue the conversation from this take"
+                    >
+                      ↩ Rewind
+                    </button>
+                  )}
+                </div>
+                {t.status === "error" && t.error && (
+                  <div className="turn-error">{t.error}</div>
+                )}
+              </div>
+            ))}
+            <div ref={threadEndRef} />
+          </div>
+
+          {error && <div className="error-box fade">{error}</div>}
+
+          <div
+            className={`chat-zone ${dragOver ? "dragover" : ""}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) attachImageFile(f);
+            }}
+          >
+            {attach && (
+              <div className="attach-chip fade">
+                <img src={attach.thumb} alt="attached reference" />
+                <span className="label">Image reference · goes with the next take</span>
+                <button className="link-btn danger" onClick={() => setAttach(null)}>
+                  Remove
+                </button>
+              </div>
+            )}
+            <div className="chat-bar">
+              {turns.length === 0 && (
+                <div className="select-wrap small preset-select">
+                  <select
+                    aria-label="Preset"
+                    value={presetId}
+                    onChange={(e) => setPresetId(e.target.value)}
+                  >
+                    <option value="none">No preset</option>
+                    {VARIANTS.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <button
+                className="attach-btn"
+                title="Attach a reference image — or drag & drop / paste one"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={Boolean(busyTurn)}
+              >
+                +
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) attachImageFile(f);
+                  e.target.value = "";
+                }}
+              />
+              <textarea
+                className="chat-input"
+                rows={2}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                onPaste={(e) => {
+                  const item = [...e.clipboardData.items].find((i) =>
+                    i.type.startsWith("image/"),
+                  );
+                  const f = item?.getAsFile();
+                  if (f) {
+                    e.preventDefault();
+                    attachImageFile(f);
+                  }
+                }}
+                placeholder={
+                  busyTurn
+                    ? "Rendering — wait for this take…"
+                    : turns.length === 0
+                      ? "Describe the clip… (drop an image to use it as reference)"
+                      : "What should change in the next take?"
+                }
+                disabled={Boolean(busyTurn)}
+              />
+              <button className="btn-primary send-btn" onClick={send} disabled={!canSend}>
+                {turns.length === 0 && !draft.trim() && presetId !== "none"
+                  ? "Start"
+                  : "Send"}
+              </button>
+            </div>
+          </div>
+          <p className="hint">{PROMPT_RULE}</p>
+        </section>
+
+        {/* preview + controls — rendered into the LEFT column via CSS order */}
+        <section className="output-col">
+          <div className="output-head">
+            <span className="label">Output</span>
+            <span className="status-line">
+              <span className={`dot ${status.dot}`} />
+              {status.text}
+            </span>
+          </div>
+
+          <div className="frame" style={{ aspectRatio: frameAspect }}>
+            {previewBusy ? (
+              <>
+                <div className="scanline" />
+                <span className="label">Elapsed</span>
+                <span className="timer">{fmtElapsed(elapsed)}</span>
+                <span className="timer-sub">
+                  {previewTurn.status === "refining"
+                    ? "REWRITING PROMPT…"
+                    : "USUALLY 60–180S"}
+                  <br />
+                  {previewTurn.jobId?.split("/").pop() ?? ""}
+                </span>
+              </>
+            ) : previewTurn?.videoUrl ? (
+              <video
+                key={previewTurn.id}
+                className="fade"
+                src={withPw(previewTurn.videoUrl)}
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls
+              />
+            ) : previewTurn?.status === "error" ? (
+              <div className="frame-fault fade">
+                <span className="label">Take failed</span>
+                <p>{previewTurn.error}</p>
+                <button
+                  className="btn-ghost"
+                  onClick={() => retryTurn(previewTurn.id)}
+                  disabled={Boolean(busyTurn)}
+                >
+                  ↻ Retry with current settings
+                </button>
+              </div>
+            ) : (
+              <>
+                <span className="frame-idle-label">Output</span>
+                <span className="frame-idle-sub">
+                  {aspect} · MP4 · {resolution.toUpperCase()}
+                </span>
+              </>
+            )}
+          </div>
+
+          {previewTurn?.status === "done" && previewTurn.videoUrl && (
+            <div className="result-actions fade">
+              <button
+                className="btn-ghost"
+                onClick={() => download(previewTurn.videoUrl!)}
+              >
+                ↓ Download
+              </button>
+              <span className="cost">{fmtCost(previewTurn.costUsd) ?? ""}</span>
+            </div>
+          )}
+
+          {/* next-take parameters */}
+          <div className="panel-controls">
+            <div className="field">
+              <label className="label" htmlFor="model">
+                Model
+              </label>
+              <div className="select-wrap">
+                <select
+                  id="model"
+                  value={providerId}
+                  onChange={(e) => {
+                    setProviderId(e.target.value as ProviderName);
+                    setKeyMsg("");
+                    setKeyInput("");
+                  }}
+                >
+                  {(Object.keys(PROVIDERS) as ProviderName[]).map((p) => (
+                    <option key={p} value={p}>
+                      {PROVIDERS[p].label}
+                      {keysLoaded && !keys[PROVIDERS[p].envVar] ? " — key missing" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {keyMissing && (
+              <div className="stub-note fade">
+                <span className="label">
+                  {providerInfo.label} · API key required
+                </span>
+                {keysWritable ? (
+                  <>
+                    <div className="key-row">
+                      <input
+                        type="password"
+                        value={keyInput}
+                        onChange={(e) => setKeyInput(e.target.value)}
+                        placeholder={`Paste ${providerInfo.envVar}`}
+                        aria-label={providerInfo.envVar}
+                        onKeyDown={(e) => e.key === "Enter" && saveKey()}
+                      />
+                      <button
+                        className="btn-ghost"
+                        onClick={saveKey}
+                        disabled={keySaving || !keyInput.trim()}
+                      >
+                        {keySaving ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                    <p className="key-hint">
+                      Writes to <code>.env.local</code>, effective immediately ·{" "}
+                      <a href={providerInfo.keyUrl} target="_blank" rel="noreferrer">
+                        Get a key ↗
+                      </a>
+                    </p>
+                  </>
+                ) : (
+                  <p className="key-hint">
+                    Set <code>{providerInfo.envVar}</code> in Vercel → Settings →
+                    Environment Variables, then redeploy ·{" "}
+                    <a href={providerInfo.keyUrl} target="_blank" rel="noreferrer">
+                      Get a key ↗
+                    </a>
+                  </p>
+                )}
+                {keyMsg && <p className="key-msg">{keyMsg}</p>}
+              </div>
+            )}
+            {!keyMissing && keyMsg && <p className="key-msg fade">{keyMsg}</p>}
+            {providerInfo.note && <p className="key-hint">{providerInfo.note}</p>}
+
+            <div className="params">
+              <div className="param">
+                <span className="label">Aspect</span>
+                <div className="select-wrap small">
+                  <select
+                    aria-label="Aspect ratio"
+                    value={aspect}
+                    onChange={(e) => setAspect(e.target.value as AspectRatio)}
+                  >
+                    {ASPECT_RATIOS.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="param">
+                <span className="label">Duration</span>
+                <div className="select-wrap small">
+                  <select
+                    aria-label="Duration"
+                    value={duration}
+                    onChange={(e) => setDuration(Number(e.target.value))}
+                  >
+                    {DURATIONS.map((d) => (
+                      <option
+                        key={d}
+                        value={d}
+                        disabled={resolution !== "720p" && d !== 8}
+                      >
+                        {d}S{d === 4 ? " · 3S BEAT" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="param">
+                <span className="label">Resolution</span>
+                <div className="select-wrap small">
+                  <select
+                    aria-label="Resolution"
+                    value={resolution}
+                    onChange={(e) => {
+                      const r = e.target.value as Resolution;
+                      setResolution(r);
+                      if (r !== "720p") setDuration(8);
+                    }}
+                  >
+                    {RESOLUTIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="param">
+                <span className="label">Continuity</span>
+                <div className="select-wrap small">
+                  <select
+                    aria-label="Continuity"
+                    value={continuity ? "on" : "off"}
+                    onChange={(e) => setContinuity(e.target.value === "on")}
+                    title="Carry a frame from the last take into the next one"
+                  >
+                    <option value="on">ON</option>
+                    <option value="off">OFF</option>
+                  </select>
+                </div>
+              </div>
+              <div className="param">
+                <span className="label">Est. Cost</span>
+                <span className="param-value cost-live">
+                  {estCostUsd != null ? `≈$${estCostUsd.toFixed(2)}` : "—"}
+                </span>
+              </div>
+            </div>
+            {resolution !== "720p" && (
+              <p className="hint">1080P locks duration to 8S (Veo constraint).</p>
+            )}
+          </div>
+        </section>
+      </main>
+
+      {/* spend — estimated, per session, stacked by model */}
+      {spend.total > 0 && (
+        <section className="archive spend">
+          <div className="archive-head">
+            <span className="label">Spend · Estimated</span>
+          </div>
+          <p className="archive-note">
+            Computed as duration × published per-second price for each finished
+            take — providers don&apos;t report billed totals per request.
+          </p>
+          <div className="spend-hero">${spend.total.toFixed(2)}</div>
+          <div className="spend-legend">
+            {spend.providers.map((p) => (
+              <span key={p} className="spend-chip">
+                <i style={{ background: PROVIDERS[p].chartColor }} />
+                {PROVIDERS[p].label}
+              </span>
+            ))}
+          </div>
+          <div className="spend-rows">
+            {spend.rows.map((r) => (
+              <div className="spend-row" key={r.label + r.latest}>
+                <span className="spend-label" title={r.label}>
+                  {r.label}
+                </span>
+                <div className="spend-bar">
+                  {spend.providers.map((p) => {
+                    const v = r.parts.get(p);
+                    if (!v) return null;
+                    return (
+                      <i
+                        key={p}
+                        style={{
+                          width: `${(v / spend.max) * 100}%`,
+                          background: PROVIDERS[p].chartColor,
+                        }}
+                        title={`${PROVIDERS[p].label} · $${v.toFixed(2)}`}
+                      />
+                    );
+                  })}
+                </div>
+                <span className="spend-total">${r.total.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* archive — append-only, survives rewinds */}
+      <section className="archive">
+        <div className="archive-head">
+          <span className="label">Archive · {clips.length}</span>
+          {clips.length > 0 && (
+            <button className="link-btn danger" onClick={clearArchive}>
+              Clear All
+            </button>
+          )}
+        </div>
+        <p className="archive-note">
+          Every finished take lands here, even after a rewind. Stored in this
+          browser only; providers delete source files after a retention
+          window (~2 days on Veo) — download anything you want to keep.
+        </p>
+
+        {clips.length === 0 ? (
+          <p className="hint">Finished takes collect here for A/B comparison.</p>
+        ) : (
+          <div className="gallery-grid">
+            {clips.map((clip) => (
+              <div className="card" key={clip.jobId}>
+                <div
+                  className="thumb"
+                  style={{ aspectRatio: cssAspect(clip.aspectRatio) }}
+                >
+                  {clip.videoUrl ? (
+                    <video
+                      src={withPw(clip.videoUrl)}
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                      onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                      onMouseLeave={(e) => e.currentTarget.pause()}
+                    />
+                  ) : (
+                    <span className="thumb-state">Unavailable</span>
+                  )}
+                </div>
+                <div className="card-meta">
+                  <div className="card-row">
+                    <span>
+                      {PROVIDERS[clip.provider]?.label ?? clip.provider} ·{" "}
+                      {clip.variantLabel}
+                    </span>
+                    <span>{fmtCost(clip.costUsd) ?? ""}</span>
+                  </div>
+                  <p className="card-prompt" title={clip.prompt}>
+                    {clip.note ?? clip.prompt}
+                  </p>
+                  <div className="card-actions">
+                    {clip.videoUrl && (
+                      <button
+                        className="link-btn"
+                        onClick={() => download(clip.videoUrl!)}
+                      >
+                        Download
+                      </button>
+                    )}
+                    <button
+                      className="link-btn danger"
+                      onClick={() => removeClip(clip.jobId)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+      </div>
+    </>
+  );
+}

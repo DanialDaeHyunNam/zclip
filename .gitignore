@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.vercel/
+# env files can hold real API keys — ignore every variant except the template
+.env
+.env.*
+!.env.example
+next-env.d.ts
+*.tsbuildinfo
+.DS_Store
+.gstack/
