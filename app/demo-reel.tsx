@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 /**
  * Animated product demo — a miniature studio session that plays like a
- * screen recording, on a ~19s loop. Pure state-machine + CSS, no video
- * file: type → render → take lands → pin as context → next take.
+ * screen recording, on a ~19s loop. The clips in /public/demo/ are REAL
+ * ZCLIP output (composeStarter → refine → Veo), not stock.
  */
 
 const MSG1 = "A blonde girl in her bedroom — quiet 'wait, what?' at her phone";
@@ -35,12 +35,14 @@ export default function DemoReel() {
     <figure className="demo fade" aria-label="Product demo animation">
       <div className="demo-frame">
         {done1 ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={done2 ? "b3" : "b1"}
-            src={done2 ? "/starters/blonde-3.jpg" : "/starters/blonde-1.jpg"}
-            alt=""
+          <video
+            key={done2 ? "t2" : "t1"}
+            src={done2 ? "/demo/take-2.mp4" : "/demo/take-1.mp4"}
             className="demo-clip"
+            autoPlay
+            muted
+            loop
+            playsInline
           />
         ) : render1 ? (
           <>
@@ -51,7 +53,6 @@ export default function DemoReel() {
           <span className="frame-idle-sub">9:16 · MP4</span>
         )}
         {render2 && <div className="scanline" />}
-        {(done1 || done2) && !render2 && <span className="demo-play">▶</span>}
       </div>
 
       <div className="demo-chat">
@@ -80,7 +81,7 @@ export default function DemoReel() {
         )}
         {done2 && <div className="demo-spend fade">SESSION SPEND $0.80 · VEO ▮▮▮▮▮▮▮▮</div>}
       </div>
-      <figcaption className="demo-cap">THE ACTUAL FLOW · SPED UP · LOOPS</figcaption>
+      <figcaption className="demo-cap">REAL OUTPUT — THESE TAKES WERE MADE WITH ZCLIP ITSELF · SPED UP · LOOPS</figcaption>
     </figure>
   );
 }

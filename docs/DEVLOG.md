@@ -283,6 +283,15 @@ All entries 2026-07-06 (single build session, owner: Dan).
 - Workflow: cut.donkeyuse.com step now notes cut is open source and
   free as well.
 
+## 18. Demo reel plays REAL ZCLIP output
+
+- Generated two takes through the actual pipeline (composeStarter ->
+  /api/refine -> /api/generate Veo -> /api/video download): blonde
+  bedroom quiet-surprise, then refine "same girl, cafe window" (~$0.80).
+  Saved to public/demo/take-{1,2}.mp4 (0.6MB + 2.6MB) — Google purges
+  its copies in ~2 days but ours are local. DemoReel now plays them
+  (autoplay/muted/loop) instead of still portraits; caption says so.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.
