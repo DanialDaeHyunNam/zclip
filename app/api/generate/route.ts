@@ -4,7 +4,8 @@ import {
   DEFAULT_PROVIDER,
   DEFAULTS,
   ASPECT_RATIOS,
-  DURATIONS,
+  DURATION_MIN,
+  DURATION_MAX,
   RESOLUTIONS,
   type AspectRatio,
   type Resolution,
@@ -71,16 +72,12 @@ export async function POST(req: Request) {
   const resolution = (body.resolution ?? DEFAULTS.resolution) as Resolution;
   if (
     !ASPECT_RATIOS.includes(aspectRatio) ||
-    !DURATIONS.includes(durationSeconds) ||
+    !Number.isInteger(durationSeconds) ||
+    durationSeconds < DURATION_MIN ||
+    durationSeconds > DURATION_MAX ||
     !RESOLUTIONS.includes(resolution)
   ) {
     return Response.json({ error: "Invalid video parameters" }, { status: 400 });
-  }
-  if (resolution !== "720p" && durationSeconds !== 8) {
-    return Response.json(
-      { error: "1080p output requires 8s duration (Veo constraint)" },
-      { status: 400 },
-    );
   }
 
   const image = parseImage(body.image);

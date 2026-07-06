@@ -73,7 +73,7 @@ export const grok: VideoProvider = {
         model: PROVIDERS.grok.modelId,
         prompt,
         image: { url: imageUrl },
-        duration: params.durationSeconds,
+        duration: Math.round(Math.min(15, Math.max(1, params.durationSeconds))),
       }),
     });
     if (!res.ok) throw new Error(`Video step: ${await readError(res)}`);

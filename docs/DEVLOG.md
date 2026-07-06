@@ -352,6 +352,25 @@ All entries 2026-07-06 (single build session, owner: Dan).
   teaches the same craft (beat maps for long takes, slow hand-to-mouth
   allowed, "no frantic gestures" replaces "no hand movements").
 
+## 23. Reference aspect normalization + 1-15s duration gauge
+
+- Card-as-reference bug pair (owner hit both): a 3:4 card into a 9:16
+  grok request made the model TILE the frame vertically (two stacked
+  copies) and drop likeness. Fix: normalizeRefB64 cover-crops the ONE
+  image sent to the video model to the selected aspect (720x1280 /
+  1280x720) at send time — applies to cards, manual attachments, pinned
+  snapshots. Face now holds (owner confirmed).
+- Duration select (4/6/8) replaced with a 1-15s range slider. The
+  slider is a REQUEST; effectiveSeconds() in config is the single
+  source of truth for provider snapping (Veo 4/6/8, 1080p=>8; Sora 8;
+  Grok/Seedance clamp 1-15) — used by the veo adapter, the cost
+  estimate, and the gauge label ("12S -> 8S" when snapping). Server
+  validates 1-15 integers; adapters enforce their own grids.
+- Ops rule learned: NEVER run `bun run build` while a dev server is
+  running (it clobbers .next and kills it) — use `bun x tsc --noEmit`
+  for verification; the owner runs dev on :3000, singleton lock blocks
+  a second instance.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

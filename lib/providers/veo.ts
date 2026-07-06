@@ -1,4 +1,4 @@
-import { PROVIDERS } from "@/lib/config";
+import { PROVIDERS, effectiveSeconds } from "@/lib/config";
 import type { VideoProvider, SubmitParams, JobStatus } from "./types";
 
 /**
@@ -70,7 +70,7 @@ export const veo: VideoProvider = {
           ],
           parameters: {
             aspectRatio: params.aspectRatio,
-            durationSeconds: params.durationSeconds,
+            durationSeconds: effectiveSeconds("veo", params.durationSeconds, params.resolution as "720p" | "1080p"),
             resolution: params.resolution,
             // Docs: image-based modes only allow "allow_adult".
             personGeneration: params.image ? "allow_adult" : "allow_all",

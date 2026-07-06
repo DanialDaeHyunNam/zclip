@@ -98,8 +98,26 @@ export const KEY_ENV_VARS = [
 
 /** Whitelists — the API routes validate against these, never raw client input. */
 export const ASPECT_RATIOS: AspectRatio[] = ["9:16", "16:9"];
-export const DURATIONS: number[] = [4, 6, 8];
+export const DURATION_MIN = 1;
+export const DURATION_MAX = 15;
 export const RESOLUTIONS: Resolution[] = ["720p", "1080p"];
+
+/** The slider is a REQUEST; providers only bill/support certain lengths.
+ *  Veo: 4|6|8 (1080p ⇒ 8) · Sora: 8 minimum (we send 8) · Grok/Seedance:
+ *  free 1–15. This is the single source of truth for snap + billing. */
+export function effectiveSeconds(
+  provider: ProviderName,
+  requested: number,
+  resolution: Resolution,
+): number {
+  const r = Math.round(Math.min(DURATION_MAX, Math.max(DURATION_MIN, requested)));
+  if (provider === "veo") {
+    if (resolution !== "720p") return 8;
+    return r <= 5 ? 4 : r <= 7 ? 6 : 8;
+  }
+  if (provider === "sora") return 8;
+  return r;
+}
 
 export const DEFAULTS = {
   aspectRatio: "9:16" as AspectRatio,
@@ -115,6 +133,12 @@ export function estimateCostUsd(
   const info = PROVIDERS[provider];
   const rate = info.costPerSecondUsd?.[resolution];
   if (rate == null) return null;
-  // Bill at the provider's minimum (e.g. Sora charges 8s for a 4s ask).
-  return rate * Math.max(durationSeconds, info.minSeconds ?? 0);
+  // Billed at what the provider actually renders, not the raw request.
+  return (
+    rate *
+    Math.max(
+      effectiveSeconds(provider, durationSeconds, resolution),
+      info.minSeconds ?? 0,
+    )
+  );
 }

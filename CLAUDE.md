@@ -13,10 +13,11 @@ bun dev            # http://localhost:3000 (owner usually runs it on 3001)
 bun run build      # typecheck + prod build — run after EVERY change
 ```
 
-No tests. Verification = `bun run build` + driving the UI headless
-(see "How to verify" below). Next dev holds a single-instance lock —
-if the owner's dev server is running, you cannot start a second one;
-test against theirs (client-side checks only) or `next start -p <port>`.
+No tests. Verification: while a dev server is RUNNING use
+`bun x tsc --noEmit` (running `next build` clobbers .next and KILLS the
+dev server — learned the hard way); full `bun run build` only when no
+dev server is up. Next dev holds a single-instance lock — the owner
+runs theirs on :3000; test against it with client-side checks only.
 
 ## Architecture (all of it)
 

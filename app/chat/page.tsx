@@ -6,9 +6,11 @@ import {
   DEFAULT_PROVIDER,
   DEFAULTS,
   ASPECT_RATIOS,
-  DURATIONS,
+  DURATION_MIN,
+  DURATION_MAX,
   RESOLUTIONS,
   estimateCostUsd,
+  effectiveSeconds,
   type ProviderName,
   type AspectRatio,
   type Resolution,
@@ -625,6 +627,35 @@ export default function Home() {
     if (kind === "setting" && settingId === id) setSettingId(null);
   };
 
+  /** Cover-crop a reference image to the target aspect. Mismatched
+   *  aspects make i2v models tile/outpaint (duplicated frames) and drop
+   *  likeness — the reference must fill the output canvas exactly. */
+  const normalizeRefB64 = async (
+    b64: string,
+    a: AspectRatio,
+  ): Promise<string> => {
+    try {
+      const blob = await (
+        await fetch(`data:image/jpeg;base64,${b64}`)
+      ).blob();
+      const bmp = await createImageBitmap(blob);
+      const W = a === "16:9" ? 1280 : 720;
+      const H = a === "16:9" ? 720 : 1280;
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const scale = Math.max(W / bmp.width, H / bmp.height);
+      const dw = bmp.width * scale;
+      const dh = bmp.height * scale;
+      canvas
+        .getContext("2d")!
+        .drawImage(bmp, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      return canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+    } catch {
+      return b64;
+    }
+  };
+
   /** Resolve a starter card's image to base64 for the generation
    *  reference — built-ins load from /starters/<id>.jpg, customs from
    *  their stored dataURL. The card face IS the reference. */
@@ -756,10 +787,16 @@ export default function Home() {
           : lastSnap
             ? [{ base64: lastSnap.split(",")[1], mimeType: "image/jpeg" }]
             : undefined;
-    const primaryImage =
+    const rawPrimary =
       manual && refImages
         ? refImages[Math.floor((refImages.length - 1) / 2)]
         : refImages?.[0];
+    const primaryImage = rawPrimary
+      ? {
+          base64: await normalizeRefB64(rawPrimary.base64, aspect),
+          mimeType: "image/jpeg",
+        }
+      : undefined;
 
     const id = `t${Date.now()}`;
     const createdAt = Date.now();
@@ -1802,19 +1839,25 @@ export default function Home() {
                   ))}
                 </select>
               </div>
-              <div className="select-wrap bare">
-                <select
+              <div
+                className="duration-gauge"
+                title="Requested length — each model snaps to what it supports (Veo 4/6/8, Sora 8, Grok 1–15)"
+              >
+                <input
+                  type="range"
                   aria-label="Duration"
-                  title="Duration (1080p locks to 8s)"
+                  min={DURATION_MIN}
+                  max={DURATION_MAX}
+                  step={1}
                   value={duration}
                   onChange={(e) => setDuration(Number(e.target.value))}
-                >
-                  {DURATIONS.map((d) => (
-                    <option key={d} value={d} disabled={resolution !== "720p" && d !== 8}>
-                      {d}S
-                    </option>
-                  ))}
-                </select>
+                />
+                <span className="gauge-val">
+                  {duration}S
+                  {effectiveSeconds(providerId, duration, resolution) !== duration
+                    ? ` → ${effectiveSeconds(providerId, duration, resolution)}S`
+                    : ""}
+                </span>
               </div>
               <div className="select-wrap bare">
                 <select

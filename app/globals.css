@@ -955,6 +955,45 @@ button {
   font-size: 10px;
 }
 
+.duration-gauge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 6px 10px;
+}
+
+.duration-gauge input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 92px;
+  height: 2px;
+  background: var(--hair-strong);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.duration-gauge input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+}
+
+.gauge-val {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  min-width: 34px;
+}
+
 .strip-cost {
   font-family: var(--font-mono), monospace;
   font-size: 10.5px;
