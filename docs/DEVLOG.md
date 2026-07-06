@@ -339,6 +339,19 @@ All entries 2026-07-06 (single build session, owner: Dan).
 - Ops note: two zombie next-server processes + a dead port after the
   earlier pkill; setsid doesn't exist on macOS — plain nohup works.
 
+## 22. Natural surprise arc (owner's reference clip, beat-mapped)
+
+- Owner supplied a 12s real UGC reaction as the gold standard. Decoded
+  arc: talking mid-sentence -> glance at phone -> brows lift -> eyes
+  widen + hand rises -> hand over mouth peak -> glance-aside re-check ->
+  delighted disbelief. Encoded as surpriseArc() in lib/prompts.ts with
+  TIMESTAMPED beats (models follow beat maps better than adjectives).
+- composeStarter now picks by duration: <=4s keeps the one-held-beat
+  rule (overacting guard), 6-8s gets the full arc automatically — the
+  visible base prompt shows it when DURATION is 6S/8S. Refine SYSTEM
+  teaches the same craft (beat maps for long takes, slow hand-to-mouth
+  allowed, "no frantic gestures" replaces "no hand movements").
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

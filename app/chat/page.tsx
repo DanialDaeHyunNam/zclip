@@ -481,10 +481,10 @@ export default function Home() {
   /* recompose the visible base prompt whenever blocks change */
   useEffect(() => {
     if (turns.length) return;
-    const s = composeStarter(selChar, selSetting, aspect);
+    const s = composeStarter(selChar, selSetting, aspect, duration);
     setStarterDraft(s ? s.prompt : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [charId, settingId, custom, turns.length, aspect]);
+  }, [charId, settingId, custom, turns.length, aspect, duration]);
 
   /* close the sidebar on Escape */
   useEffect(() => {
@@ -698,7 +698,7 @@ export default function Home() {
     const starterText =
       turns.length === 0 && starterDraft?.trim() ? starterDraft.trim() : null;
     const starterLabel = starterText
-      ? composeStarter(selChar, selSetting, aspect)?.label ?? "Custom base"
+      ? composeStarter(selChar, selSetting, aspect, duration)?.label ?? "Custom base"
       : undefined;
     const ctxTurns = ctxIds
       .map((id) => ({ idx: turns.findIndex((t) => t.id === id) }))

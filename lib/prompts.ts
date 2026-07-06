@@ -13,6 +13,16 @@ const stylePrefix = (aspect: string) =>
 const STYLE_SUFFIX =
   "Hyper-realistic, indistinguishable from real found iPhone footage: natural skin texture with visible pores, no beauty filter, no airbrushed smoothing, authentic unpolished UGC look, subtle handheld camera shake, slightly imperfect exposure, no cinematic color grading. Natural micro-expressions, natural blinking, relaxed lifelike body language. 3 seconds.";
 
+/** The full natural surprise arc, beat-mapped for 6–8s takes. Modeled on
+ *  real UGC reaction pacing: talk → glance → register → escalate →
+ *  hand-over-mouth peak → re-check → delighted disbelief. Timestamped
+ *  beats steer video models far better than adjective piles. */
+const surpriseArc = (pronoun: "She" | "He") => {
+  const her = pronoun === "She" ? "her" : "his";
+  const she = pronoun.toLowerCase();
+  return `${pronoun} is mid-sentence, chatting casually to the camera (0–1.5s). ${pronoun}${pronoun === "She" ? "" : ""} stops as ${her} eyes flick down to the phone screen (1.5–2.5s). ${pronoun === "She" ? "Her" : "His"} eyebrows lift as it registers, lips parting silently (2.5–4s). ${pronoun === "She" ? "Her" : "His"} eyes go wide and one hand rises slowly to cover ${her} mouth (4–5.5s). Hand over mouth, ${she} glances quickly aside and back, double-checking what ${she} just saw (5.5–7s). Finally ${her} eyes soften into delighted disbelief, almost smiling behind the hand (7–8s). Natural blinks throughout, slight handheld drift, one beat at a time — real reaction pacing, smooth and unexaggerated, no gasping, no panting, no frantic gestures.`;
+};
+
 const defaultAction = (pronoun: "She" | "He") =>
   `${pronoun} is looking at ${pronoun === "She" ? "her" : "his"} phone, and in one calm slow beat ${pronoun === "She" ? "her" : "his"} eyes widen slightly and ${pronoun.toLowerCase()} silently mouths 'whaaaat?' in quiet disbelief, then holds that expression. Just one single subtle reaction — no gasping, no panting, no hand movements, minimal motion, slow and natural, with natural blinks and relaxed posture.`;
 
@@ -252,6 +262,7 @@ export function composeStarter(
   c?: StarterBlock | null,
   s?: StarterBlock | null,
   aspect: string = "9:16",
+  durationSeconds: number = 4,
 ): { prompt: string; label: string } | null {
   if (!c && !s) return null;
   // Casting default matches the built-in cast: photogenic, natural.
@@ -261,7 +272,12 @@ export function composeStarter(
   const where =
     s?.prompt ?? "sitting in a softly lit room with a lived-in background";
   return {
-    prompt: `${stylePrefix(aspect)} ${subject}, ${where}. ${defaultAction(c?.pronoun ?? "She")} ${STYLE_SUFFIX}`,
+    // ≤4s can only hold ONE beat; 6–8s gets the full choreographed arc.
+    prompt: `${stylePrefix(aspect)} ${subject}, ${where}. ${
+      durationSeconds >= 6
+        ? surpriseArc(c?.pronoun ?? "She")
+        : defaultAction(c?.pronoun ?? "She")
+    } ${STYLE_SUFFIX.replace("3 seconds.", durationSeconds >= 6 ? `${durationSeconds} seconds.` : "3 seconds.")}`,
     label: [c?.label, s?.label].filter(Boolean).join(" · "),
   };
 }
