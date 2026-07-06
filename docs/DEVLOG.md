@@ -254,7 +254,7 @@ All entries 2026-07-06 (single build session, owner: Dan).
 - Verified: chips + warning + ctx-only send headless; curl refine with a
   pinned take pulled its subject/room into the rewrite exactly.
 
-## 16. Landing page (/landing)
+## 16. Landing page (now at /)
 
 - OpusClip-style punchy landing at /landing (server component, static):
   badge, "1 prompt, 10 takes. / Hook 10x faster." gradient hero, dual
@@ -262,8 +262,9 @@ All entries 2026-07-06 (single build session, owner: Dan).
   cards (cast card shows real baked portraits), 3-step workflow section
   pitching hook -> cut.donkeyuse.com (owner's AI copilot editor) ->
   ship, open-source star ask in hero + footer.
-- REPO_URL in app/landing/page.tsx is a placeholder — set it after
-  `gh repo create`. App header gained an "About" link -> /landing.
+- Routes: landing serves at `/` (app/page.tsx), the studio moved to
+  `/chat` (app/chat/page.tsx); studio header "About" links back to `/`.
+  REPO_URL in app/page.tsx is a placeholder — set after `gh repo create`.
 - Landing offsets the global 52px rail padding via negative margin.
 
 ## Verification ledger (what was actually exercised)

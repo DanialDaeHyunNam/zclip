@@ -44,7 +44,8 @@ test against theirs (client-side checks only) or `next start -p <port>`.
   (effective immediately). Env-var allowlist in config `KEY_ENV_VARS`.
 - `app/api/auth` — optional shared-password gate (`APP_PASSWORD` env).
   Client sends `x-app-password` header; `<video>` URLs use `?pw=` param.
-- `app/page.tsx` — the whole UI (single client component, ~900 lines):
+- `app/chat/page.tsx` — the whole studio UI (single client component;
+  `app/page.tsx` is the static landing):
   chat thread (turns) / rewind / sessions sidebar / preview / params /
   key panel / spend chart / archive. State shapes documented inline
   (`Turn`, `Clip`, `StoredSession`).
