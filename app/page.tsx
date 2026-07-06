@@ -8,8 +8,7 @@ export const metadata: Metadata = {
     "Open-source AI studio for UGC reaction hooks: chat out takes, rewind anything, blend takes, pay cents per clip with your own keys.",
 };
 
-// TODO: point at the real repo after `gh repo create`
-const REPO_URL = "https://github.com/your-handle/zclip";
+const REPO_URL = "https://github.com/DanialDaeHyunNam/zclip";
 const CUT_URL = "https://cut.donkeyuse.com";
 
 const DIFFS = [
