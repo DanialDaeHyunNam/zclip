@@ -625,6 +625,26 @@ export default function Home() {
     if (kind === "setting" && settingId === id) setSettingId(null);
   };
 
+  /** Resolve a starter card's image to base64 for the generation
+   *  reference — built-ins load from /starters/<id>.jpg, customs from
+   *  their stored dataURL. The card face IS the reference. */
+  const assetRefB64 = async (
+    item?: (CustomAsset & { custom?: true }) | null,
+  ): Promise<string | null> => {
+    if (!item) return null;
+    if ("custom" in item && item.custom) {
+      return item.image ? item.image.split(",")[1] : null;
+    }
+    try {
+      const res = await fetch(`/starters/${item.id}.jpg`);
+      if (!res.ok) return null;
+      const bmp = await createImageBitmap(await res.blob());
+      return toJpeg(bmp, bmp.width, bmp.height, 768, 0.8).split(",")[1];
+    } catch {
+      return null;
+    }
+  };
+
   const unlock = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError("");
@@ -702,8 +722,20 @@ export default function Home() {
         : undefined;
     const assetImages =
       !manual && starterText
-        ? ([selChar?.image, selSetting?.image].filter(Boolean) as string[])
+        ? ((await Promise.all([assetRefB64(selChar), assetRefB64(selSetting)]))
+            .filter(Boolean) as string[])
         : [];
+    const assetThumb = starterText
+      ? selChar
+        ? "custom" in selChar && selChar.custom
+          ? selChar.image
+          : `/starters/${selChar.id}.jpg`
+        : selSetting
+          ? "custom" in selSetting && selSetting.custom
+            ? selSetting.image
+            : `/starters/${selSetting.id}.jpg`
+          : undefined
+      : undefined;
     const ctxImages = manual
       ? []
       : (ctxTurns
@@ -718,7 +750,7 @@ export default function Home() {
           }))
         : assetImages.length
           ? assetImages.map((d) => ({
-              base64: d.split(",")[1],
+              base64: d,
               mimeType: "image/jpeg",
             }))
           : lastSnap
@@ -757,7 +789,7 @@ export default function Home() {
       createdAt,
       status: "refining",
       costUsd: estCostUsd ?? undefined,
-      imageThumb: manual?.thumb ?? assetImages[0],
+      imageThumb: manual?.thumb ?? assetThumb,
       usedContinuity: Boolean(
         lastSnap && !manual && !assetImages.length && !ctxImages.length,
       ),
