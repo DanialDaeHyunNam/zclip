@@ -1344,6 +1344,18 @@ export default function Home() {
       {/* left rail — always visible; panel slides out Claude-style */}
       <aside className="rail">
         <button
+          className="rail-logo"
+          onClick={() => {
+            setArchiveOpen(false);
+            setSideOpen(false);
+            setSpendOpen(false);
+          }}
+          title="Back to the studio"
+          aria-label="Home"
+        >
+          Z<span>_</span>
+        </button>
+        <button
           className={`rail-btn ${sideOpen ? "on" : ""}`}
           onClick={() => setSideOpen((o) => !o)}
           title="Sessions"
@@ -1445,8 +1457,11 @@ export default function Home() {
                     Clear All
                   </button>
                 )}
-                <button className="link-btn" onClick={() => setArchiveOpen(false)}>
-                  ✕ Close
+                <button
+                  className="btn-ghost overlay-back"
+                  onClick={() => setArchiveOpen(false)}
+                >
+                  ← Back to Studio
                 </button>
               </span>
             </div>

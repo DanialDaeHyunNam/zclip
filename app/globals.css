@@ -98,6 +98,26 @@ body::before {
   z-index: 60;
 }
 
+.rail-logo {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-display), sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--fg);
+  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+}
+
+.rail-logo span {
+  color: var(--accent);
+}
+
+.overlay-back {
+  padding: 10px 20px;
+}
+
 .rail-btn {
   width: 30px;
   height: 30px;
