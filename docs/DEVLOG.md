@@ -123,6 +123,28 @@ All entries 2026-07-06 (single build session, owner: Dan).
   `380px minmax(0,1fr)` — DOM order unchanged (chat stays first in
   source). Mobile stacks preview-first.
 
+## 9. Public-repo prep + CORS fix + starter blocks
+
+- **Repo prep**: standalone `git init`, secret sweep (all real keys only
+  in `.env.local`; staged-file grep clean), `.gitignore` hardened to
+  `.env` / `.env.*` / `!.env.example`. `.gstack/` logs (contain URL
+  params) confirmed ignored. Initial commit `3bb60b0`. NOT pushed.
+  Reminder: public repo ≠ public deployment — set `APP_PASSWORD` on
+  Vercel or anyone can spend the keys through the UI.
+- **Grok CORS**: `vidgen.x.ai` sends no CORS headers → snapshot capture
+  errored in console and continuity silently failed. Fixed by proxying
+  grok playback through `/api/video?remote=` (host allowlist
+  `REMOTE_HOSTS`) + capture now only attempts same-origin URLs.
+  Seedance still returns a raw URL → capture skipped quietly until its
+  CDN host is known and added to the allowlist.
+- **Starter blocks** (replaces the preset dropdown): visual card grids —
+  6 CHARACTERS × 6 SETTINGS in `lib/prompts.ts`, combinable, either half
+  optional (neutral fallbacks). Chat input on an empty thread = the
+  action; empty action uses the default one-beat quiet-surprise reaction
+  (pronoun-aware). `composeStarter()` assembles
+  STYLE_PREFIX + subject + setting + action + STYLE_SUFFIX. Old
+  `VARIANTS` removed.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

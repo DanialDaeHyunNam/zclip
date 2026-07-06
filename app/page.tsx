@@ -13,7 +13,12 @@ import {
   type AspectRatio,
   type Resolution,
 } from "@/lib/config";
-import { VARIANTS, PROMPT_RULE } from "@/lib/prompts";
+import {
+  CHARACTERS,
+  SETTINGS,
+  composeStarter,
+  PROMPT_RULE,
+} from "@/lib/prompts";
 
 /* ── types & storage ─────────────────────────────── */
 
@@ -128,6 +133,9 @@ export default function Home() {
   const [sessionId, setSessionId] = useState("");
   const [sessions, setSessions] = useState<StoredSession[]>([]);
   const [draft, setDraft] = useState("");
+  // visual starter blocks (empty-thread only)
+  const [charId, setCharId] = useState<string | null>(null);
+  const [settingId, setSettingId] = useState<string | null>(null);
   const [attach, setAttach] = useState<{
     base64: string;
     mimeType: string;
@@ -141,7 +149,6 @@ export default function Home() {
 
   // session sidebar — closed by default, Claude-style
   const [sideOpen, setSideOpen] = useState(false);
-  const [presetId, setPresetId] = useState("none");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -272,6 +279,9 @@ export default function Home() {
     );
     if (!t) return;
     snapCapturing.current.add(t.id);
+    // Only same-origin (proxied) videos can be drawn to a canvas without
+    // tainting it — skip provider-hosted URLs entirely (no console noise).
+    if (!t.videoUrl!.startsWith("/")) return;
     const v = document.createElement("video");
     v.crossOrigin = "anonymous";
     v.muted = true;
@@ -463,11 +473,9 @@ export default function Home() {
   const send = async () => {
     const text = draft.trim();
     const manual = attach;
-    const preset =
-      turns.length === 0 && presetId !== "none"
-        ? VARIANTS.find((v) => v.id === presetId)
-        : undefined;
-    if (busyTurn || (!text && !preset && !manual) || keyMissing) return;
+    const starter =
+      turns.length === 0 ? composeStarter(charId, settingId) : null;
+    if (busyTurn || (!text && !starter && !manual) || keyMissing) return;
     setError(null);
 
     // Reference precedence: manual attachment > continuity snapshot.
@@ -485,7 +493,7 @@ export default function Home() {
     const createdAt = Date.now();
     const base = turns.length
       ? [...turns].reverse().find((t) => t.prompt)?.prompt
-      : preset?.prompt;
+      : starter?.prompt;
     // Earlier takes give the refiner context for "take 1's background" etc.
     const history = turns
       .map((t, i) => ({ take: i + 1, request: t.userText, prompt: t.prompt ?? "" }))
@@ -496,10 +504,10 @@ export default function Home() {
       id,
       userText:
         text ||
-        (preset
-          ? `Start from preset: ${preset.label}`
+        (starter
+          ? `Start: ${starter.label}`
           : "Use the attached image as the reference."),
-      presetLabel: preset?.label,
+      presetLabel: starter?.label,
       provider: providerId,
       aspectRatio: aspect,
       durationSeconds: duration,
@@ -517,8 +525,8 @@ export default function Home() {
 
     try {
       let prompt: string;
-      if (!text && preset && !manual) {
-        prompt = preset.prompt; // preset as-is, no LLM pass needed
+      if (!text && starter && !manual) {
+        prompt = starter.prompt; // composed blocks as-is, no LLM pass needed
       } else {
         const r = await fetch("/api/refine", {
           method: "POST",
@@ -597,7 +605,8 @@ export default function Home() {
     setSessionId(nid);
     setTurns([]);
     setSelectedId(null);
-    setPresetId("none");
+    setCharId(null);
+    setSettingId(null);
     setError(null);
   };
 
@@ -800,13 +809,13 @@ export default function Home() {
     );
     return { rows, total, max, providers };
   })();
+  const starterPick =
+    turns.length === 0 ? composeStarter(charId, settingId) : null;
   const canSend =
     !busyTurn &&
     ready &&
     !keyMissing &&
-    Boolean(
-      draft.trim() || attach || (turns.length === 0 && presetId !== "none"),
-    );
+    Boolean(draft.trim() || attach || starterPick);
 
   /* ── render ────────────────────────────────────── */
 
@@ -934,8 +943,9 @@ export default function Home() {
           <div className="thread">
             {turns.length === 0 && (
               <p className="hint thread-empty">
-                Describe the clip you want in your own words — or pick a
-                preset below and just hit START. Every message becomes a new
+                Compose a starting point below — pick a character and/or a
+                setting, optionally type the action — or just describe the
+                whole clip in your own words. Every message becomes a new
                 take; rewind to any point to branch from there.
               </p>
             )}
@@ -1011,6 +1021,49 @@ export default function Home() {
 
           {error && <div className="error-box fade">{error}</div>}
 
+          {turns.length === 0 && (
+            <div className="starter fade">
+              <div className="starter-group">
+                <span className="label">
+                  Character{charId ? "" : " · optional"}
+                </span>
+                <div className="starter-grid">
+                  {CHARACTERS.map((c) => (
+                    <button
+                      key={c.id}
+                      className={`starter-card ${charId === c.id ? "sel" : ""}`}
+                      onClick={() =>
+                        setCharId((cur) => (cur === c.id ? null : c.id))
+                      }
+                    >
+                      <span className="starter-name">{c.label}</span>
+                      <span className="starter-desc">{c.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="starter-group">
+                <span className="label">
+                  Setting{settingId ? "" : " · optional"}
+                </span>
+                <div className="starter-grid">
+                  {SETTINGS.map((s) => (
+                    <button
+                      key={s.id}
+                      className={`starter-card ${settingId === s.id ? "sel" : ""}`}
+                      onClick={() =>
+                        setSettingId((cur) => (cur === s.id ? null : s.id))
+                      }
+                    >
+                      <span className="starter-name">{s.label}</span>
+                      <span className="starter-desc">{s.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div
             className={`chat-zone ${dragOver ? "dragover" : ""}`}
             onDragOver={(e) => {
@@ -1035,22 +1088,6 @@ export default function Home() {
               </div>
             )}
             <div className="chat-bar">
-              {turns.length === 0 && (
-                <div className="select-wrap small preset-select">
-                  <select
-                    aria-label="Preset"
-                    value={presetId}
-                    onChange={(e) => setPresetId(e.target.value)}
-                  >
-                    <option value="none">No preset</option>
-                    {VARIANTS.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <button
                 className="attach-btn"
                 title="Attach a reference image — or drag & drop / paste one"
@@ -1094,16 +1131,16 @@ export default function Home() {
                 placeholder={
                   busyTurn
                     ? "Rendering — wait for this take…"
-                    : turns.length === 0
-                      ? "Describe the clip… (drop an image to use it as reference)"
-                      : "What should change in the next take?"
+                    : starterPick
+                      ? "Action for the take — empty = default quiet-surprise beat"
+                      : turns.length === 0
+                        ? "Pick blocks above and/or describe the clip… (drop an image as reference)"
+                        : "What should change in the next take?"
                 }
                 disabled={Boolean(busyTurn)}
               />
               <button className="btn-primary send-btn" onClick={send} disabled={!canSend}>
-                {turns.length === 0 && !draft.trim() && presetId !== "none"
-                  ? "Start"
-                  : "Send"}
+                {starterPick && !draft.trim() ? "Start" : "Send"}
               </button>
             </div>
           </div>

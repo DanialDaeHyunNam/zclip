@@ -100,8 +100,12 @@ export const grok: VideoProvider = {
       if (typeof url !== "string" || !url) {
         return { state: "error", error: "xAI finished without a video url" };
       }
-      // xAI serves a hosted URL the browser can fetch directly.
-      return { state: "done", videoUrl: url };
+      // xAI's CDN (vidgen.x.ai) sends no CORS headers — proxy it so the
+      // player is same-origin and snapshot capture (continuity) works.
+      return {
+        state: "done",
+        videoUrl: `/api/video?remote=${encodeURIComponent(url)}`,
+      };
     }
     if (job.status === "failed" || job.status === "expired") {
       return { state: "error", error: `xAI generation ${job.status}` };

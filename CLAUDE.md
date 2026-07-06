@@ -68,7 +68,10 @@ do NOT store full images/videos in localStorage (5MB quota).
   frame is captured client-side (canvas) and auto-attached to the next
   take as the image reference. Manual attachment wins over continuity.
   Cross-origin videos without CORS silently skip capture.
-- **Presets are optional** — only shown on an empty thread, default None.
+- **Starter blocks** (empty thread only): visual CHARACTER × SETTING card
+  picker (`lib/prompts.ts` — `CHARACTERS`/`SETTINGS`/`composeStarter`).
+  Either half optional; chat text = the action (empty → default
+  quiet-surprise beat). Free-form text with no blocks still works.
 - **Costs are computed estimates** (duration × published $/s), not billing
   API readouts. Sora bills min 8s. Spend chart groups the archive by
   sessionId, stacked by provider, colors from `PROVIDERS[p].chartColor`

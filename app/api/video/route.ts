@@ -11,6 +11,9 @@ import { checkPassword, unauthorized } from "@/lib/auth";
 
 const VEO_PREFIX = "https://generativelanguage.googleapis.com/";
 const SORA_REF = /^video_[\w-]+$/;
+// Provider CDNs that serve public presigned URLs but lack CORS headers —
+// proxied so playback is same-origin and snapshot capture works.
+const REMOTE_HOSTS = ["vidgen.x.ai"];
 
 function upstreamFor(url: URL): { target: string; headers: Record<string, string> } | { error: string } {
   const uri = url.searchParams.get("uri");
@@ -30,7 +33,19 @@ function upstreamFor(url: URL): { target: string; headers: Record<string, string
       headers: { authorization: `Bearer ${key}` },
     };
   }
-  return { error: "Missing ?uri= or ?provider=sora&ref=" };
+  const remote = url.searchParams.get("remote");
+  if (remote) {
+    try {
+      const host = new URL(remote).hostname;
+      if (!REMOTE_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))) {
+        return { error: "Remote host not allowed" };
+      }
+    } catch {
+      return { error: "Invalid remote url" };
+    }
+    return { target: remote, headers: {} };
+  }
+  return { error: "Missing ?uri=, ?provider=sora&ref= or ?remote=" };
 }
 
 export async function GET(req: Request) {
