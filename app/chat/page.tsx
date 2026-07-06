@@ -184,6 +184,7 @@ export default function Home() {
 
   // session sidebar — closed by default, Claude-style
   const [sideOpen, setSideOpen] = useState(false);
+  const [spendOpen, setSpendOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -491,13 +492,18 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [charId, settingId, custom, turns.length, aspect, duration]);
 
-  /* close the sidebar on Escape */
+  /* Escape closes overlays */
   useEffect(() => {
-    if (!sideOpen) return;
-    const h = (e: KeyboardEvent) => e.key === "Escape" && setSideOpen(false);
+    if (!sideOpen && !spendOpen) return;
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSideOpen(false);
+        setSpendOpen(false);
+      }
+    };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [sideOpen]);
+  }, [sideOpen, spendOpen]);
 
   /* actions */
 
@@ -1344,9 +1350,91 @@ export default function Home() {
       <main className="grid-main">
         {/* session thread */}
         <section className="session-col">
-          <div className="output-head">
+          <div className="output-head session-head">
             <span className="label">Session</span>
-            <span className="status-line">{turns.length > 0 ? `${turns.length} TAKES` : ""}</span>
+            <span className="session-spend">
+              {turns.length > 0 && (
+                <span className="status-line">{turns.length} TAKES</span>
+              )}
+              {clips.length > 0 && (
+                <>
+                  <span className="spend-mini" title="Estimated session spend">
+                    ${spend.total.toFixed(2)}
+                    {spend.unpriced > 0 ? ` +${spend.unpriced}?` : ""}
+                  </span>
+                  <button
+                    className={`chart-btn ${spendOpen ? "on" : ""}`}
+                    onClick={() => setSpendOpen((o) => !o)}
+                    title="Spend by session and model"
+                    aria-label="Toggle spend chart"
+                  >
+                    <b />
+                    <b />
+                    <b />
+                  </button>
+                </>
+              )}
+              {spendOpen && (
+                <div className="spend-popover fade">
+                  <div className="archive-head">
+                    <span className="label">Spend · Estimated</span>
+                    <button
+                      className="link-btn"
+                      onClick={() => setSpendOpen(false)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="archive-note">
+                    Duration × published per-second price per finished take —
+                    providers don&apos;t report billed totals.
+                  </p>
+                  <div className="spend-hero">
+                    ${spend.total.toFixed(2)}
+                    {spend.unpriced > 0 && (
+                      <span className="spend-unpriced"> +{spend.unpriced} unpriced</span>
+                    )}
+                  </div>
+                  <div className="spend-legend">
+                    {spend.providers.map((p) => (
+                      <span key={p} className="spend-chip">
+                        <i style={{ background: PROVIDERS[p].chartColor }} />
+                        {PROVIDERS[p].label}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="spend-rows">
+                    {spend.rows.map((r) => (
+                      <div className="spend-row" key={r.label + r.latest}>
+                        <span className="spend-label" title={r.label}>
+                          {r.label}
+                        </span>
+                        <div className="spend-bar">
+                          {spend.providers.map((p) => {
+                            const v = r.parts.get(p);
+                            if (!v) return null;
+                            return (
+                              <i
+                                key={p}
+                                style={{
+                                  width: `${(v / spend.max) * 100}%`,
+                                  background: PROVIDERS[p].chartColor,
+                                }}
+                                title={`${PROVIDERS[p].label} · $${v.toFixed(2)}`}
+                              />
+                            );
+                          })}
+                        </div>
+                        <span className="spend-total">
+                          ${r.total.toFixed(2)}
+                          {r.unpriced > 0 ? ` +${r.unpriced}?` : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </span>
           </div>
 
           <div className="thread">
@@ -2034,62 +2122,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-
-      {/* spend — estimated, per session, stacked by model */}
-      {clips.length > 0 && (
-        <section className="archive spend">
-          <div className="archive-head">
-            <span className="label">Spend · Estimated</span>
-          </div>
-          <p className="archive-note">
-            Computed as duration × published per-second price for each finished
-            take — providers don&apos;t report billed totals per request.
-          </p>
-          <div className="spend-hero">
-            ${spend.total.toFixed(2)}
-            {spend.unpriced > 0 && (
-              <span className="spend-unpriced"> +{spend.unpriced} unpriced</span>
-            )}
-          </div>
-          <div className="spend-legend">
-            {spend.providers.map((p) => (
-              <span key={p} className="spend-chip">
-                <i style={{ background: PROVIDERS[p].chartColor }} />
-                {PROVIDERS[p].label}
-              </span>
-            ))}
-          </div>
-          <div className="spend-rows">
-            {spend.rows.map((r) => (
-              <div className="spend-row" key={r.label + r.latest}>
-                <span className="spend-label" title={r.label}>
-                  {r.label}
-                </span>
-                <div className="spend-bar">
-                  {spend.providers.map((p) => {
-                    const v = r.parts.get(p);
-                    if (!v) return null;
-                    return (
-                      <i
-                        key={p}
-                        style={{
-                          width: `${(v / spend.max) * 100}%`,
-                          background: PROVIDERS[p].chartColor,
-                        }}
-                        title={`${PROVIDERS[p].label} · $${v.toFixed(2)}`}
-                      />
-                    );
-                  })}
-                </div>
-                <span className="spend-total">
-                  ${r.total.toFixed(2)}
-                  {r.unpriced > 0 ? ` +${r.unpriced}?` : ""}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* archive — append-only, survives rewinds */}
       <section className="archive">

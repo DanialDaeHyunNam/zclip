@@ -1576,6 +1576,79 @@ button {
   margin-bottom: 22px;
 }
 
+.session-head {
+  position: relative;
+}
+
+.session-spend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.spend-mini {
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+}
+
+.chart-btn {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 24px;
+  padding: 5px 7px;
+  background: transparent;
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+
+.chart-btn b {
+  display: block;
+  width: 3px;
+  border-radius: 1px;
+  background: var(--dim);
+  transition: background 0.3s ease;
+}
+
+.chart-btn b:nth-child(1) { height: 6px; }
+.chart-btn b:nth-child(2) { height: 11px; }
+.chart-btn b:nth-child(3) { height: 8px; }
+
+.chart-btn:hover,
+.chart-btn.on {
+  border-color: rgba(111, 220, 255, 0.45);
+}
+
+.chart-btn.on b {
+  background: var(--accent);
+}
+
+.spend-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(560px, 92vw);
+  z-index: 40;
+  background: #0b0b0d;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-md);
+  padding: 20px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7);
+}
+
+.spend-popover .spend-hero {
+  font-size: 24px;
+  margin-bottom: 14px;
+}
+
+.spend-popover .archive-note {
+  margin-bottom: 16px;
+}
+
 .spend-unpriced {
   font-size: 12px;
   letter-spacing: 0.1em;
