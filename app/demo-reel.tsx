@@ -11,8 +11,8 @@ import { useEffect, useState } from "react";
  */
 
 const MSG1 = "Asian girl in her bedroom — quiet 'wait, what?' at her phone";
-const MSG2 = "Now she cracks up — big laugh, hand over mouth";
-const MSG3 = "Golden hour rooftop — she shows the phone, proud grin";
+const MSG2 = "Same reaction — now on a rooftop with her friends";
+const MSG3 = "Keep everything — just restyle her in a leather jacket";
 
 export default function DemoReel() {
   const [t, setT] = useState(0); // 100ms ticks, loops at 150 (~15s)
