@@ -1956,7 +1956,7 @@ button {
   flex-direction: column;
   gap: 10px;
   justify-content: center;
-  min-height: 300px;
+  min-height: 380px;
 }
 
 .demo-msg {

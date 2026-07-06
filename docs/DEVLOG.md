@@ -283,14 +283,19 @@ All entries 2026-07-06 (single build session, owner: Dan).
 - Workflow: cut.donkeyuse.com step now notes cut is open source and
   free as well.
 
-## 18. Demo reel plays REAL ZCLIP output
+## 18. Demo reel plays REAL ZCLIP output (3-act, frame-chained)
 
-- Generated two takes through the actual pipeline (composeStarter ->
-  /api/refine -> /api/generate Veo -> /api/video download): blonde
-  bedroom quiet-surprise, then refine "same girl, cafe window" (~$0.80).
-  Saved to public/demo/take-{1,2}.mp4 (0.6MB + 2.6MB) — Google purges
-  its copies in ~2 days but ours are local. DemoReel now plays them
-  (autoplay/muted/loop) instead of still portraits; caption says so.
+- Generated a 3-act story through the actual pipeline, each take seeded
+  with a canvas-extracted frame of the previous one (the app's own
+  continuity mechanism, driven headless): bedroom quiet-surprise ->
+  slow push-in on the held reaction -> later that night in pajamas
+  (~$1.20 total; the first cafe attempt had her eating a burger — owner
+  killed it, story reworked). public/demo/take-{1,2,3}.mp4, ~2.2MB.
+  DemoReel is a ~27s 3-phase loop with CTX T1/T2 rows; caption states
+  the takes are real and each built on the last. Gotchas: browse js
+  drops async evals >2s (use kickoff -> visible DOM marker -> chunked
+  sync reads), and React's muted-as-property misses autoplay policy
+  (force el.muted + play() in a ref).
 
 ## Verification ledger (what was actually exercised)
 
