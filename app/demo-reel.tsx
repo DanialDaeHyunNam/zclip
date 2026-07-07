@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 /**
  * Animated product demo — a miniature chat session that plays like a screen
@@ -40,15 +40,28 @@ const RENDER = 8; // render spinner
 const SHOW = 22; // clip held long enough to read the new reaction
 const XFADE = 10; // window where the previous take dissolves into the new one
 const STEP = TYPE + PAUSE + RENDER + SHOW;
-const FINAL_HOLD = 60; // last clip plays fully (~4s) + ~2s hold, then loop
-const LOOP = (TAKES.length - 1) * STEP + (TYPE + PAUSE + RENDER) + FINAL_HOLD;
+const FINAL_HOLD = 44; // last clip plays through once, then the run ends
+const END = (TAKES.length - 1) * STEP + (TYPE + PAUSE + RENDER) + FINAL_HOLD;
 
 export default function DemoReel() {
   const [t, setT] = useState(0);
+  const [ended, setEnded] = useState(false);
+
+  // Play once through all four takes, then STOP so you can read and watch at
+  // your own pace — a "Replay" button restarts it. No auto-loop.
   useEffect(() => {
-    const iv = setInterval(() => setT((x) => (x + 1) % LOOP), 100);
+    if (ended) return;
+    const iv = setInterval(() => setT((x) => Math.min(x + 1, END)), 100);
     return () => clearInterval(iv);
-  }, []);
+  }, [ended]);
+  useEffect(() => {
+    if (t >= END) setEnded(true);
+  }, [t]);
+
+  const replay = () => {
+    setT(0);
+    setEnded(false);
+  };
 
   const takes = TAKES.map((tk, i) => {
     const base = i * STEP;
@@ -160,6 +173,43 @@ export default function DemoReel() {
           ) : null,
         )}
       </div>
+
+      {/* the takes so far, as a timeline — each message adds one, so the
+          progression from T1 to T4 is visible at a glance */}
+      {lastDone >= 0 && (
+        <div className="demo-strip">
+          {takes
+            .filter((tk) => tk.done)
+            .map((tk, idx) => (
+              <Fragment key={tk.i}>
+                {idx > 0 && <span className="demo-strip-arrow">→</span>}
+                <div
+                  className={`demo-thumb ${tk.i + 1 === clipN ? "on" : ""}`}
+                >
+                  <video
+                    src={`/demo/take-${tk.i + 1}.mp4`}
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                    ref={(el) => {
+                      if (el) {
+                        el.muted = true;
+                        el.play().catch(() => {});
+                      }
+                    }}
+                  />
+                  <span className="demo-thumb-n">T{tk.i + 1}</span>
+                </div>
+              </Fragment>
+            ))}
+          {ended && (
+            <button className="demo-replay" onClick={replay}>
+              ↺ Watch from the start
+            </button>
+          )}
+        </div>
+      )}
     </figure>
   );
 }
