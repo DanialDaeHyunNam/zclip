@@ -34,10 +34,11 @@ const TAKES = [
 ];
 
 // All in 100ms ticks.
-const TYPE = 22; // typing the message
-const PAUSE = 10; // ~1s beat between "typed" and the clip changing
-const RENDER = 9; // render spinner
-const SHOW = 12; // clip visible before the next take starts typing
+const TYPE = 18; // typing the message
+const PAUSE = 8; // ~0.8s beat between "typed" and the clip changing
+const RENDER = 8; // render spinner
+const SHOW = 22; // clip held long enough to read the new reaction
+const XFADE = 10; // window where the previous take dissolves into the new one
 const STEP = TYPE + PAUSE + RENDER + SHOW;
 const FINAL_HOLD = 60; // last clip plays fully (~4s) + ~2s hold, then loop
 const LOOP = (TAKES.length - 1) * STEP + (TYPE + PAUSE + RENDER) + FINAL_HOLD;
@@ -76,6 +77,13 @@ export default function DemoReel() {
   const clipN = lastDone >= 0 ? lastDone + 1 : null;
   const anyRender = takes.some((tk) => tk.render);
 
+  // A→B moment: for a beat right after a refinement lands, keep the PREVIOUS
+  // clip on top and dissolve it away, so the change is unmistakable.
+  const curRenderEnd = lastDone >= 0 ? lastDone * STEP + TYPE + PAUSE + RENDER : 0;
+  const inXfade = lastDone >= 1 && t >= curRenderEnd && t < curRenderEnd + XFADE;
+  const prevClipN = inXfade ? lastDone : null; // previous take's clip number
+  const justChanged = lastDone >= 1 && t >= curRenderEnd && t < curRenderEnd + 16;
+
   const timer = (from: number) =>
     `00:${String(Math.min(99, (t - from) * 2)).padStart(2, "0")}`;
 
@@ -100,6 +108,27 @@ export default function DemoReel() {
           />
         ) : (
           <span className="frame-idle-sub">9:16 · MP4</span>
+        )}
+        {prevClipN && (
+          <video
+            key={`prev-${prevClipN}`}
+            src={`/demo/take-${prevClipN}.mp4`}
+            className="demo-clip demo-clip-prev"
+            muted
+            loop
+            playsInline
+            ref={(el) => {
+              if (el) {
+                el.muted = true;
+                el.play().catch(() => {});
+              }
+            }}
+          />
+        )}
+        {justChanged && clipN && (
+          <span className="demo-flash">
+            T{clipN - 1} → T{clipN}
+          </span>
         )}
         {anyRender && <div className="scanline" />}
       </div>

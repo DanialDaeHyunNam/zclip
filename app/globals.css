@@ -2690,6 +2690,39 @@ button {
   animation: fadeUp 0.6s ease both;
 }
 
+/* The outgoing take, held on top and dissolved away so the A→B change reads. */
+.demo-clip-prev {
+  z-index: 2;
+  animation: demoDissolve 0.9s ease forwards;
+}
+
+@keyframes demoDissolve {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.demo-flash {
+  position: absolute;
+  z-index: 3;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.66);
+  border: 1px solid rgba(111, 220, 255, 0.5);
+  color: var(--accent);
+  animation: fadeUp 0.35s ease both;
+}
+
 .demo-timer {
   font-family: var(--font-mono), monospace;
   font-size: 18px;
