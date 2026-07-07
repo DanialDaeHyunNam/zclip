@@ -232,7 +232,9 @@ export default function Home() {
   const [custom, setCustom] = useState<{
     characters: CustomAsset[];
     settings: CustomAsset[];
-  }>({ characters: [], settings: [] });
+    fashion: CustomAsset[]; // outfit images (label + image; no prompt needed)
+  }>({ characters: [], settings: [], fashion: [] });
+  const fashionFileRef = useRef<HTMLInputElement>(null);
   // inline "add custom asset" form
   const [assetForm, setAssetForm] = useState<"char" | "setting" | null>(null);
   const [afLabel, setAfLabel] = useState("");
@@ -362,12 +364,18 @@ export default function Home() {
       ),
     );
     setSessions(loadJson<StoredSession[]>(SESSIONS_KEY, []));
-    setCustom(
-      loadJson(ASSETS_KEY, { characters: [], settings: [] } as {
-        characters: CustomAsset[];
-        settings: CustomAsset[];
-      }),
-    );
+    {
+      const c = loadJson(ASSETS_KEY, {} as {
+        characters?: CustomAsset[];
+        settings?: CustomAsset[];
+        fashion?: CustomAsset[];
+      });
+      setCustom({
+        characters: c.characters ?? [],
+        settings: c.settings ?? [],
+        fashion: c.fashion ?? [],
+      });
+    }
     const sid = localStorage.getItem(SESSION_ID_KEY) ?? `s${Date.now()}`;
     localStorage.setItem(SESSION_ID_KEY, sid);
     setSessionId(sid);
@@ -404,6 +412,7 @@ export default function Home() {
     if (
       custom.characters.length ||
       custom.settings.length ||
+      custom.fashion.length ||
       localStorage.getItem(ASSETS_KEY)
     ) {
       localStorage.setItem(ASSETS_KEY, JSON.stringify(custom));
@@ -976,6 +985,24 @@ export default function Home() {
     }
   };
 
+  /** Upload a custom outfit image → stored (dataURL) and selected. */
+  const addCustomFashion = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    try {
+      const bmp = await createImageBitmap(file);
+      const image = toJpeg(bmp, bmp.width, bmp.height, 768, 0.8);
+      const id = `cf${Date.now()}`;
+      const n = custom.fashion.length + 1;
+      setCustom((cu) => ({
+        ...cu,
+        fashion: [...cu.fashion, { id, label: `Custom ${n}`, prompt: "", image }],
+      }));
+      setFashionId(id);
+    } catch {
+      setError("Could not read that outfit image.");
+    }
+  };
+
   const unlock = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError("");
@@ -1022,7 +1049,8 @@ export default function Home() {
         | undefined)
     : undefined;
   const selFashion = fashionId
-    ? FASHION.find((f) => f.id === fashionId)
+    ? FASHION.find((f) => f.id === fashionId) ??
+      custom.fashion.find((f) => f.id === fashionId)
     : undefined;
 
   const send = async () => {
@@ -1070,7 +1098,10 @@ export default function Home() {
       if (selFashion && charB64) {
         setError(null);
         try {
-          const outfitB64 = await attachFromPath(`/fashion/${selFashion.id}.jpg`);
+          const outfitB64 =
+            "image" in selFashion && selFashion.image
+              ? selFashion.image.split(",")[1] // custom upload (dataURL)
+              : await attachFromPath(`/fashion/${selFashion.id}.jpg`);
           if (outfitB64) {
             const dr = await fetch("/api/dress", {
               method: "POST",
@@ -2203,6 +2234,54 @@ export default function Home() {
                         <span className="starter-desc">{f.desc}</span>
                       </button>
                     ))}
+                    {custom.fashion.map((f) => (
+                      <button
+                        key={f.id}
+                        className={`starter-card ${fashionId === f.id ? "sel" : ""}`}
+                        onClick={() =>
+                          setFashionId((cur) => (cur === f.id ? null : f.id))
+                        }
+                      >
+                        <span className="starter-img">
+                          {f.image && <img src={f.image} alt="" loading="lazy" />}
+                        </span>
+                        <span className="starter-name">{f.label}</span>
+                        <span className="starter-desc">YOUR OUTFIT</span>
+                        <span
+                          className="starter-del"
+                          role="button"
+                          title="Delete custom outfit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCustom((cu) => ({
+                              ...cu,
+                              fashion: cu.fashion.filter((x) => x.id !== f.id),
+                            }));
+                            if (fashionId === f.id) setFashionId(null);
+                          }}
+                        >
+                          ✕
+                        </span>
+                      </button>
+                    ))}
+                    <button
+                      className="starter-card add"
+                      onClick={() => fashionFileRef.current?.click()}
+                    >
+                      <span className="starter-name">＋ Custom</span>
+                      <span className="starter-desc">UPLOAD AN OUTFIT</span>
+                    </button>
+                    <input
+                      ref={fashionFileRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) addCustomFashion(f);
+                        e.target.value = "";
+                      }}
+                    />
                   </div>
                 </div>
               )}
