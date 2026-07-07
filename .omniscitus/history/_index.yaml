@@ -5,7 +5,7 @@ units:
     status: open
     created: 2026-07-06
     last_updated: 2026-07-07
-    session_count: 3
+    session_count: 4
     title: "ZCLIP Chat Studio"
   - id: zclip-landing-demo
     file: product/2026-07-06-zclip-landing-demo.md
@@ -13,5 +13,5 @@ units:
     status: open
     created: 2026-07-06
     last_updated: 2026-07-07
-    session_count: 2
+    session_count: 3
     title: "ZCLIP Landing & Demo Reel"

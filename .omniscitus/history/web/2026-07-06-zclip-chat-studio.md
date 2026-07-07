@@ -103,6 +103,20 @@ pre-steps (refine text, normalizeRefB64 aspect, dress wardrobe) rather than
 waiting on the model. Money-guard opt-outs should be session-scoped, never
 permanently persisted.
 
+### 2026-07-07 (studio + dashboard polish)
+**Focus**: Dashboard interactivity + a persistent sessions sidebar.
+- Dashboard: config table now lists the whole MODEL catalog (not just the 5
+  adapters); interactive model filter chips above the chart filter the 14-day /
+  by-session / by-model views; spend rows span full width with the value flush
+  right (auto value column + minmax(0,1fr) bar kills the `· 68s` overflow).
+- Sessions panel is now open by DEFAULT as a persistent sidebar (no backdrop);
+  the studio shifts right beside it, rail button + Escape hide it.
+
+**Learned**: CSS grid overflow ("blowout") comes from `min-width:auto` on
+tracks — a long value pushes the grid past the container; fix with a value
+column of `auto` + bar on `minmax(0,1fr)`. Modal→persistent is a small change
+(drop the backdrop, shift content) when close-on-outside-click was never wired.
+
 ## Pending
 - [ ] Verify Runway Act-Two end-to-end (needs a Runway key; adapter built to spec)
 - [ ] Verify the /api/dress outfit compositing quality on real cards

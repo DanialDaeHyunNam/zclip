@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-07T06:02:20.168Z
+updated: 2026-07-07T07:35:26.518Z
 
 files:
   "app/api/grab/route.ts":
@@ -26,10 +26,61 @@ files:
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-06T14:38:25.313Z
-    change_count: 1
+    last_modified: 2026-07-07T07:29:35.848Z
+    change_count: 18
     purpose: "Public landing page: hero, numbered differentiators, real-output demo reel, cut.donkeyuse.com workflow, star-the-repo CTA"
     change_log:
+      - date: 2026-07-07T07:29:35.848Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:25:29.387Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:13:50.072Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:13:15.089Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:09:24.603Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:06:44.192Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:06:21.782Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:06:13.539Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:05:14.302Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:02:33.964Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:02:15.551Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:02:03.203Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:56:38.506Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:39:24.404Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:39:18.190Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:39:11.223Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:38:50.130Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-06T14:38:25.313Z
         action: edit
         source: "claude"
@@ -37,10 +88,19 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T06:02:05.893Z
-    change_count: 75
+    last_modified: 2026-07-07T07:35:14.524Z
+    change_count: 78
     purpose: "The entire studio UI (one client component): chat thread, rewind, sessions, archive, spend popover, starter carousels + Library pill, GRAB panel, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-07T07:35:14.524Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:35:08.512Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:35:00.770Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T06:02:05.893Z
         action: edit
         source: "claude:Danial Nam"
@@ -281,10 +341,34 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T04:41:02.079Z
-    change_count: 5
+    last_modified: 2026-07-07T07:22:08.918Z
+    change_count: 13
     purpose: "Read-only spend & config dashboard: stat tiles, 14-day stacked columns, by-session and by-model bars, provider/pricing/key config table — all from the localStorage ledger"
     change_log:
+      - date: 2026-07-07T07:22:08.918Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:21:59.637Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:21:25.526Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:21:15.468Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:16:58.720Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:16:45.112Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:16:18.965Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:16:04.659Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T04:41:02.079Z
         action: edit
         source: "claude:Danial Nam"
@@ -304,10 +388,64 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T06:02:20.168Z
-    change_count: 8
+    last_modified: 2026-07-07T07:35:26.518Z
+    change_count: 26
     purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
+      - date: 2026-07-07T07:35:26.518Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:25:37.857Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:22:23.793Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:18:23.001Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:17:07.761Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:13:41.766Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:13:27.620Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:09:50.669Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:06:30.915Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:02:48.052Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:52:29.068Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:51:11.764Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:49:10.149Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:45:01.711Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:30:49.002Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:20:54.753Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:20:48.102Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:19:20.377Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T06:02:20.168Z
         action: edit
         source: "claude:Danial Nam"
@@ -406,5 +544,49 @@ files:
     purpose: "Composites a chosen outfit onto a character image (gemini-2.5-flash-image) so Act-Two animates a dressed character"
     change_log:
       - date: 2026-07-07T05:47:38.346Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/demo-reel.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T06:52:09.916Z
+    change_count: 12
+    purpose: "Landing demo reel: a scripted chat session playing 4 real takes with crossfade A→B transitions, a takes-timeline filmstrip, play-once + Replay"
+    change_log:
+      - date: 2026-07-07T06:52:09.916Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:52:01.682Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:48:55.892Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:48:44.475Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:47:02.176Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:46:12.703Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:44:51.559Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:44:40.598Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:44:30.664Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:38:40.327Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:34:25.584Z
+        action: write
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T06:30:07.825Z
         action: write
         source: "claude:Danial Nam"
