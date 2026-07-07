@@ -349,7 +349,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T04:38:18.880Z
     change_count: 1
-    purpose: ""
+    purpose: "Streams provider MP4s needing auth headers (Veo uri, Sora ref) or lacking CORS (remote CDN allowlist incl. Runway CloudFront); SSRF-guarded"
     change_log:
       - date: 2026-07-07T04:38:18.880Z
         action: edit
@@ -360,7 +360,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:18:17.597Z
     change_count: 5
-    purpose: ""
+    purpose: "POST submit → adapter; validates params/image/character/drivingVideo/modelId against whitelists, returns jobId fast"
     change_log:
       - date: 2026-07-07T05:18:17.597Z
         action: edit
@@ -383,7 +383,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:32:11.667Z
     change_count: 4
-    purpose: ""
+    purpose: "Rich hand-rolled model dropdown: company filter chips, price + quality/speed meters, key status, headline-per-company default + All models toggle"
     change_log:
       - date: 2026-07-07T05:32:11.667Z
         action: edit
@@ -403,7 +403,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:47:38.346Z
     change_count: 1
-    purpose: ""
+    purpose: "Composites a chosen outfit onto a character image (gemini-2.5-flash-image) so Act-Two animates a dressed character"
     change_log:
       - date: 2026-07-07T05:47:38.346Z
         action: write

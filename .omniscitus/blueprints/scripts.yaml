@@ -8,7 +8,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:47:18.548Z
     change_count: 1
-    purpose: ""
+    purpose: "Bakes the 16 Fashion garment reference images (gemini-2.5-flash-image) into public/fashion/"
     change_log:
       - date: 2026-07-07T05:47:18.548Z
         action: write

@@ -39,7 +39,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T04:43:16.169Z
     change_count: 1
-    purpose: ""
+    purpose: "Env template: GEMINI_API_KEY + optional OpenAI/xAI/Runway/ByteDance keys + APP_PASSWORD"
     change_log:
       - date: 2026-07-07T04:43:16.169Z
         action: edit
@@ -50,7 +50,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T04:43:33.648Z
     change_count: 1
-    purpose: ""
+    purpose: "Agent handoff notes: architecture, commands, provider facts (incl. Act-Two), design system, verification patterns"
     change_log:
       - date: 2026-07-07T04:43:33.648Z
         action: edit
