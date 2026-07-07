@@ -2457,6 +2457,32 @@ button {
   font-size: 12px;
 }
 
+/* Star CTA — the only reward for a free tool, so make it glow gold. */
+.ld-star {
+  border-color: rgba(245, 196, 81, 0.45);
+  animation: starHalo 2.8s ease-in-out infinite;
+}
+
+.ld-star:hover {
+  border-color: rgba(245, 196, 81, 0.9);
+  color: #f5c451;
+}
+
+.ld-star-icon {
+  color: #f5c451;
+  margin-right: 4px;
+}
+
+@keyframes starHalo {
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(245, 196, 81, 0.16);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(245, 196, 81, 0.32);
+  }
+}
+
 .ld-stats {
   font-family: var(--font-mono), monospace;
   font-size: 10.5px;

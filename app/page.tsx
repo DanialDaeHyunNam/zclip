@@ -113,12 +113,12 @@ export default function Landing() {
             Launch Studio →
           </a>
           <a
-            className="btn-ghost ld-cta"
+            className="btn-ghost ld-cta ld-star"
             href={REPO_URL}
             target="_blank"
             rel="noreferrer"
           >
-            ★ Star on GitHub
+            <span className="ld-star-icon">★</span> Star on GitHub
           </a>
         </div>
         <DemoReel />
