@@ -2501,9 +2501,8 @@ button {
   color: var(--dim);
   font-size: 16.5px;
   line-height: 1.75;
-  max-width: 54ch;
+  max-width: 680px; /* wide enough that the br-controlled line doesn't re-wrap */
   margin: 0 auto 36px;
-  text-wrap: balance;
 }
 
 /* The opening line is the punch — brighter than the explanation under it. */
