@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Fragment } from "react";
 import { CHARACTERS } from "@/lib/prompts";
 import DemoReel from "./demo-reel";
 
@@ -47,20 +48,23 @@ const DIFFS = [
 const STEPS = [
   {
     n: "01",
-    title: "Generate",
-    body: "Chat the hook out of ZCLIP — face, room, beat. A take lands in about a minute for ~$0.40.",
+    tag: "In ZCLIP",
+    title: "Generate the hook",
+    body: "Chat out the first 3 seconds — face, room, beat. ~1 min, ~$0.40 a take.",
     link: null as { href: string; label: string } | null,
   },
   {
     n: "02",
-    title: "Cut",
-    body: "Send it to cut — the AI copilot editor that sees your whole project. Split, title, subtitle and caption by chat. Open source and free, same as this.",
+    tag: "In cut",
+    title: "Edit the video",
+    body: "Hand it to cut — split, title, subtitle and caption by chat.",
     link: { href: CUT_URL, label: "cut.donkeyuse.com ↗" },
   },
   {
     n: "03",
-    title: "Ship",
-    body: "Export 9:16 and post. ZCLIP makes the first 3 seconds; cut makes the next 30.",
+    tag: "Anywhere",
+    title: "Post it",
+    body: "Export 9:16 and ship. Hook + full video, in minutes.",
     link: null,
   },
 ];
@@ -151,23 +155,32 @@ export default function Landing() {
       <section className="ld-section" id="workflow">
         <span className="label">Hook → full video in minutes</span>
         <div className="ld-steps">
-          {STEPS.map((s) => (
-            <div className="ld-step" key={s.n}>
-              <span className="ld-step-n">{s.n}</span>
-              <h3>{s.title}</h3>
-              <p>{s.body}</p>
-              {s.link && (
-                <a href={s.link.href} target="_blank" rel="noreferrer">
-                  {s.link.label}
-                </a>
+          {STEPS.map((s, i) => (
+            <Fragment key={s.n}>
+              {i > 0 && (
+                <span className="ld-step-arrow" aria-hidden>
+                  →
+                </span>
               )}
-            </div>
+              <div className="ld-step">
+                <div className="ld-step-top">
+                  <span className="ld-step-n">{s.n}</span>
+                  <span className="ld-step-tag">{s.tag}</span>
+                </div>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+                {s.link && (
+                  <a href={s.link.href} target="_blank" rel="noreferrer">
+                    {s.link.label}
+                  </a>
+                )}
+              </div>
+            </Fragment>
           ))}
         </div>
         <p className="ld-note">
-          The hook is the hard 20% that decides whether anyone stays. ZCLIP
-          batches that part; <a href={CUT_URL}>cut</a> finishes the video —
-          subtitles, titles and cuts driven by the same kind of chat.
+          The hook is the hard 20% that decides whether anyone stays — ZCLIP
+          batches it, <a href={CUT_URL}>cut</a> finishes the rest.
         </p>
       </section>
 
