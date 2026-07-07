@@ -2709,9 +2709,15 @@ button {
 .demo-chat {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
   justify-content: center;
   min-height: 380px;
+}
+
+.demo-thread-item {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
 }
 
 .demo-msg {
