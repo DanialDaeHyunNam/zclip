@@ -131,11 +131,6 @@ export default function DemoReel() {
           ) : null,
         )}
       </div>
-
-      <figcaption className="demo-cap">
-        REAL OUTPUT — FOUR TAKES, ONE CHAT. EACH BUILT ON THE LAST · SAME FACE,
-        SAME ROOM, ONE MESSAGE AT A TIME · SPED UP · LOOPS
-      </figcaption>
     </figure>
   );
 }

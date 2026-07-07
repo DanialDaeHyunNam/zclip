@@ -14,8 +14,8 @@ const CUT_URL = "https://cut.donkeyuse.com";
 const DIFFS = [
   {
     n: "01",
-    title: "Swap the model mid-chat",
-    body: "Veo, Sora, Grok, Seedance — one dropdown, same conversation, keys pasted straight into the UI. Four models today; the adapter interface is two functions, so the fifth is a pull request away.",
+    title: "A model marketplace in a dropdown",
+    body: "Veo, Sora, Grok, Runway, Seedance and their variants — filtered by maker, priced per second, keys pasted straight into the UI. Swap mid-chat without losing the thread. Adding the next one is a two-function adapter, so it's a pull request away.",
     big: false,
   },
   {
@@ -26,20 +26,20 @@ const DIFFS = [
   },
   {
     n: "03",
-    title: "Video-to-video, in spirit",
-    body: "Nobody sells true video-to-video yet — so ZCLIP does the honest version: drop any clip and it's compacted into key frames, read for subject, scene and motion, then re-directed into your next take. The result feels like v2v, today.",
+    title: "Real performance transfer",
+    body: "Point Runway Act-Two at any reference clip and it maps that exact motion and expression onto the face you picked — true video-to-video. No Runway key? The free path transcribes the clip into a timestamped beat map and re-performs it. Either way: the reaction you saw, on your person.",
     big: false,
   },
   {
     n: "04",
     title: "Actually multimodal input",
-    body: "Images, videos, earlier takes, cast cards — everything attaches to the composer as a chip and verifiably lands in the prompt. The base prompt is always visible and editable. Nothing hidden.",
+    body: "Images, videos, earlier takes, cast cards, even a wardrobe swap — everything attaches to the composer as a chip and verifiably lands in the take. Grab a reference straight off YouTube or X. The base prompt is always visible and editable. Nothing hidden.",
     big: false,
   },
   {
     n: "05",
     title: "A spend dashboard, built in",
-    body: "Every take shows its cost before and after, and a per-session, per-model chart keeps the running total honest. No subscription — your keys, your pennies.",
+    body: "Every take shows its cost before you send and after it lands; a confirm step guards each spend, and a dashboard charts the total by day, session and model. No subscription — your keys, your pennies.",
     big: false,
   },
 ];
@@ -101,9 +101,8 @@ export default function Landing() {
           <span>typed, not filmed.</span>
         </h1>
         <p>
-          The scroll-stopping first 3 seconds of a TikTok ad, out of a chat —
-          pick a face, pick a room, type the beat. Iterate take by take on
-          your own API keys, cents per clip.
+          The scroll-stopping first 3 seconds of a TikTok ad — chatted out,
+          iterated take by take, cents per clip on your own keys.
         </p>
         <div className="ld-cta-row">
           <a className="btn-primary ld-cta" href="/chat">
@@ -118,10 +117,6 @@ export default function Landing() {
             ★ Star on GitHub
           </a>
         </div>
-        <p className="ld-stats">
-          ~60s a take · ~$0.40 a clip on Veo Fast · 4 video models · 27-face
-          cast
-        </p>
         <DemoReel />
       </header>
 
@@ -147,8 +142,8 @@ export default function Landing() {
             <img key={c.id} src={`/starters/${c.id}.jpg`} alt={c.label} loading="lazy" />
           ))}
           <p className="ld-stats">
-            Also in the box · chat-native takes · rewind &amp; branch ·
-            27-face / 10-set cast · shared-password deploy
+            Also in the box · reference grabber (YouTube / X) · wardrobe swaps ·
+            rewind &amp; branch · 27-face / 10-set cast · shared-password deploy
           </p>
         </div>
       </section>
@@ -188,8 +183,8 @@ export default function Landing() {
           is how you say thanks.
         </p>
         <p className="ld-fine">
-          Bring your own keys · Veo · Sora · Grok · Seedance · No data leaves
-          your browser except the prompts you send to providers.
+          Bring your own keys · Veo · Sora · Grok · Runway · Seedance · No data
+          leaves your browser except the prompts you send to providers.
         </p>
       </footer>
     </div>
