@@ -6,7 +6,8 @@
 Chat-driven UGC reaction-hook video studio (/chat): message → prompt refine →
 provider generation → iterate. Sessions, rewind, pinned-take context, continuity
 snapshots, multimodal references, spend tracking, in-UI API keys. Plus a GRAB
-reference-video toolchain (YouTube/X/direct + trim) and a `/dashboard` spend page.
+reference-video toolchain, a `/dashboard` spend page, a model marketplace picker,
+Runway Act-Two performance transfer with outfit compositing, and a spend confirm.
 
 ## Context
 - **Background**: Dan needed to mass-produce the "surprised reaction" first 3s of
@@ -72,9 +73,56 @@ new storage; transfer is transcription+seed-frame re-performance, so i2v
 choreography fidelity is the hard ceiling — best is max transcription fidelity
 + a ban on invented beats (verified: still-image ref now holds pose vs. inventing).
 
+### 2026-07-07 (cont.)
+**Focus**: Real transfer (Act-Two), a model marketplace, wardrobe, spend guard.
+- Fixed the double-submit (Korean IME Enter + async busyTurn) with an
+  isComposing guard + a synchronous sendLockRef; surfaced Gemini finishReason
+  and disabled thinking (thinkingBudget:0) so refine stops returning empty text
+- Runway Act-Two provider (lib/providers/runway.ts): TRUE performance transfer
+  (driving video + face card → motion mapped onto the face). Web-researched
+  that Grok/Veo/Sora are all first-frame i2v and structurally cannot follow a
+  source video — Act-Two is the only real fix. Character/video sent as data
+  URIs; CloudFront output proxied
+- Model catalog split from adapters: several models ride one adapter via a
+  modelId override. Rich hand-rolled picker (no radix) — company filter chips,
+  price + quality/speed meters + key status, headline-per-company default,
+  "All models" reveals verified variants (Veo 3.1 / Veo 3.1 Lite / Sora 2 Pro)
+- Fashion: Act-Two has no wardrobe input, so /api/dress composites the picked
+  outfit onto the character (gemini-2.5-flash-image) BEFORE Act-Two animates
+  it; Fashion carousel (16 baked garments, gender-filtered) + custom upload
+- Pre-spend confirm modal on Send/Retry (model/format/length/est. cost),
+  session-scoped "don't ask again"; default duration stays 4s (dropped the
+  video-attach nudge)
+- Logo now opens a fresh session; rail extracted + shared with /dashboard
+
+**Learned**: i2v (first-frame) vs video-driven (Act-Two) are different model
+categories — no prompt/LLM trick bridges them; the honest hacky-cheap cousin is
+LivePortrait ($0.06/clip). The "model ≠ adapter" split (one protocol, many
+model ids) is how every LLM provider ships variants. Fill capability gaps with
+pre-steps (refine text, normalizeRefB64 aspect, dress wardrobe) rather than
+waiting on the model. Money-guard opt-outs should be session-scoped, never
+permanently persisted.
+
+### 2026-07-07 (studio + dashboard polish)
+**Focus**: Dashboard interactivity + a persistent sessions sidebar.
+- Dashboard: config table now lists the whole MODEL catalog (not just the 5
+  adapters); interactive model filter chips above the chart filter the 14-day /
+  by-session / by-model views; spend rows span full width with the value flush
+  right (auto value column + minmax(0,1fr) bar kills the `· 68s` overflow).
+- Sessions panel is now open by DEFAULT as a persistent sidebar (no backdrop);
+  the studio shifts right beside it, rail button + Escape hide it.
+
+**Learned**: CSS grid overflow ("blowout") comes from `min-width:auto` on
+tracks — a long value pushes the grid past the container; fix with a value
+column of `auto` + bar on `minmax(0,1fr)`. Modal→persistent is a small change
+(drop the backdrop, shift content) when close-on-outside-click was never wired.
+
 ## Pending
+- [ ] Verify Runway Act-Two end-to-end (needs a Runway key; adapter built to spec)
+- [ ] Verify the /api/dress outfit compositing quality on real cards
+- [ ] Optional: LivePortrait adapter as a cheaper Act-Two alternative (user asked)
+- [ ] Optional: wire Sora 2 Pro / Veo 3.1 pricing accuracy (currently estimates)
 - [ ] Verify Seedance adapter end-to-end (endpoint/model id unconfirmed)
-- [ ] Optional: re-generate demo takes 2/3 on Veo after quota reset (script ready)
 - [ ] Set APP_PASSWORD before any public Vercel deploy
 - [ ] GRAB job files in `.grabs/` are never garbage-collected (fine for local dev)
 

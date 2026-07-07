@@ -271,6 +271,21 @@ body::before {
   max-width: 1180px;
   margin: 0 auto;
   padding: 0 32px 110px;
+  transition: margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sessions panel is a persistent sidebar (open by default) — when it's open
+   the studio sits to its right instead of hiding behind it. */
+.shell.with-side {
+  margin-left: 360px;
+  margin-right: auto;
+}
+
+@media (max-width: 1100px) {
+  /* too narrow to keep both — the panel overlays and content stays put */
+  .shell.with-side {
+    margin-left: auto;
+  }
 }
 
 /* ── header ─────────────────────────────────────── */
@@ -539,6 +554,7 @@ button {
   cursor: pointer;
   transition: background 0.3s ease, opacity 0.3s ease;
   border-radius: var(--r-pill);
+  text-decoration: none;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -565,6 +581,7 @@ button {
   text-align: center;
   transition: border-color 0.3s ease, color 0.3s ease;
   border-radius: var(--r-pill);
+  text-decoration: none;
 }
 
 .btn-ghost:hover {
@@ -583,6 +600,7 @@ button {
   text-transform: uppercase;
   cursor: pointer;
   transition: color 0.3s ease;
+  text-decoration: none;
 }
 
 .link-btn:hover {
@@ -2105,6 +2123,68 @@ button {
   line-height: 1.7;
 }
 
+/* On the dashboard the spend rows span the full width (like the chart above),
+   so the value sits flush right — not the narrow studio-popover width. The
+   value column is `auto` (sizes to its text) with the bar on minmax(0,1fr) so
+   a long value like "· 68s" never blows the grid past the right edge. */
+.dash-section .spend-rows {
+  max-width: none;
+}
+
+.dash-section .spend-row {
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+}
+
+.dash-section .spend-bar {
+  min-width: 0;
+}
+
+.dash-section .spend-total {
+  white-space: nowrap;
+}
+
+/* filter chips above the chart */
+.dash-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 6px;
+}
+
+.dash-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: none;
+  padding: 6px 13px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.dash-chip i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.dash-chip:hover {
+  color: var(--fg);
+  border-color: var(--hair-strong);
+}
+
+.dash-chip.on {
+  color: var(--fg);
+  border-color: var(--hair-strong);
+  background: rgba(255, 255, 255, 0.05);
+}
+
 /* GRAB tool — compact card on the archive-overlay backdrop */
 .grab-card {
   max-width: 680px;
@@ -2436,8 +2516,13 @@ button {
   color: var(--dim);
   font-size: 16.5px;
   line-height: 1.75;
-  max-width: 62ch;
+  max-width: 680px; /* wide enough that the br-controlled line doesn't re-wrap */
   margin: 0 auto 36px;
+}
+
+/* The opening line is the punch — brighter than the explanation under it. */
+.ld-lead {
+  color: var(--fg);
 }
 
 .ld-cta-row {
@@ -2452,6 +2537,32 @@ button {
   width: auto;
   padding: 16px 34px;
   font-size: 12px;
+}
+
+/* Star CTA — the only reward for a free tool, so make it glow gold. */
+.ld-star {
+  border-color: rgba(245, 196, 81, 0.45);
+  animation: starHalo 2.8s ease-in-out infinite;
+}
+
+.ld-star:hover {
+  border-color: rgba(245, 196, 81, 0.9);
+  color: #f5c451;
+}
+
+.ld-star-icon {
+  color: #f5c451;
+  margin-right: 4px;
+}
+
+@keyframes starHalo {
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(245, 196, 81, 0.16);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(245, 196, 81, 0.32);
+  }
 }
 
 .ld-stats {
@@ -2469,6 +2580,25 @@ button {
 .ld-section > .label {
   display: block;
   margin-bottom: 26px;
+}
+
+/* Landing section titles — real headings, not eyebrow labels. */
+.ld-h2 {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(24px, 3.4vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--fg);
+  margin-bottom: 26px;
+}
+
+.ld-sub {
+  margin: -16px 0 30px;
+  max-width: 560px;
+  color: var(--dim);
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .ld-grid {
@@ -2517,15 +2647,40 @@ button {
 }
 
 .ld-steps {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
 }
 
 .ld-step {
+  flex: 1;
   border: 1px solid var(--hair);
   border-radius: var(--r-md);
   padding: 24px;
+}
+
+.ld-step-arrow {
+  align-self: center;
+  flex-shrink: 0;
+  color: var(--faint);
+  font-size: 22px;
+}
+
+.ld-step-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ld-step-tag {
+  font-family: var(--font-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  padding: 3px 9px;
 }
 
 .ld-step-n {
@@ -2539,7 +2694,16 @@ button {
   font-family: var(--font-display), sans-serif;
   font-size: 18px;
   font-weight: 600;
-  margin: 12px 0 10px;
+  margin: 14px 0 10px;
+}
+
+@media (max-width: 680px) {
+  .ld-steps {
+    flex-direction: column;
+  }
+  .ld-step-arrow {
+    transform: rotate(90deg);
+  }
 }
 
 .ld-step p {
@@ -2687,6 +2851,118 @@ button {
   animation: fadeUp 0.6s ease both;
 }
 
+/* The outgoing take, held on top and dissolved away so the A→B change reads. */
+.demo-clip-prev {
+  z-index: 2;
+  animation: demoDissolve 0.9s ease forwards;
+}
+
+@keyframes demoDissolve {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.demo-flash {
+  position: absolute;
+  z-index: 3;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.66);
+  border: 1px solid rgba(111, 220, 255, 0.5);
+  color: var(--accent);
+  animation: fadeUp 0.35s ease both;
+}
+
+/* takes-so-far timeline strip, spanning the full width under the demo */
+.demo-strip {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hair);
+  min-height: 92px;
+}
+
+.demo-thumb {
+  position: relative;
+  width: 46px;
+  aspect-ratio: 9 / 16;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid var(--hair);
+  flex-shrink: 0;
+  animation: fadeUp 0.4s ease both;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.demo-thumb.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.demo-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.demo-thumb-n {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono), monospace;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  color: var(--fg);
+  background: rgba(0, 0, 0, 0.62);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.demo-strip-arrow {
+  color: var(--faint);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.demo-replay {
+  margin-left: auto;
+  flex-shrink: 0;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--fg);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: border-color 0.3s ease, color 0.3s ease, background 0.3s ease;
+  animation: fadeUp 0.4s ease both;
+}
+
+.demo-replay:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(111, 220, 255, 0.06);
+}
+
 .demo-timer {
   font-family: var(--font-mono), monospace;
   font-size: 18px;
@@ -2706,9 +2982,15 @@ button {
 .demo-chat {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
   justify-content: center;
   min-height: 380px;
+}
+
+.demo-thread-item {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
 }
 
 .demo-msg {

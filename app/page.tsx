@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Fragment } from "react";
 import { CHARACTERS } from "@/lib/prompts";
 import DemoReel from "./demo-reel";
 
@@ -14,8 +15,8 @@ const CUT_URL = "https://cut.donkeyuse.com";
 const DIFFS = [
   {
     n: "01",
-    title: "Swap the model mid-chat",
-    body: "Veo, Sora, Grok, Seedance — one dropdown, same conversation, keys pasted straight into the UI. Four models today; the adapter interface is two functions, so the fifth is a pull request away.",
+    title: "A model marketplace in a dropdown",
+    body: "Veo, Sora, Grok, Runway, Seedance and their variants — filtered by maker, priced per second, keys pasted straight into the UI. Swap mid-chat without losing the thread. Adding the next one is a two-function adapter, so it's a pull request away.",
     big: false,
   },
   {
@@ -26,20 +27,20 @@ const DIFFS = [
   },
   {
     n: "03",
-    title: "Video-to-video, in spirit",
-    body: "Nobody sells true video-to-video yet — so ZCLIP does the honest version: drop any clip and it's compacted into key frames, read for subject, scene and motion, then re-directed into your next take. The result feels like v2v, today.",
+    title: "Real performance transfer",
+    body: "Point Runway Act-Two at any reference clip and it maps that exact motion and expression onto the face you picked — true video-to-video. No Runway key? The free path transcribes the clip into a timestamped beat map and re-performs it. Either way: the reaction you saw, on your person.",
     big: false,
   },
   {
     n: "04",
     title: "Actually multimodal input",
-    body: "Images, videos, earlier takes, cast cards — everything attaches to the composer as a chip and verifiably lands in the prompt. The base prompt is always visible and editable. Nothing hidden.",
+    body: "Images, videos, earlier takes, cast cards, even a wardrobe swap — everything attaches to the composer as a chip and verifiably lands in the take. Grab a reference straight off YouTube or X. The base prompt is always visible and editable. Nothing hidden.",
     big: false,
   },
   {
     n: "05",
     title: "A spend dashboard, built in",
-    body: "Every take shows its cost before and after, and a per-session, per-model chart keeps the running total honest. No subscription — your keys, your pennies.",
+    body: "Every take shows its cost before you send and after it lands; a confirm step guards each spend, and a dashboard charts the total by day, session and model. No subscription — your keys, your pennies.",
     big: false,
   },
 ];
@@ -47,20 +48,23 @@ const DIFFS = [
 const STEPS = [
   {
     n: "01",
-    title: "Generate",
-    body: "Chat the hook out of ZCLIP — face, room, beat. A take lands in about a minute for ~$0.40.",
+    tag: "In ZCLIP",
+    title: "Generate the hook",
+    body: "Chat out the first 3 seconds — face, room, beat. ~1 min, ~$0.40 a take.",
     link: null as { href: string; label: string } | null,
   },
   {
     n: "02",
-    title: "Cut",
-    body: "Send it to cut — the AI copilot editor that sees your whole project. Split, title, subtitle and caption by chat. Open source and free, same as this.",
+    tag: "In cut",
+    title: "Edit the video",
+    body: "Hand it to cut — split, title, subtitle and caption by chat.",
     link: { href: CUT_URL, label: "cut.donkeyuse.com ↗" },
   },
   {
     n: "03",
-    title: "Ship",
-    body: "Export 9:16 and post. ZCLIP makes the first 3 seconds; cut makes the next 30.",
+    tag: "Anywhere",
+    title: "Post it",
+    body: "Export 9:16 and ship. Hook + full video, in minutes.",
     link: null,
   },
 ];
@@ -101,32 +105,30 @@ export default function Landing() {
           <span>typed, not filmed.</span>
         </h1>
         <p>
-          The scroll-stopping first 3 seconds of a TikTok ad, out of a chat —
-          pick a face, pick a room, type the beat. Iterate take by take on
-          your own API keys, cents per clip.
+          <span className="ld-lead">Stop buying reaction clips.</span>
+          <br />
+          Chat out the scroll-stopping first 3 seconds of your ad for cents.
+          <br />
+          Then iterate till one converts.
         </p>
         <div className="ld-cta-row">
           <a className="btn-primary ld-cta" href="/chat">
             Launch Studio →
           </a>
           <a
-            className="btn-ghost ld-cta"
+            className="btn-ghost ld-cta ld-star"
             href={REPO_URL}
             target="_blank"
             rel="noreferrer"
           >
-            ★ Star on GitHub
+            <span className="ld-star-icon">★</span> Star on GitHub
           </a>
         </div>
-        <p className="ld-stats">
-          ~60s a take · ~$0.40 a clip on Veo Fast · 4 video models · 27-face
-          cast
-        </p>
         <DemoReel />
       </header>
 
       <section className="ld-section" id="features">
-        <span className="label">Why it&apos;s different</span>
+        <h2 className="ld-h2">Why it&apos;s different</h2>
         <div className="ld-diffs">
           {DIFFS.map((d) => (
             <div className="ld-diff" key={d.n}>
@@ -147,33 +149,41 @@ export default function Landing() {
             <img key={c.id} src={`/starters/${c.id}.jpg`} alt={c.label} loading="lazy" />
           ))}
           <p className="ld-stats">
-            Also in the box · chat-native takes · rewind &amp; branch ·
-            27-face / 10-set cast · shared-password deploy
+            Also in the box · reference grabber (YouTube / X) · wardrobe swaps ·
+            rewind &amp; branch · 27-face / 10-set cast · shared-password deploy
           </p>
         </div>
       </section>
 
       <section className="ld-section" id="workflow">
-        <span className="label">Hook → full video in minutes</span>
+        <h2 className="ld-h2">Hook → full video in minutes</h2>
+        <p className="ld-sub">
+          The hook is the hard 20% that decides whether anyone stays.
+        </p>
         <div className="ld-steps">
-          {STEPS.map((s) => (
-            <div className="ld-step" key={s.n}>
-              <span className="ld-step-n">{s.n}</span>
-              <h3>{s.title}</h3>
-              <p>{s.body}</p>
-              {s.link && (
-                <a href={s.link.href} target="_blank" rel="noreferrer">
-                  {s.link.label}
-                </a>
+          {STEPS.map((s, i) => (
+            <Fragment key={s.n}>
+              {i > 0 && (
+                <span className="ld-step-arrow" aria-hidden>
+                  →
+                </span>
               )}
-            </div>
+              <div className="ld-step">
+                <div className="ld-step-top">
+                  <span className="ld-step-n">{s.n}</span>
+                  <span className="ld-step-tag">{s.tag}</span>
+                </div>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+                {s.link && (
+                  <a href={s.link.href} target="_blank" rel="noreferrer">
+                    {s.link.label}
+                  </a>
+                )}
+              </div>
+            </Fragment>
           ))}
         </div>
-        <p className="ld-note">
-          The hook is the hard 20% that decides whether anyone stays. ZCLIP
-          batches that part; <a href={CUT_URL}>cut</a> finishes the video —
-          subtitles, titles and cuts driven by the same kind of chat.
-        </p>
       </section>
 
       <footer className="ld-footer">
@@ -188,8 +198,8 @@ export default function Landing() {
           is how you say thanks.
         </p>
         <p className="ld-fine">
-          Bring your own keys · Veo · Sora · Grok · Seedance · No data leaves
-          your browser except the prompts you send to providers.
+          Bring your own keys · Veo · Sora · Grok · Runway · Seedance · No data
+          leaves your browser except the prompts you send to providers.
         </p>
       </footer>
     </div>

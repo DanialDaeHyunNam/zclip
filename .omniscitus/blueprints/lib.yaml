@@ -8,7 +8,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:31:36.292Z
     change_count: 10
-    purpose: ""
+    purpose: "The switchboard: PROVIDERS adapters + MODELS catalog (model≠adapter), pricing, duration rules (effectiveSeconds), cost estimates, key allowlist"
     change_log:
       - date: 2026-07-07T05:31:36.292Z
         action: edit
@@ -46,7 +46,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:17:21.754Z
     change_count: 2
-    purpose: ""
+    purpose: "VideoProvider adapter interface (submit/status) + SubmitParams (image/character/drivingVideo/modelId) + JobStatus"
     change_log:
       - date: 2026-07-07T05:17:21.754Z
         action: edit
@@ -60,7 +60,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:18:10.960Z
     change_count: 2
-    purpose: ""
+    purpose: "Runway Act-Two adapter: character_performance (face + driving video → motion transfer), poll tasks, CloudFront output proxied"
     change_log:
       - date: 2026-07-07T05:18:10.960Z
         action: edit
@@ -74,7 +74,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T04:37:57.372Z
     change_count: 1
-    purpose: ""
+    purpose: "Adapter registry + resolveProvider(name) mapping a ProviderName to its VideoProvider"
     change_log:
       - date: 2026-07-07T04:37:57.372Z
         action: edit
@@ -85,7 +85,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:17:27.304Z
     change_count: 1
-    purpose: ""
+    purpose: "Google Veo adapter (Gemini LRO predictLongRunning → poll); first-frame i2v; honors params.modelId"
     change_log:
       - date: 2026-07-07T05:17:27.304Z
         action: edit
@@ -96,7 +96,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:17:36.853Z
     change_count: 1
-    purpose: ""
+    purpose: "xAI Grok Imagine adapter: text→image→video (skips image step with a reference); proxies vidgen.x.ai output"
     change_log:
       - date: 2026-07-07T05:17:36.853Z
         action: edit
@@ -107,7 +107,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:17:41.580Z
     change_count: 1
-    purpose: ""
+    purpose: "ByteDance Seedance adapter (unverified endpoint/model id from ModelArk docs)"
     change_log:
       - date: 2026-07-07T05:17:41.580Z
         action: edit
@@ -118,7 +118,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:17:57.049Z
     change_count: 1
-    purpose: ""
+    purpose: "OpenAI Sora adapter: base/pro via modelId, size gating, 8s min, /content download proxied"
     change_log:
       - date: 2026-07-07T05:17:57.049Z
         action: edit
@@ -129,7 +129,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T05:46:50.047Z
     change_count: 1
-    purpose: ""
+    purpose: "Built-in cast (CHARACTERS), SETTINGS, FASHION outfits, surprise-arc beat maps, composeStarter — the visible base prompts"
     change_log:
       - date: 2026-07-07T05:46:50.047Z
         action: edit

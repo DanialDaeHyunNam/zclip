@@ -50,8 +50,30 @@ works because the pipeline actually did it.
 **Learned**: `git filter-branch --env-filter` is the clean way to scrub a
 local-hostname committer identity before a first public push.
 
+### 2026-07-07 (cont.)
+**Focus**: Landing revamp — real 4-take demo reel, sharper copy, pipeline.
+- Demo reel rebuilt with 4 REAL takes from a live Act-Two session (the actual
+  chat iteration: hand → lips → gasp → shush), data-driven (TAKES array).
+  Made the A→B change legible (crossfade + "T1→T2" flash, longer hold), added
+  a left-aligned takes-timeline filmstrip, and switched auto-loop → play-once
+  + Replay button so viewers can read/watch calmly.
+- Copy refresh for the real feature set (Act-Two = real transfer, marketplace,
+  GRAB, wardrobe, spend confirm). Value-forward hero subhead ("Stop buying
+  reaction clips …") with hand line breaks. Section labels → bold headings.
+  Workflow reads as Generate → Edit → Post with tool tags + arrows.
+- Buttons lose underlines; Star-on-GitHub CTA gets a gold pulsing glow (the
+  only "reward" for a free tool).
+
+**Learned**: similar-looking clips need a MOTION signal (crossfade) + a text
+label to read as "changed" — a hard cut between look-alikes is invisible.
+Copy: H1 carries the "what", the subhead carries the "why/who"; `text-wrap:
+balance` fights meaningful line breaks, so use explicit `<br>` for punch lines.
+On positioning: a pretty-woman demo reads as product-accurate (UGC market skews
+female) when balanced by a mixed cast — don't swap to male, add balance.
+
 ## Pending
 - [ ] Owner eyeball pass on all 37 baked card photos (re-bake singles as needed)
+- [ ] Optional: add a male-led demo take set to fully balance the reel
 
 ## Notes
 Cross-ref: web/2026-07-06-zclip-chat-studio.md
