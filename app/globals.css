@@ -2439,8 +2439,14 @@ button {
   color: var(--dim);
   font-size: 16.5px;
   line-height: 1.75;
-  max-width: 62ch;
+  max-width: 54ch;
   margin: 0 auto 36px;
+  text-wrap: balance;
+}
+
+/* The opening line is the punch — brighter than the explanation under it. */
+.ld-lead {
+  color: var(--fg);
 }
 
 .ld-cta-row {

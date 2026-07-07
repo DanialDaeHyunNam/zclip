@@ -105,8 +105,10 @@ export default function Landing() {
           <span>typed, not filmed.</span>
         </h1>
         <p>
-          Stop buying reaction clips. Chat out the scroll-stopping first 3
-          seconds of your ad for cents — and iterate till one converts.
+          <span className="ld-lead">Stop buying reaction clips.</span>
+          <br />
+          Chat out the scroll-stopping first 3 seconds of your ad for cents —
+          and iterate till one converts.
         </p>
         <div className="ld-cta-row">
           <a className="btn-primary ld-cta" href="/chat">
