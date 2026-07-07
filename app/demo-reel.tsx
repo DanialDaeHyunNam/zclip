@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 
 /**
  * Animated product demo — a miniature chat session that plays like a screen
- * recording on a ~19s loop. The four clips in /public/demo are REAL ZCLIP
- * output from one session: a starting take, then three chat refinements,
- * each built on the last (takes-as-context). Same woman, same room — only the
- * hand and the emotion change, one message at a time. Prompts are the actual
- * messages that were typed.
+ * recording. The four clips in /public/demo are REAL ZCLIP output from one
+ * session: a starting take, then three chat refinements, each built on the
+ * last (takes-as-context). Same woman, same room — only the hand and the
+ * emotion change, one message at a time. Prompts are the actual messages typed.
+ *
+ * Pacing per take: type the message → ~1s beat → render → the clip updates →
+ * hold so you can watch it. The final clip plays through fully, then a ~2s
+ * hold before the loop restarts.
  */
 
 const TAKES = [
@@ -30,8 +33,14 @@ const TAKES = [
   },
 ];
 
-const PER = 48; // ticks per take
-const LOOP = TAKES.length * PER; // total loop length in 100ms ticks
+// All in 100ms ticks.
+const TYPE = 22; // typing the message
+const PAUSE = 10; // ~1s beat between "typed" and the clip changing
+const RENDER = 9; // render spinner
+const SHOW = 12; // clip visible before the next take starts typing
+const STEP = TYPE + PAUSE + RENDER + SHOW;
+const FINAL_HOLD = 60; // last clip plays fully (~4s) + ~2s hold, then loop
+const LOOP = (TAKES.length - 1) * STEP + (TYPE + PAUSE + RENDER) + FINAL_HOLD;
 
 export default function DemoReel() {
   const [t, setT] = useState(0);
@@ -40,20 +49,26 @@ export default function DemoReel() {
     return () => clearInterval(iv);
   }, []);
 
-  // Per-take sub-states derived from a fixed offset window.
   const takes = TAKES.map((tk, i) => {
-    const base = i * PER;
+    const base = i * STEP;
     const isLast = i === TAKES.length - 1;
+    const typeStart = base;
+    const typeEnd = base + TYPE;
+    const renderStart = typeEnd + PAUSE;
+    const renderEnd = renderStart + RENDER; // clip updates here
+    const speed = Math.ceil(tk.msg.length / TYPE);
     return {
       ...tk,
       i,
-      typed: tk.msg.slice(0, Math.max(0, (t - (base + 3)) * 3)),
-      typing: t >= base + 3 && t < base + 24,
-      sent: t >= base + 24,
-      render: t >= base + 25 && t < base + 39,
-      done: t >= base + 39,
-      pin: !isLast && t >= base + 44,
-      renderFrom: base + 25,
+      isLast,
+      renderStart,
+      typed: tk.msg.slice(0, Math.max(0, (t - typeStart) * speed)),
+      typing: t >= typeStart && t < typeEnd,
+      sent: t >= typeEnd,
+      preparing: t >= typeEnd && t < renderStart,
+      render: t >= renderStart && t < renderEnd,
+      done: t >= renderEnd,
+      pin: !isLast && t >= renderEnd + 4,
     };
   });
 
@@ -101,8 +116,10 @@ export default function DemoReel() {
                 <div className="demo-take">
                   <span className={`dot ${tk.done ? "done" : "live"}`} />
                   {tk.render
-                    ? `RENDERING ${timer(tk.renderFrom)}`
-                    : `TAKE ${tk.i + 1} · ${tk.meta}`}
+                    ? `RENDERING ${timer(tk.renderStart)}`
+                    : tk.preparing
+                      ? "PREPARING…"
+                      : `TAKE ${tk.i + 1} · ${tk.meta}`}
                 </div>
               )}
               {tk.pin && (
