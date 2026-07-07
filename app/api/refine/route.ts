@@ -138,7 +138,16 @@ HARD RULES:
       body: JSON.stringify({
         system_instruction: { parts: [{ text: SYSTEM }] },
         contents: [{ role: "user", parts }],
-        generationConfig: { temperature: 0.4 },
+        generationConfig: {
+          temperature: 0.4,
+          // Cap output and DISABLE thinking. Gemini 2.5 Flash otherwise
+          // spends output tokens on internal thinking; with ~10 real video
+          // frames to analyze it can exhaust the budget and finish with
+          // finishReason MAX_TOKENS and an EMPTY text part — the "no text"
+          // failure. thinkingBudget:0 sends all tokens to the answer.
+          maxOutputTokens: 2048,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       }),
     },
   );
@@ -156,10 +165,21 @@ HARD RULES:
   const prompt: string | undefined =
     data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
   if (!prompt) {
-    return Response.json(
-      { error: "Refiner returned no text — try rephrasing." },
-      { status: 502 },
-    );
+    // Say WHY the text is missing so it's not a mystery. The two real
+    // causes with video references: a safety block (real people + a
+    // face-replace ask reads as deepfake) or a truncated generation.
+    const block = data?.promptFeedback?.blockReason;
+    const finish = data?.candidates?.[0]?.finishReason;
+    let error = "Refiner returned no text — try rephrasing.";
+    if (block || finish === "SAFETY" || finish === "PROHIBITED_CONTENT") {
+      error =
+        "Gemini blocked this reference as sensitive content — a real face + a 'replace the face' ask can read as deepfake. Try a shorter/less explicit instruction (e.g. \"same performance, new person\"), fewer frames, or a different clip.";
+    } else if (finish === "MAX_TOKENS") {
+      error = "Refiner hit its length limit before finishing — try a shorter clip or fewer context takes.";
+    } else if (finish === "RECITATION") {
+      error = "Gemini stopped on a recitation check — reword the instruction and retry.";
+    }
+    return Response.json({ error, finishReason: finish ?? block ?? null }, { status: 502 });
   }
   return Response.json({ prompt });
 }

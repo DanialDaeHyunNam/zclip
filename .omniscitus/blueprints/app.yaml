@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-06T14:56:12.163Z
+updated: 2026-07-07T01:50:34.876Z
 
 files:
   "app/api/grab/route.ts":
@@ -37,10 +37,34 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-06T14:53:43.886Z
-    change_count: 19
+    last_modified: 2026-07-07T01:50:34.876Z
+    change_count: 27
     purpose: "The entire studio UI (one client component): chat thread, rewind, sessions, archive, spend popover, starter carousels + Library pill, GRAB panel, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-07T01:50:34.876Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T01:50:29.150Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T01:50:23.416Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T01:50:18.521Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T01:50:14.007Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T01:46:30.622Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T01:46:19.682Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T01:46:06.841Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-06T14:53:43.886Z
         action: edit
         source: "claude:Danial Nam"
@@ -113,10 +137,19 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-06T14:55:21.167Z
-    change_count: 1
+    last_modified: 2026-07-07T01:46:55.932Z
+    change_count: 4
     purpose: "Read-only spend & config dashboard: stat tiles, 14-day stacked columns, by-session and by-model bars, provider/pricing/key config table — all from the localStorage ledger"
     change_log:
+      - date: 2026-07-07T01:46:55.932Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T01:46:44.382Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T01:46:38.130Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-06T14:55:21.167Z
         action: write
         source: "claude:Danial Nam"
@@ -133,4 +166,15 @@ files:
         source: "claude:Danial Nam"
       - date: 2026-07-06T14:55:56.326Z
         action: edit
+        source: "claude:Danial Nam"
+  "app/rail.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T01:45:54.333Z
+    change_count: 1
+    purpose: "Shared left rail component (logo/sessions/archive/grab/new) used by both /chat (toggles overlays) and /dashboard (navigates to /chat with ?open= hint)"
+    change_log:
+      - date: 2026-07-07T01:45:54.333Z
+        action: write
         source: "claude:Danial Nam"

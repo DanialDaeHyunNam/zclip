@@ -9,6 +9,7 @@ import {
   DURATION_CHOICES,
   type ProviderName,
 } from "@/lib/config";
+import { Rail } from "../rail";
 
 /**
  * Read-only spend & config dashboard. Everything comes from the same
@@ -149,14 +150,27 @@ export default function Dashboard() {
   const fmtDay = (t: number) =>
     new Date(t).toLocaleDateString([], { month: "numeric", day: "numeric" });
 
+  const go = (q: string) => {
+    window.location.href = `/chat${q}`;
+  };
+
   return (
-    <div className="dash-page">
-      <header className="top">
-        <a className="wordmark" href="/chat" title="Back to the studio">
-          ZCLIP<span>_</span>
-        </a>
-        <span className="label">Dashboard</span>
-      </header>
+    <>
+      <Rail
+        active={null}
+        onHome={() => go("")}
+        onSessions={() => go("?open=sessions")}
+        onArchive={() => go("?open=archive")}
+        onGrab={() => go("?open=grab")}
+        onNew={() => go("?new=1")}
+      />
+      <div className="dash-page">
+        <header className="top">
+          <a className="wordmark" href="/chat" title="Back to the studio">
+            ZCLIP<span>_</span>
+          </a>
+          <span className="label">Dashboard</span>
+        </header>
 
       {/* headline stats */}
       <div className="dash-stats">
@@ -341,6 +355,7 @@ export default function Dashboard() {
           </p>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

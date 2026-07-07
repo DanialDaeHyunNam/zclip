@@ -15,6 +15,7 @@ import {
   type Resolution,
 } from "@/lib/config";
 import { CHARACTERS, SETTINGS, composeStarter } from "@/lib/prompts";
+import { Rail } from "../rail";
 
 /* ── types & storage ─────────────────────────────── */
 
@@ -260,6 +261,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const pollFails = useRef(0);
   const threadEndRef = useRef<HTMLDivElement>(null);
+  /** Synchronous re-entry lock: React state (busyTurn) commits async, so a
+   *  double-fired send (IME Enter, double click) would both pass the
+   *  busyTurn guard before the first take registers. This blocks it. */
+  const sendLockRef = useRef(false);
 
   // archive + keys
   const [clips, setClips] = useState<Clip[]>([]);
@@ -974,6 +979,7 @@ export default function Home() {
     : undefined;
 
   const send = async () => {
+    if (sendLockRef.current) return; // a submit is already in flight
     const text = draft.trim();
     const manual = attach;
     // The VISIBLE (possibly user-edited) base text is what actually runs.
@@ -994,6 +1000,8 @@ export default function Home() {
     )
       return;
     setError(null);
+    sendLockRef.current = true;
+    try {
 
     // Reference precedence: manual attachment > starter-asset images >
     // continuity snapshot. Refine sees every frame; the video model gets
@@ -1166,6 +1174,9 @@ export default function Home() {
     } catch {
       patchTurn(id, { status: "error", error: "Network error — try again" });
     }
+    } finally {
+      sendLockRef.current = false;
+    }
   };
 
   const toggleCtx = (id: string) =>
@@ -1211,6 +1222,20 @@ export default function Home() {
     setSettingId(null);
     setError(null);
   };
+
+  /* Rail on the dashboard navigates here with a hint of what to open. */
+  useEffect(() => {
+    if (!ready) return;
+    const q = new URLSearchParams(window.location.search);
+    const open = q.get("open");
+    if (open === "sessions") setSideOpen(true);
+    else if (open === "archive") setArchiveOpen(true);
+    else if (open === "grab") setGrabOpen(true);
+    if (q.get("new") === "1") newSession();
+    if (open || q.get("new")) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openSession = (id: string) => {
     if (!id || id === sessionId || busyTurn) return;
@@ -1491,69 +1516,37 @@ export default function Home() {
   return (
     <>
       {/* left rail — always visible; panel slides out Claude-style */}
-      <aside className="rail">
-        <button
-          className="rail-logo"
-          onClick={() => {
-            setArchiveOpen(false);
-            setSideOpen(false);
-            setSpendOpen(false);
-            setGrabOpen(false);
-          }}
-          title="Back to the studio"
-          aria-label="Home"
-        >
-          Z<span>_</span>
-        </button>
-        <button
-          className={`rail-btn ${sideOpen ? "on" : ""}`}
-          onClick={() => {
-            setSideOpen((o) => !o);
-            setArchiveOpen(false);
-            setGrabOpen(false);
-          }}
-          title="Sessions"
-          aria-label="Toggle session sidebar"
-        >
-          ≡
-        </button>
-        <button
-          className={`rail-btn ${archiveOpen ? "on" : ""}`}
-          onClick={() => {
-            setArchiveOpen((o) => !o);
-            setSideOpen(false);
-            setGrabOpen(false);
-          }}
-          title="Archive — every take, grouped by session"
-          aria-label="Toggle archive"
-        >
-          ▦
-        </button>
-        <button
-          className={`rail-btn ${grabOpen ? "on" : ""}`}
-          onClick={() => {
-            setGrabOpen((o) => !o);
-            setSideOpen(false);
-            setArchiveOpen(false);
-          }}
-          title="Grab — download a reference video from YouTube / X / a direct link"
-          aria-label="Toggle video grabber"
-        >
-          ⤓
-        </button>
-        <button
-          className="rail-btn"
-          onClick={() => {
-            newSession();
-            setSideOpen(false);
-          }}
-          disabled={Boolean(busyTurn)}
-          title="New session"
-          aria-label="New session"
-        >
-          +
-        </button>
-      </aside>
+      <Rail
+        active={
+          sideOpen ? "sessions" : archiveOpen ? "archive" : grabOpen ? "grab" : null
+        }
+        onHome={() => {
+          setArchiveOpen(false);
+          setSideOpen(false);
+          setSpendOpen(false);
+          setGrabOpen(false);
+        }}
+        onSessions={() => {
+          setSideOpen((o) => !o);
+          setArchiveOpen(false);
+          setGrabOpen(false);
+        }}
+        onArchive={() => {
+          setArchiveOpen((o) => !o);
+          setSideOpen(false);
+          setGrabOpen(false);
+        }}
+        onGrab={() => {
+          setGrabOpen((o) => !o);
+          setSideOpen(false);
+          setArchiveOpen(false);
+        }}
+        onNew={() => {
+          newSession();
+          setSideOpen(false);
+        }}
+        newDisabled={Boolean(busyTurn)}
+      />
 
       {sideOpen && (
         <div className="side-backdrop" onClick={() => setSideOpen(false)} />
@@ -2380,7 +2373,13 @@ export default function Home() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  // isComposing: the Enter is confirming an IME composition
+                  // (Korean/Japanese/Chinese), NOT submitting — ignore it.
+                  if (
+                    e.key === "Enter" &&
+                    !e.shiftKey &&
+                    !e.nativeEvent.isComposing
+                  ) {
                     e.preventDefault();
                     send();
                   }
