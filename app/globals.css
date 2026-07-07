@@ -1373,6 +1373,14 @@ button {
   margin-bottom: 20px;
 }
 
+.fashion-hint {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
 .starter-group .label {
   display: block;
   margin-bottom: 10px;

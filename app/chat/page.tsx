@@ -16,7 +16,7 @@ import {
   type AspectRatio,
   type Resolution,
 } from "@/lib/config";
-import { CHARACTERS, SETTINGS, composeStarter } from "@/lib/prompts";
+import { CHARACTERS, SETTINGS, FASHION, composeStarter } from "@/lib/prompts";
 import { Rail } from "../rail";
 import { ModelPicker } from "../model-picker";
 
@@ -219,12 +219,14 @@ export default function Home() {
   // visual starter blocks (empty-thread only)
   const [charId, setCharId] = useState<string | null>(null);
   const [settingId, setSettingId] = useState<string | null>(null);
+  /** Act-Two wardrobe: composited onto the character before it animates. */
+  const [fashionId, setFashionId] = useState<string | null>(null);
   /** The composed starter prompt, SHOWN and editable — no hidden prompt.
    *  Whatever is in here is exactly what take 1 builds on. */
   const [starterDraft, setStarterDraft] = useState<string | null>(null);
   /** Which asset carousel is open under the input (Grok-pill style). */
   const [pickerOpen, setPickerOpen] = useState<
-    "char" | "setting" | "library" | null
+    "char" | "setting" | "library" | "fashion" | null
   >(null);
   // user-created assets, persisted; images stored as small dataURL thumbs
   const [custom, setCustom] = useState<{
@@ -962,6 +964,18 @@ export default function Home() {
     }
   };
 
+  /** Fetch a public image path and return downscaled JPEG base64 (no prefix). */
+  const attachFromPath = async (path: string): Promise<string | null> => {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) return null;
+      const bmp = await createImageBitmap(await res.blob());
+      return toJpeg(bmp, bmp.width, bmp.height, 768, 0.8).split(",")[1];
+    } catch {
+      return null;
+    }
+  };
+
   const unlock = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError("");
@@ -1007,6 +1021,9 @@ export default function Home() {
         | (CustomAsset & { custom?: true })
         | undefined)
     : undefined;
+  const selFashion = fashionId
+    ? FASHION.find((f) => f.id === fashionId)
+    : undefined;
 
   const send = async () => {
     if (sendLockRef.current) return; // a submit is already in flight
@@ -1037,7 +1054,7 @@ export default function Home() {
     // Sends the driving video + the chosen face card straight to Runway;
     // the output moves like the clip and wears the card's identity. ──
     if (providerId === "runway") {
-      const charB64 = selChar ? await assetRefB64(selChar) : null;
+      let charB64 = selChar ? await assetRefB64(selChar) : null;
       if (!manual || manual.kind !== "video" || !manual.videoBase64) {
         setError(
           "Act-Two needs a driving video attached — grab one with ⤓ (or drop an .mp4), then pick a face card.",
@@ -1048,6 +1065,29 @@ export default function Home() {
         setError("Act-Two needs a face — pick a Character card first.");
         return;
       }
+      // Wardrobe: composite the picked outfit onto the character FIRST, then
+      // let Act-Two animate the dressed image (Act-Two has no outfit input).
+      if (selFashion && charB64) {
+        setError(null);
+        try {
+          const outfitB64 = await attachFromPath(`/fashion/${selFashion.id}.jpg`);
+          if (outfitB64) {
+            const dr = await fetch("/api/dress", {
+              method: "POST",
+              headers: pwHeaders({ "content-type": "application/json" }),
+              body: JSON.stringify({
+                character: { base64: charB64, mimeType: "image/jpeg" },
+                outfit: { base64: outfitB64, mimeType: "image/jpeg" },
+              }),
+            });
+            const db = await dr.json();
+            if (dr.ok && db.base64) charB64 = db.base64;
+            else setError(`Outfit step skipped: ${db.error ?? "failed"} — using the original card.`);
+          }
+        } catch {
+          setError("Outfit step skipped (couldn't reach the dress API) — using the original card.");
+        }
+      }
       const vidSecs = Math.round(
         Math.min(15, Math.max(1, manual.srcSeconds ?? 8)),
       );
@@ -1056,10 +1096,12 @@ export default function Home() {
           ? selChar!.image
           : `/starters/${selChar!.id}.jpg`;
       const id = `t${Date.now()}`;
+      const outfitNote = selFashion ? ` in ${selFashion.label}` : "";
       const turn: Turn = {
         id,
         userText:
-          text || `Act-Two — ${selChar!.label} performs the attached clip`,
+          text ||
+          `Act-Two — ${selChar!.label}${outfitNote} performs the attached clip`,
         presetLabel: selChar!.label,
         provider: "runway",
         modelLabel: model.short,
@@ -1070,7 +1112,7 @@ export default function Home() {
         status: "refining",
         costUsd: estimateModelCost(model, resolution, vidSecs) ?? undefined,
         imageThumb: cardThumb,
-        prompt: `Act-Two performance transfer · face: ${selChar!.label} · driving clip ${vidSecs}s`,
+        prompt: `Act-Two performance transfer · face: ${selChar!.label}${outfitNote} · driving clip ${vidSecs}s`,
       };
       setTurns((ts) => [...ts, turn]);
       setDraft("");
@@ -1329,6 +1371,7 @@ export default function Home() {
     setCtxIds([]);
     setCharId(null);
     setSettingId(null);
+    setFashionId(null);
     setError(null);
   };
 
@@ -2111,6 +2154,15 @@ export default function Home() {
                   ◫ Background{selSetting ? ` · ${selSetting.label}` : ""}
                 </button>
                 <button
+                  className={`pill-btn ${pickerOpen === "fashion" ? "on" : ""}`}
+                  onClick={() =>
+                    setPickerOpen((p) => (p === "fashion" ? null : "fashion"))
+                  }
+                  title="Act-Two only: dress the character in this outfit"
+                >
+                  ⑆ Fashion{selFashion ? ` · ${selFashion.label}` : ""}
+                </button>
+                <button
                   className={`pill-btn ${pickerOpen === "library" ? "on" : ""}`}
                   onClick={() =>
                     setPickerOpen((p) => (p === "library" ? null : "library"))
@@ -2119,6 +2171,41 @@ export default function Home() {
                   ▤ Library{attach ? " · attached" : ""}
                 </button>
               </div>
+              {pickerOpen === "fashion" && (
+                <div className="starter-group">
+                  <span className="fashion-hint">
+                    {providerId === "runway"
+                      ? "The outfit is composited onto your character before Act-Two animates it."
+                      : "Fashion applies in Act-Two mode — pick Runway Act-Two as the model to use it."}
+                  </span>
+                  <div className="starter-carousel">
+                    {FASHION.filter(
+                      (f) => !selChar?.pronoun || f.gender === selChar.pronoun,
+                    ).map((f) => (
+                      <button
+                        key={f.id}
+                        className={`starter-card ${fashionId === f.id ? "sel" : ""}`}
+                        onClick={() =>
+                          setFashionId((cur) => (cur === f.id ? null : f.id))
+                        }
+                      >
+                        <span className="starter-img">
+                          <img
+                            src={`/fashion/${f.id}.jpg`}
+                            alt=""
+                            loading="lazy"
+                            onError={(e) =>
+                              (e.currentTarget.parentElement!.style.display = "none")
+                            }
+                          />
+                        </span>
+                        <span className="starter-name">{f.label}</span>
+                        <span className="starter-desc">{f.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {pickerOpen === "library" && (
                 <div className="starter-group">
                   <div className="starter-carousel">

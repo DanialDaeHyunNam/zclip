@@ -1,7 +1,15 @@
+version: 1
+updated: 2026-07-07T05:47:18.548Z
+
 files:
-  - path: scripts/bake-starters.mjs
-    source: claude
-    purpose: "Bakes starter card photos via Gemini image model"
-  - path: scripts/regen-demo-takes.mjs
-    source: claude
-    purpose: "Regenerates landing demo takes (PROVIDER env)"
+  "scripts/bake-fashion.mjs":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T05:47:18.548Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T05:47:18.548Z
+        action: write
+        source: "claude:Danial Nam"

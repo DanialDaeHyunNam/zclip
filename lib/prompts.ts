@@ -249,6 +249,41 @@ export const SETTINGS: Setting[] = [
   },
 ];
 
+/** A wardrobe swap for Act-Two: the outfit is composited onto the chosen
+ *  character (via /api/dress) BEFORE the driving video animates it. `prompt`
+ *  bakes a clean garment reference photo; `desc` is the compositing target. */
+export interface Fashion {
+  id: string;
+  label: string;
+  desc: string; // short mono descriptor on the card
+  gender: "She" | "He"; // filters the carousel by the picked character
+  prompt: string; // e-commerce garment shot to bake
+}
+
+const garment = (what: string) =>
+  `Clean e-commerce ghost-mannequin product photo of ${what}, plain neutral studio background, soft even lighting, full garment visible, sharp, realistic fabric texture, no person, no face, no text, no watermark.`;
+
+export const FASHION: Fashion[] = [
+  // women
+  { id: "w-hoodie", label: "Oversized Hoodie", desc: "STREET · COZY", gender: "She", prompt: garment("an oversized heather-grey cotton hoodie") },
+  { id: "w-blazer", label: "Tailored Blazer", desc: "SMART · CLEAN", gender: "She", prompt: garment("a fitted black tailored blazer over a white tee") },
+  { id: "w-knit", label: "Chunky Knit", desc: "SOFT · WARM", gender: "She", prompt: garment("a chunky cream cable-knit sweater") },
+  { id: "w-slip", label: "Satin Slip Dress", desc: "NIGHT · SLEEK", gender: "She", prompt: garment("a champagne satin slip dress") },
+  { id: "w-denim", label: "Cropped Denim", desc: "CASUAL · COOL", gender: "She", prompt: garment("a cropped light-wash denim jacket") },
+  { id: "w-tee", label: "Oversized Tee", desc: "MINIMAL · EASY", gender: "She", prompt: garment("an oversized plain white heavyweight t-shirt") },
+  { id: "w-trench", label: "Beige Trench", desc: "CLASSIC · CHIC", gender: "She", prompt: garment("a beige belted trench coat") },
+  { id: "w-crop", label: "Ribbed Crop", desc: "FRESH · FIT", gender: "She", prompt: garment("a fitted ribbed sage-green crop top") },
+  // men
+  { id: "m-hoodie", label: "Oversized Hoodie", desc: "STREET · COZY", gender: "He", prompt: garment("an oversized washed-black cotton hoodie") },
+  { id: "m-blazer", label: "Casual Blazer", desc: "SMART · CLEAN", gender: "He", prompt: garment("a navy unstructured casual blazer over a white tee") },
+  { id: "m-knit", label: "Crewneck Knit", desc: "SOFT · WARM", gender: "He", prompt: garment("a charcoal merino crewneck knit sweater") },
+  { id: "m-tee", label: "Heavyweight Tee", desc: "MINIMAL · EASY", gender: "He", prompt: garment("a plain white heavyweight boxy t-shirt") },
+  { id: "m-denim", label: "Denim Trucker", desc: "CASUAL · COOL", gender: "He", prompt: garment("a mid-wash denim trucker jacket") },
+  { id: "m-flannel", label: "Plaid Flannel", desc: "RUGGED · WARM", gender: "He", prompt: garment("a red-and-black plaid flannel button-up shirt") },
+  { id: "m-bomber", label: "Bomber Jacket", desc: "SPORT · SHARP", gender: "He", prompt: garment("an olive-green MA-1 bomber jacket") },
+  { id: "m-oxford", label: "Oxford Shirt", desc: "CLEAN · CRISP", gender: "He", prompt: garment("a light-blue oxford button-down shirt") },
+];
+
 /** Any pickable block — built-in or user-created custom asset. */
 export interface StarterBlock {
   label: string;
