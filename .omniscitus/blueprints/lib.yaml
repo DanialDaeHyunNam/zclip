@@ -1,15 +1,30 @@
 version: 1
-updated: 2026-07-07T04:37:57.372Z
+updated: 2026-07-07T05:20:57.433Z
 
 files:
   "lib/config.ts":
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T04:37:19.023Z
-    change_count: 4
+    last_modified: 2026-07-07T05:20:57.433Z
+    change_count: 9
     purpose: ""
     change_log:
+      - date: 2026-07-07T05:20:57.433Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:20:52.997Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:17:15.891Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:16:56.766Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:16:28.421Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T04:37:19.023Z
         action: edit
         source: "claude:Danial Nam"
@@ -26,10 +41,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T04:37:25.934Z
-    change_count: 1
+    last_modified: 2026-07-07T05:17:21.754Z
+    change_count: 2
     purpose: ""
     change_log:
+      - date: 2026-07-07T05:17:21.754Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T04:37:25.934Z
         action: edit
         source: "claude:Danial Nam"
@@ -37,10 +55,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T04:37:48.934Z
-    change_count: 1
+    last_modified: 2026-07-07T05:18:10.960Z
+    change_count: 2
     purpose: ""
     change_log:
+      - date: 2026-07-07T05:18:10.960Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T04:37:48.934Z
         action: write
         source: "claude:Danial Nam"
@@ -53,5 +74,49 @@ files:
     purpose: ""
     change_log:
       - date: 2026-07-07T04:37:57.372Z
+        action: edit
+        source: "claude:Danial Nam"
+  "lib/providers/veo.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T05:17:27.304Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T05:17:27.304Z
+        action: edit
+        source: "claude:Danial Nam"
+  "lib/providers/grok.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T05:17:36.853Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T05:17:36.853Z
+        action: edit
+        source: "claude:Danial Nam"
+  "lib/providers/seedance.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T05:17:41.580Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T05:17:41.580Z
+        action: edit
+        source: "claude:Danial Nam"
+  "lib/providers/sora.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T05:17:57.049Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T05:17:57.049Z
         action: edit
         source: "claude:Danial Nam"

@@ -1051,10 +1051,53 @@ button {
   animation: fadeIn 0.16s ease;
 }
 
+.mp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mp-chip {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: none;
+  padding: 4px 11px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.mp-chip:hover {
+  color: var(--fg);
+  border-color: var(--hair-strong);
+}
+
+.mp-chip.on {
+  color: #050505;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
 .mp-scroll {
-  max-height: 60vh;
+  max-height: 52vh;
   overflow-y: auto;
   padding: 6px;
+}
+
+.mp-item:disabled {
+  cursor: default;
+}
+
+.mp-empty {
+  padding: 18px 12px;
+  font-size: 11px;
+  color: var(--faint);
 }
 
 .mp-item {
@@ -1175,26 +1218,6 @@ button {
 
 .mp-meter i.on {
   background: var(--accent);
-}
-
-.mp-toggle {
-  width: 100%;
-  border: none;
-  border-top: 1px solid var(--line);
-  background: none;
-  padding: 11px;
-  font-family: var(--font-mono), monospace;
-  font-size: 9.5px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--dim);
-  cursor: pointer;
-  transition: color 0.2s ease, background 0.2s ease;
-}
-
-.mp-toggle:hover {
-  color: var(--fg);
-  background: rgba(255, 255, 255, 0.03);
 }
 
 .sep {

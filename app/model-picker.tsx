@@ -2,20 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  MODELS,
+  COMPANIES,
   PROVIDERS,
-  COMING_SOON,
-  priceLabel,
-  type ProviderName,
+  modelPriceLabel,
+  resolveModel,
+  type ModelEntry,
 } from "@/lib/config";
 
 /**
- * Rich model dropdown (hand-rolled — no radix/Tailwind, to match the app's
- * design system). Flagship models show first; the rest live behind "All
- * models" along with not-yet-wired ones. Every row carries price, a one-line
- * strength, a quality meter, and key status so you can pick at a glance.
+ * Rich model picker (hand-rolled — no radix/Tailwind, to match the app's
+ * design system). Everything shows by default; company chips filter the list
+ * like a shopping browser. Each row carries price, a one-line strength, a
+ * quality + speed meter, and key status. Not-yet-wired models show greyed out.
  */
-
-const ORDER = Object.keys(PROVIDERS) as ProviderName[];
 
 function Meter({ n, label }: { n: number; label: string }) {
   return (
@@ -35,15 +35,15 @@ export function ModelPicker({
   onConnectKey,
   disabled,
 }: {
-  value: ProviderName;
-  onChange: (p: ProviderName) => void;
+  value: string;
+  onChange: (key: string) => void;
   keys: Record<string, boolean>;
   keysLoaded: boolean;
   onConnectKey: () => void;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [company, setCompany] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,16 +60,16 @@ export function ModelPicker({
     };
   }, [open]);
 
-  const cur = PROVIDERS[value];
-  const noKey = (p: ProviderName) => keysLoaded && !keys[PROVIDERS[p].envVar];
-  const visible = ORDER.filter(
-    (p) => showAll || PROVIDERS[p].tier === "recommended" || p === value,
-  );
+  const cur = resolveModel(value);
+  const curNoKey = keysLoaded && !keys[cur.envVar];
+  const noKey = (m: ModelEntry) => keysLoaded && !keys[m.envVar];
+  const list = company ? MODELS.filter((m) => m.company === company) : MODELS;
 
-  const pick = (p: ProviderName) => {
-    onChange(p);
+  const pick = (m: ModelEntry) => {
+    if (m.comingSoon) return;
+    onChange(m.key);
     setOpen(false);
-    if (noKey(p)) onConnectKey();
+    if (noKey(m)) onConnectKey();
   };
 
   return (
@@ -78,10 +78,10 @@ export function ModelPicker({
         className="mp-trigger"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        title={cur.note ?? cur.tagline}
+        title={PROVIDERS[cur.provider].note ?? cur.tagline}
       >
         <span className="mp-trigger-name">{cur.short}</span>
-        {noKey(value) && <span className="mp-tag warn">key</span>}
+        {curNoKey && <span className="mp-tag warn">key</span>}
         <svg className="mp-chev" width="9" height="6" viewBox="0 0 10 6" fill="none" aria-hidden>
           <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -89,54 +89,56 @@ export function ModelPicker({
 
       {open && (
         <div className="mp-menu">
+          <div className="mp-chips">
+            <button
+              className={`mp-chip ${company === null ? "on" : ""}`}
+              onClick={() => setCompany(null)}
+            >
+              All
+            </button>
+            {COMPANIES.map((c) => (
+              <button
+                key={c}
+                className={`mp-chip ${company === c ? "on" : ""}`}
+                onClick={() => setCompany((cur) => (cur === c ? null : c))}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+
           <div className="mp-scroll">
-            {visible.map((p) => {
-              const m = PROVIDERS[p];
-              return (
-                <button
-                  key={p}
-                  className={`mp-item ${p === value ? "sel" : ""} ${noKey(p) ? "nokey" : ""}`}
-                  onClick={() => pick(p)}
-                >
-                  <span className="mp-check">{p === value ? "✓" : ""}</span>
-                  <span className="mp-body">
-                    <span className="mp-name">
-                      {m.short}
-                      <span className="mp-co">{m.company}</span>
-                      {m.tier === "recommended" && <span className="mp-tag rec">★</span>}
-                      {m.transferOnly && <span className="mp-tag xfer">transfer</span>}
-                      {noKey(p) && <span className="mp-tag warn">key</span>}
-                    </span>
-                    <span className="mp-spec">
-                      {priceLabel(p)} · {m.tagline}
-                    </span>
+            {list.map((m) => (
+              <button
+                key={m.key}
+                className={`mp-item ${m.key === value ? "sel" : ""} ${m.comingSoon ? "soon" : ""} ${noKey(m) && !m.comingSoon ? "nokey" : ""}`}
+                onClick={() => pick(m)}
+                disabled={m.comingSoon}
+              >
+                <span className="mp-check">{m.key === value ? "✓" : ""}</span>
+                <span className="mp-body">
+                  <span className="mp-name">
+                    {m.short}
+                    <span className="mp-co">{m.company}</span>
+                    {m.recommended && <span className="mp-tag rec">★</span>}
+                    {m.transferOnly && <span className="mp-tag xfer">transfer</span>}
+                    {m.comingSoon && <span className="mp-tag soon">soon</span>}
+                    {!m.comingSoon && noKey(m) && <span className="mp-tag warn">key</span>}
                   </span>
+                  <span className="mp-spec">
+                    {modelPriceLabel(m)} · {m.tagline}
+                  </span>
+                </span>
+                {!m.comingSoon && (
                   <span className="mp-meters">
                     <Meter n={m.quality} label="Quality" />
                     <Meter n={m.speed} label="Speed" />
                   </span>
-                </button>
-              );
-            })}
-
-            {showAll &&
-              COMING_SOON.map((m) => (
-                <div className="mp-item soon" key={m.short} title={m.note}>
-                  <span className="mp-check" />
-                  <span className="mp-body">
-                    <span className="mp-name">
-                      {m.short}
-                      <span className="mp-co">{m.company}</span>
-                      <span className="mp-tag soon">soon</span>
-                    </span>
-                    <span className="mp-spec">— · {m.tagline}</span>
-                  </span>
-                </div>
-              ))}
+                )}
+              </button>
+            ))}
+            {list.length === 0 && <p className="mp-empty">No models for {company}.</p>}
           </div>
-          <button className="mp-toggle" onClick={() => setShowAll((v) => !v)}>
-            {showAll ? "Flagship only" : "All models"}
-          </button>
         </div>
       )}
     </div>

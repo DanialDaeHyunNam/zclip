@@ -72,7 +72,7 @@ export const runway: VideoProvider = {
       method: "POST",
       headers: headers(),
       body: JSON.stringify({
-        model: "act_two",
+        model: params.modelId || "act_two",
         character: {
           type: "image",
           uri: `data:${params.character.mimeType};base64,${params.character.base64}`,

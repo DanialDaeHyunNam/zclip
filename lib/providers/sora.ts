@@ -19,10 +19,14 @@ function apiKey(): string {
   return key;
 }
 
+function modelId(params: SubmitParams): string {
+  return params.modelId || PROVIDERS.sora.modelId;
+}
+
 function sizeFor(params: SubmitParams): string {
   // Base sora-2 only accepts 720x1280 / 1280x720 (confirmed by API error);
   // the 1080p sizes (1080x1920 / 1920x1080) are sora-2-pro only.
-  const pro = PROVIDERS.sora.modelId.includes("pro");
+  const pro = modelId(params).includes("pro");
   const hd = pro && params.resolution === "1080p";
   if (params.aspectRatio === "16:9") return hd ? "1920x1080" : "1280x720";
   return hd ? "1080x1920" : "720x1280";
@@ -46,7 +50,7 @@ export const sora: VideoProvider = {
       // input_reference must be sent as a file -> multipart. Docs note the
       // image should match the target resolution; mismatches error visibly.
       const fd = new FormData();
-      fd.append("model", PROVIDERS.sora.modelId);
+      fd.append("model", modelId(params));
       fd.append("prompt", prompt);
       fd.append("size", sizeFor(params));
       fd.append("seconds", "8");
@@ -70,7 +74,7 @@ export const sora: VideoProvider = {
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          model: PROVIDERS.sora.modelId,
+          model: modelId(params),
           prompt,
           size: sizeFor(params),
           seconds: "8", // minimum Sora duration; UI durations < 8 round up

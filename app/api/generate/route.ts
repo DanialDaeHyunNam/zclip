@@ -113,6 +113,11 @@ export async function POST(req: Request) {
     return Response.json({ error: drivingVideo }, { status: 400 });
   }
 
+  const modelId =
+    typeof body.modelId === "string" && /^[\w.:-]{1,80}$/.test(body.modelId)
+      ? body.modelId
+      : undefined;
+
   try {
     const { jobId } = await resolved.adapter.submit(prompt.trim(), {
       aspectRatio,
@@ -121,6 +126,7 @@ export async function POST(req: Request) {
       image,
       character,
       drivingVideo,
+      modelId,
     });
     return Response.json({ jobId });
   } catch (err) {

@@ -48,7 +48,7 @@ export const veo: VideoProvider = {
 
   async submit(prompt: string, params: SubmitParams) {
     const res = await fetch(
-      `${BASE}/models/${PROVIDERS.veo.modelId}:predictLongRunning`,
+      `${BASE}/models/${params.modelId || PROVIDERS.veo.modelId}:predictLongRunning`,
       {
         method: "POST",
         headers: {

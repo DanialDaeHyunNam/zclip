@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-07T04:54:01.327Z
+updated: 2026-07-07T05:21:35.852Z
 
 files:
   "app/api/grab/route.ts":
@@ -37,10 +37,43 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T04:42:28.739Z
-    change_count: 32
+    last_modified: 2026-07-07T05:20:34.976Z
+    change_count: 43
     purpose: "The entire studio UI (one client component): chat thread, rewind, sessions, archive, spend popover, starter carousels + Library pill, GRAB panel, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-07T05:20:34.976Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:20:24.606Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:20:18.190Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:20:12.234Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:19:57.492Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:19:43.575Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:19:34.638Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:19:20.545Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:18:58.650Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:18:47.405Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:18:41.380Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T04:42:28.739Z
         action: edit
         source: "claude:Danial Nam"
@@ -175,10 +208,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T04:54:01.327Z
-    change_count: 3
+    last_modified: 2026-07-07T05:21:35.852Z
+    change_count: 5
     purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
+      - date: 2026-07-07T05:21:35.852Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T05:21:28.252Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T04:54:01.327Z
         action: edit
         source: "claude:Danial Nam"
@@ -214,10 +253,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T04:38:56.660Z
-    change_count: 4
+    last_modified: 2026-07-07T05:18:17.597Z
+    change_count: 5
     purpose: ""
     change_log:
+      - date: 2026-07-07T05:18:17.597Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T04:38:56.660Z
         action: edit
         source: "claude:Danial Nam"
@@ -229,4 +271,15 @@ files:
         source: "claude:Danial Nam"
       - date: 2026-07-07T04:38:26.076Z
         action: edit
+        source: "claude:Danial Nam"
+  "app/model-picker.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T05:21:19.141Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T05:21:19.141Z
+        action: write
         source: "claude:Danial Nam"

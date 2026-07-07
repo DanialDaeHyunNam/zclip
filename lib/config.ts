@@ -47,49 +47,6 @@ export interface ProviderInfo {
   transferOnly?: boolean;
 }
 
-/** A not-yet-wired model shown in the picker (disabled) so the landscape and
- *  the "adding one is one file" story are visible. Not a ProviderName. */
-export interface ComingSoonModel {
-  short: string;
-  company: string;
-  tagline: string;
-  note: string;
-}
-export const COMING_SOON: ComingSoonModel[] = [
-  {
-    short: "Kling 2.5",
-    company: "Kuaishou",
-    tagline: "Strong physical motion, image-to-video",
-    note: "Adapter TODO — copy an existing lib/providers/*.ts",
-  },
-  {
-    short: "Luma Ray 3",
-    company: "Luma",
-    tagline: "Fast, cinematic generation",
-    note: "Adapter TODO",
-  },
-  {
-    short: "Hailuo 02",
-    company: "MiniMax",
-    tagline: "Lifelike i2v, budget-friendly",
-    note: "Adapter TODO",
-  },
-  {
-    short: "Pika 2.2",
-    company: "Pika",
-    tagline: "Effects, transitions, pikaframes",
-    note: "Adapter TODO",
-  },
-];
-
-/** "$0.05/s" style label from the pricing table, or "—". */
-export function priceLabel(p: ProviderName): string {
-  const c = PROVIDERS[p].costPerSecondUsd;
-  if (!c) return "—";
-  const v = c["720p"] ?? c["1080p"];
-  return v != null ? `$${v.toFixed(2)}/s` : "—";
-}
-
 export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
   veo: {
     label: "Veo 3.1 Fast",
@@ -196,6 +153,119 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
 
 export const DEFAULT_PROVIDER: ProviderName = "veo";
 
+/* ── MODEL CATALOG ────────────────────────────────────────────────────
+ * The picker shops MODELS, not PROVIDERS. Several models can ride ONE
+ * adapter (a `provider`) with a different `modelId` — that's how "Google
+ * has more than Veo 3.1 Fast" works without a new adapter each time.
+ * The 5 real entries reuse their provider's display fields; variants and
+ * not-yet-wired models are listed so the picker feels like a marketplace.
+ */
+export interface ModelEntry {
+  key: string; // unique picker id (= ProviderName for each default model)
+  short: string;
+  company: string;
+  provider: ProviderName; // which adapter runs it
+  modelId: string; // the id handed to that adapter
+  envVar: string;
+  pricePerSecUsd: Partial<Record<Resolution, number>> | null;
+  quality: 1 | 2 | 3;
+  speed: 1 | 2 | 3;
+  tagline: string;
+  transferOnly?: boolean;
+  recommended?: boolean;
+  implemented: boolean;
+  /** true = shown greyed-out in the picker, not selectable (adapter TODO). */
+  comingSoon?: boolean;
+}
+
+/** Build a catalog entry for a provider's DEFAULT model from PROVIDERS. */
+function defaultModel(p: ProviderName): ModelEntry {
+  const i = PROVIDERS[p];
+  return {
+    key: p,
+    short: i.short,
+    company: i.company,
+    provider: p,
+    modelId: i.modelId,
+    envVar: i.envVar,
+    pricePerSecUsd: i.costPerSecondUsd,
+    quality: i.quality,
+    speed: i.speed,
+    tagline: i.tagline,
+    transferOnly: i.transferOnly,
+    recommended: i.tier === "recommended",
+    implemented: i.implemented,
+  };
+}
+
+/** A not-yet-wired model — visible in the picker, not selectable. */
+function soon(
+  key: string,
+  short: string,
+  company: string,
+  tagline: string,
+  provider: ProviderName = "veo",
+): ModelEntry {
+  return {
+    key,
+    short,
+    company,
+    provider,
+    modelId: "",
+    envVar: PROVIDERS[provider].envVar,
+    pricePerSecUsd: null,
+    quality: 2,
+    speed: 2,
+    tagline,
+    implemented: false,
+    comingSoon: true,
+  };
+}
+
+export const MODELS: ModelEntry[] = [
+  // Google
+  defaultModel("veo"),
+  soon("veo-3.1", "Veo 3.1", "Google", "Higher fidelity + native audio", "veo"),
+  soon("veo-2", "Veo 2", "Google", "Previous generation, cheaper", "veo"),
+  // OpenAI
+  defaultModel("sora"),
+  soon("sora-2-pro", "Sora 2 Pro", "OpenAI", "1080p, longer, higher fidelity", "sora"),
+  // xAI
+  defaultModel("grok"),
+  // Runway
+  defaultModel("runway"),
+  soon("rw-gen4-turbo", "Gen-4 Turbo", "Runway", "Fast text/image-to-video"),
+  soon("rw-gen4.5", "Gen-4.5", "Runway", "Flagship quality generation"),
+  // ByteDance
+  defaultModel("seedance"),
+  soon("seedance-lite", "Seedance Lite", "ByteDance", "Faster, cheaper tier", "seedance"),
+  // Not yet wired — the wider landscape
+  soon("kling-2.5", "Kling 2.5", "Kuaishou", "Strong physical motion, i2v"),
+  soon("luma-ray3", "Luma Ray 3", "Luma", "Fast, cinematic generation"),
+  soon("hailuo-02", "Hailuo 02", "MiniMax", "Lifelike i2v, budget-friendly"),
+  soon("pika-2.2", "Pika 2.2", "Pika", "Effects, transitions, pikaframes"),
+];
+
+/** Company chips, in the order they appear (companies with ≥1 model). */
+export const COMPANIES: string[] = MODELS.reduce<string[]>((acc, m) => {
+  if (!acc.includes(m.company)) acc.push(m.company);
+  return acc;
+}, []);
+
+export function resolveModel(key: string): ModelEntry {
+  return MODELS.find((m) => m.key === key) ?? defaultModel(DEFAULT_PROVIDER);
+}
+
+/** "$0.05/s" from a model's pricing, or "—". */
+export function modelPriceLabel(m: ModelEntry): string {
+  const c = m.pricePerSecUsd;
+  if (!c) return "—";
+  const v = c["720p"] ?? c["1080p"];
+  return v != null ? `$${v.toFixed(2)}/s` : "—";
+}
+
+export const DEFAULT_MODEL_KEY = DEFAULT_PROVIDER;
+
 /** Text model used by /api/refine to rewrite prompts conversationally.
  *  Uses the same GEMINI_API_KEY; flash-tier text is near-free. */
 export const REFINER_MODEL_ID = "gemini-2.5-flash";
@@ -256,6 +326,24 @@ export function estimateCostUsd(
     Math.max(
       effectiveSeconds(provider, durationSeconds, resolution),
       info.minSeconds ?? 0,
+    )
+  );
+}
+
+/** Per-model cost — uses the model's own pricing (a variant can cost more
+ *  than its provider's default) but the provider's duration/min rules. */
+export function estimateModelCost(
+  m: ModelEntry,
+  resolution: Resolution,
+  durationSeconds: number,
+): number | null {
+  const rate = m.pricePerSecUsd?.[resolution];
+  if (rate == null) return null;
+  return (
+    rate *
+    Math.max(
+      effectiveSeconds(m.provider, durationSeconds, resolution),
+      PROVIDERS[m.provider].minSeconds ?? 0,
     )
   );
 }

@@ -52,7 +52,7 @@ export const seedance: VideoProvider = {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: PROVIDERS.seedance.modelId,
+        model: params.modelId || PROVIDERS.seedance.modelId,
         content,
       }),
     });

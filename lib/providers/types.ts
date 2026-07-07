@@ -2,6 +2,9 @@ export interface SubmitParams {
   aspectRatio: string;
   durationSeconds: number;
   resolution: string;
+  /** Specific model id to run (a provider can host several). Defaults to the
+   *  adapter's PROVIDERS[...].modelId when absent. */
+  modelId?: string;
   /** Optional visual reference (drag-dropped in the UI, downscaled
    *  client-side). Each adapter maps it to its provider's image mode. */
   image?: { base64: string; mimeType: string };

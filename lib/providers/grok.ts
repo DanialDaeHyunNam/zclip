@@ -70,7 +70,7 @@ export const grok: VideoProvider = {
       method: "POST",
       headers,
       body: JSON.stringify({
-        model: PROVIDERS.grok.modelId,
+        model: params.modelId || PROVIDERS.grok.modelId,
         prompt,
         image: { url: imageUrl },
         duration: Math.round(Math.min(15, Math.max(1, params.durationSeconds))),

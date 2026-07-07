@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   PROVIDERS,
-  DEFAULT_PROVIDER,
+  DEFAULT_MODEL_KEY,
   DEFAULTS,
   ASPECT_RATIOS,
   DURATION_CHOICES,
   RESOLUTIONS,
   estimateCostUsd,
+  estimateModelCost,
+  resolveModel,
   effectiveSeconds,
   type ProviderName,
   type AspectRatio,
@@ -30,6 +32,8 @@ interface Turn {
   presetLabel?: string;
   prompt?: string;
   provider: ProviderName;
+  /** The specific model's short label (a provider can host several). */
+  modelLabel?: string;
   aspectRatio: AspectRatio;
   durationSeconds: number;
   resolution: Resolution;
@@ -202,7 +206,7 @@ export default function Home() {
   const [pwError, setPwError] = useState("");
 
   // generation params (apply to the NEXT take)
-  const [providerId, setProviderId] = useState<ProviderName>(DEFAULT_PROVIDER);
+  const [modelKey, setModelKey] = useState<string>(DEFAULT_MODEL_KEY);
   const [aspect, setAspect] = useState<AspectRatio>(DEFAULTS.aspectRatio);
   const [duration, setDuration] = useState(DEFAULTS.durationSeconds);
   const [resolution, setResolution] = useState<Resolution>(DEFAULTS.resolution);
@@ -296,9 +300,11 @@ export default function Home() {
   const [grabBusy, setGrabBusy] = useState<"scan" | "fetch" | "attach" | null>(null);
   const [grabErr, setGrabErr] = useState<string | null>(null);
 
+  const model = resolveModel(modelKey);
+  const providerId = model.provider;
   const providerInfo = PROVIDERS[providerId];
-  const estCostUsd = estimateCostUsd(providerId, resolution, duration);
-  const keyMissing = keysLoaded && !keys[providerInfo.envVar];
+  const estCostUsd = estimateModelCost(model, resolution, duration);
+  const keyMissing = keysLoaded && !keys[model.envVar];
 
   const pwHeaders = useCallback(
     (base: Record<string, string> = {}): Record<string, string> =>
@@ -1056,12 +1062,13 @@ export default function Home() {
           text || `Act-Two — ${selChar!.label} performs the attached clip`,
         presetLabel: selChar!.label,
         provider: "runway",
+        modelLabel: model.short,
         aspectRatio: aspect,
         durationSeconds: vidSecs,
         resolution,
         createdAt: Date.now(),
         status: "refining",
-        costUsd: estimateCostUsd("runway", resolution, vidSecs) ?? undefined,
+        costUsd: estimateModelCost(model, resolution, vidSecs) ?? undefined,
         imageThumb: cardThumb,
         prompt: `Act-Two performance transfer · face: ${selChar!.label} · driving clip ${vidSecs}s`,
       };
@@ -1075,6 +1082,7 @@ export default function Home() {
           headers: pwHeaders({ "content-type": "application/json" }),
           body: JSON.stringify({
             provider: "runway",
+            modelId: model.modelId,
             aspectRatio: aspect,
             durationSeconds: vidSecs,
             resolution,
@@ -1184,6 +1192,7 @@ export default function Home() {
             : "Use the attached image as the reference."),
       presetLabel: starterLabel,
       provider: providerId,
+      modelLabel: model.short,
       aspectRatio: aspect,
       durationSeconds: duration,
       resolution,
@@ -1253,6 +1262,7 @@ export default function Home() {
         body: JSON.stringify({
           prompt,
           provider: providerId,
+          modelId: model.modelId,
           aspectRatio: aspect,
           durationSeconds: duration,
           resolution,
@@ -1382,6 +1392,7 @@ export default function Home() {
       videoUrl: undefined,
       createdAt: Date.now(),
       provider: providerId,
+      modelLabel: model.short,
       aspectRatio: aspect,
       durationSeconds: duration,
       resolution,
@@ -1415,6 +1426,7 @@ export default function Home() {
         body: JSON.stringify({
           prompt,
           provider: providerId,
+          modelId: model.modelId,
           aspectRatio: aspect,
           durationSeconds: duration,
           resolution,
@@ -2005,7 +2017,7 @@ export default function Home() {
                     {t.status === "refining" && "PREPARING…"}
                     {t.status === "pending" && `RENDERING ${busyTurn?.id === t.id ? fmtElapsed(elapsed) : ""}`}
                     {t.status === "done" &&
-                      `TAKE ${i + 1} · ${PROVIDERS[t.provider].label.toUpperCase()}${fmtCost(t.costUsd) ? ` · ${fmtCost(t.costUsd)}` : ""}`}
+                      `TAKE ${i + 1} · ${(t.modelLabel ?? PROVIDERS[t.provider].label).toUpperCase()}${fmtCost(t.costUsd) ? ` · ${fmtCost(t.costUsd)}` : ""}`}
                     {t.status === "error" && "FAILED"}
                   </span>
                   {t.usedContinuity && (
@@ -2596,9 +2608,9 @@ export default function Home() {
           <div className="panel-controls">
             <div className="settings-strip">
               <ModelPicker
-                value={providerId}
-                onChange={(p) => {
-                  setProviderId(p);
+                value={modelKey}
+                onChange={(k) => {
+                  setModelKey(k);
                   setKeyMsg("");
                   setKeyInput("");
                   setKeyPanelHidden(false);
