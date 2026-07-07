@@ -265,6 +265,12 @@ export default function Home() {
   /** Carry each take's snapshot into the next take automatically. */
   const [continuity, setContinuity] = useState(true);
   const snapCapturing = useRef(new Set<string>());
+  /** Pre-spend confirm: a paid action waits here until the user OKs it.
+   *  "Don't ask again" is SESSION-scoped on purpose — a reload/new session
+   *  re-arms it, since it's real money. */
+  const [pendingRun, setPendingRun] = useState<{ run: () => void } | null>(null);
+  const [noAskGen, setNoAskGen] = useState(false);
+  const [noAskChecked, setNoAskChecked] = useState(false);
 
   // session sidebar — closed by default, Claude-style
   const [sideOpen, setSideOpen] = useState(false);
@@ -728,11 +734,8 @@ export default function Home() {
           videoBase64,
           videoMime,
         });
-        // Nudge the take length toward the source video's length.
-        const nearest = [4, 8, 12].reduce((a, b) =>
-          Math.abs(b - dur) < Math.abs(a - dur) ? b : a,
-        );
-        setDuration(nearest);
+        // Duration stays at the user's choice (default 4s); Act-Two uses the
+        // clip's own length regardless. No surprise cost jump on attach.
       } finally {
         URL.revokeObjectURL(url);
       }
@@ -1052,6 +1055,22 @@ export default function Home() {
     ? FASHION.find((f) => f.id === fashionId) ??
       custom.fashion.find((f) => f.id === fashionId)
     : undefined;
+
+  /** Gate any money-spending action behind the pre-spend confirm (unless the
+   *  user opted out with "don't ask again"). */
+  const guardRun = (run: () => void) => {
+    if (noAskGen) run();
+    else {
+      setNoAskChecked(false);
+      setPendingRun({ run });
+    }
+  };
+  const confirmRun = () => {
+    const p = pendingRun;
+    setPendingRun(null);
+    if (noAskChecked) setNoAskGen(true); // session-only
+    p?.run();
+  };
 
   const send = async () => {
     if (sendLockRef.current) return; // a submit is already in flight
@@ -1403,6 +1422,7 @@ export default function Home() {
     setCharId(null);
     setSettingId(null);
     setFashionId(null);
+    setNoAskGen(false); // re-arm the pre-spend confirm each new session
     setError(null);
   };
 
@@ -1700,6 +1720,55 @@ export default function Home() {
 
   return (
     <>
+      {pendingRun && (
+        <div className="confirm-backdrop" onClick={() => setPendingRun(null)}>
+          <div className="confirm-card" onClick={(e) => e.stopPropagation()}>
+            <span className="label">Generate — this spends real money</span>
+            <div className="confirm-rows">
+              <div>
+                <span>Model</span>
+                <b>{model.short}</b>
+              </div>
+              <div>
+                <span>Format</span>
+                <b>
+                  {aspect} · {resolution}
+                </b>
+              </div>
+              <div>
+                <span>Length</span>
+                <b>
+                  {providerId === "runway"
+                    ? "driving clip length"
+                    : `${effectiveSeconds(providerId, duration, resolution)}s`}
+                </b>
+              </div>
+              <div>
+                <span>Est. cost</span>
+                <b className="confirm-cost">
+                  {estCostUsd != null ? `≈ $${estCostUsd.toFixed(2)}` : "unknown"}
+                </b>
+              </div>
+            </div>
+            <label className="confirm-check">
+              <input
+                type="checkbox"
+                checked={noAskChecked}
+                onChange={(e) => setNoAskChecked(e.target.checked)}
+              />
+              Don&apos;t ask again this session
+            </label>
+            <div className="confirm-actions">
+              <button className="btn-ghost" onClick={() => setPendingRun(null)}>
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={confirmRun}>
+                Generate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* left rail — always visible; panel slides out Claude-style */}
       <Rail
         active={
@@ -2110,7 +2179,7 @@ export default function Home() {
                       className="link-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        retryTurn(t.id);
+                        guardRun(() => retryTurn(t.id));
                       }}
                       disabled={Boolean(busyTurn)}
                       title="Retry this take with the currently selected model & params"
@@ -2659,7 +2728,7 @@ export default function Home() {
                     !e.nativeEvent.isComposing
                   ) {
                     e.preventDefault();
-                    send();
+                    if (canSend) guardRun(send);
                   }
                 }}
                 onPaste={(e) => {
@@ -2688,7 +2757,7 @@ export default function Home() {
                 }
                 disabled={Boolean(busyTurn)}
               />
-              <button className="btn-primary send-btn" onClick={send} disabled={!canSend}>
+              <button className="btn-primary send-btn" onClick={() => guardRun(send)} disabled={!canSend}>
                 {starterReady && !draft.trim() ? "Start" : "Send"}
               </button>
             </div>
@@ -2742,7 +2811,7 @@ export default function Home() {
                 <p>{previewTurn.error}</p>
                 <button
                   className="btn-ghost"
-                  onClick={() => retryTurn(previewTurn.id)}
+                  onClick={() => guardRun(() => retryTurn(previewTurn.id))}
                   disabled={Boolean(busyTurn)}
                 >
                   ↻ Retry with current settings

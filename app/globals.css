@@ -1880,6 +1880,94 @@ button {
   padding: 36px 32px 80px;
 }
 
+/* ── pre-spend confirm modal ──────────────────────── */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.16s ease;
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: 380px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: rgba(14, 14, 16, 0.98);
+  padding: 26px 26px 22px;
+}
+
+.confirm-card > .label {
+  display: block;
+  margin-bottom: 18px;
+  color: var(--accent);
+}
+
+.confirm-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.confirm-rows > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 13px;
+}
+
+.confirm-rows span {
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.confirm-rows b {
+  font-weight: 400;
+  color: var(--fg);
+  font-family: var(--font-mono), monospace;
+  font-size: 12px;
+}
+
+.confirm-cost {
+  color: var(--accent) !important;
+}
+
+.confirm-check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 2px 20px;
+  font-size: 12px;
+  color: var(--dim);
+  cursor: pointer;
+}
+
+.confirm-check input {
+  accent-color: var(--accent);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.confirm-actions button {
+  flex: 1;
+}
+
 /* ── dashboard page ─────────────────────────────── */
 .dash-page {
   max-width: 1080px;
