@@ -102,7 +102,7 @@ export default function Landing() {
         </h1>
         <p>
           The scroll-stopping first 3 seconds of a TikTok ad — chatted out,
-          iterated take by take, cents per clip on your own keys.
+          cents per clip.
         </p>
         <div className="ld-cta-row">
           <a className="btn-primary ld-cta" href="/chat">
