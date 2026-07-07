@@ -539,6 +539,7 @@ button {
   cursor: pointer;
   transition: background 0.3s ease, opacity 0.3s ease;
   border-radius: var(--r-pill);
+  text-decoration: none;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -565,6 +566,7 @@ button {
   text-align: center;
   transition: border-color 0.3s ease, color 0.3s ease;
   border-radius: var(--r-pill);
+  text-decoration: none;
 }
 
 .btn-ghost:hover {
@@ -583,6 +585,7 @@ button {
   text-transform: uppercase;
   cursor: pointer;
   transition: color 0.3s ease;
+  text-decoration: none;
 }
 
 .link-btn:hover {
