@@ -2108,6 +2108,68 @@ button {
   line-height: 1.7;
 }
 
+/* On the dashboard the spend rows span the full width (like the chart above),
+   so the value sits flush right — not the narrow studio-popover width. The
+   value column is `auto` (sizes to its text) with the bar on minmax(0,1fr) so
+   a long value like "· 68s" never blows the grid past the right edge. */
+.dash-section .spend-rows {
+  max-width: none;
+}
+
+.dash-section .spend-row {
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+}
+
+.dash-section .spend-bar {
+  min-width: 0;
+}
+
+.dash-section .spend-total {
+  white-space: nowrap;
+}
+
+/* filter chips above the chart */
+.dash-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 6px;
+}
+
+.dash-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: none;
+  padding: 6px 13px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.dash-chip i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.dash-chip:hover {
+  color: var(--fg);
+  border-color: var(--hair-strong);
+}
+
+.dash-chip.on {
+  color: var(--fg);
+  border-color: var(--hair-strong);
+  background: rgba(255, 255, 255, 0.05);
+}
+
 /* GRAB tool — compact card on the archive-overlay backdrop */
 .grab-card {
   max-width: 680px;

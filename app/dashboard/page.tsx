@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   PROVIDERS,
-  DEFAULT_PROVIDER,
+  MODELS,
+  DEFAULT_MODEL_KEY,
+  modelPriceLabel,
   DEFAULTS,
   REFINER_MODEL_ID,
   DURATION_CHOICES,
@@ -47,6 +49,8 @@ export default function Dashboard() {
   const [sessions, setSessions] = useState<LedgerSession[]>([]);
   const [keys, setKeys] = useState<Record<string, boolean>>({});
   const [storageBytes, setStorageBytes] = useState(0);
+  // Provider filter — the chart + breakdowns show only this model when set.
+  const [filter, setFilter] = useState<ProviderName | null>(null);
 
   useEffect(() => {
     setClips(load<LedgerClip[]>("hooklab.gallery", []));
@@ -77,6 +81,12 @@ export default function Dashboard() {
     takes.some((c) => c.provider === p),
   );
 
+  // The filtered set the charts/breakdowns read (chips select a provider).
+  const view = useMemo(
+    () => (filter ? takes.filter((c) => c.provider === filter) : takes),
+    [takes, filter],
+  );
+
   /* by day — last 14 days, stacked by provider */
   const byDay = useMemo(() => {
     const today = new Date();
@@ -85,7 +95,7 @@ export default function Dashboard() {
       const start = today.getTime() - (DAYS_SHOWN - 1 - i) * DAY_MS;
       return { start, parts: new Map<ProviderName, number>(), total: 0 };
     });
-    for (const c of takes) {
+    for (const c of view) {
       if (c.costUsd == null) continue;
       const idx = Math.floor((c.createdAt - days[0].start) / DAY_MS);
       if (idx < 0 || idx >= DAYS_SHOWN) continue;
@@ -97,7 +107,7 @@ export default function Dashboard() {
       );
     }
     return days;
-  }, [takes]);
+  }, [view]);
   const dayMax = Math.max(...byDay.map((d) => d.total), 0.01);
 
   /* by session */
@@ -106,7 +116,7 @@ export default function Dashboard() {
       string,
       { label: string; total: number; count: number; latest: number; parts: Map<ProviderName, number> }
     >();
-    for (const c of takes) {
+    for (const c of view) {
       const key = c.sessionId ?? "earlier";
       let g = m.get(key);
       if (!g) {
@@ -132,12 +142,12 @@ export default function Dashboard() {
       }
     }
     return [...m.values()].sort((a, b) => b.latest - a.latest);
-  }, [takes, sessions]);
+  }, [view, sessions]);
   const sessionMax = Math.max(...bySession.map((s) => s.total), 0.01);
 
   /* by model */
-  const byModel = providers.map((p) => {
-    const list = takes.filter((c) => c.provider === p);
+  const byModel = (filter ? providers.filter((p) => p === filter) : providers).map((p) => {
+    const list = view.filter((c) => c.provider === p);
     return {
       p,
       count: list.length,
@@ -201,12 +211,22 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="spend-legend">
+      <div className="dash-filters">
+        <button
+          className={`dash-chip ${filter === null ? "on" : ""}`}
+          onClick={() => setFilter(null)}
+        >
+          All models
+        </button>
         {providers.map((p) => (
-          <span key={p} className="spend-chip">
+          <button
+            key={p}
+            className={`dash-chip ${filter === p ? "on" : ""}`}
+            onClick={() => setFilter((f) => (f === p ? null : p))}
+          >
             <i style={{ background: PROVIDERS[p].chartColor }} />
             {PROVIDERS[p].label}
-          </span>
+          </button>
         ))}
       </div>
 
@@ -303,50 +323,41 @@ export default function Dashboard() {
           <table className="dash-table">
             <thead>
               <tr>
-                <th>Provider</th>
                 <th>Model</th>
-                <th>$/s 720p</th>
-                <th>$/s 1080p</th>
+                <th>Maker</th>
+                <th>Model ID</th>
+                <th>$/s</th>
                 <th>Key</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {(Object.keys(PROVIDERS) as ProviderName[]).map((p) => {
-                const info = PROVIDERS[p];
-                return (
-                  <tr key={p}>
-                    <td>
-                      {info.label}
-                      {p === DEFAULT_PROVIDER ? " ·default" : ""}
-                    </td>
-                    <td className="mono">{info.modelId}</td>
-                    <td>
-                      {info.costPerSecondUsd?.["720p"] != null
-                        ? `$${info.costPerSecondUsd["720p"].toFixed(2)}`
-                        : "—"}
-                    </td>
-                    <td>
-                      {info.costPerSecondUsd?.["1080p"] != null
-                        ? `$${info.costPerSecondUsd["1080p"].toFixed(2)}`
-                        : "—"}
-                    </td>
-                    <td className="mono">{info.envVar}</td>
-                    <td>
-                      {keys[info.envVar] ? (
-                        <span className="dash-ok">● set</span>
-                      ) : (
-                        <span className="dash-miss">○ missing</span>
-                      )}
-                      {!info.implemented && " · unverified"}
-                    </td>
-                  </tr>
-                );
-              })}
+              {MODELS.map((m) => (
+                <tr key={m.key}>
+                  <td>
+                    {m.short}
+                    {m.key === DEFAULT_MODEL_KEY ? " ·default" : ""}
+                  </td>
+                  <td>{m.company}</td>
+                  <td className="mono">{m.modelId}</td>
+                  <td>{modelPriceLabel(m)}</td>
+                  <td className="mono">{m.envVar}</td>
+                  <td>
+                    {keys[m.envVar] ? (
+                      <span className="dash-ok">● set</span>
+                    ) : (
+                      <span className="dash-miss">○ missing</span>
+                    )}
+                    {!m.implemented && " · unverified"}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
           <p className="hint">
-            Defaults: {PROVIDERS[DEFAULT_PROVIDER].label} · {DEFAULTS.aspectRatio} ·{" "}
+            Defaults:{" "}
+            {MODELS.find((m) => m.key === DEFAULT_MODEL_KEY)?.short ?? "Veo 3.1 Fast"} ·{" "}
+            {DEFAULTS.aspectRatio} ·{" "}
             {DEFAULTS.durationSeconds}s · {DEFAULTS.resolution} — duration snaps
             to {DURATION_CHOICES.join("/")}s per provider rules. Refiner:{" "}
             {REFINER_MODEL_ID}. Local data: {(storageBytes / 1024).toFixed(0)}KB
