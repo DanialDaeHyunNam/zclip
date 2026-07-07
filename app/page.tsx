@@ -105,8 +105,8 @@ export default function Landing() {
           <span>typed, not filmed.</span>
         </h1>
         <p>
-          The scroll-stopping first 3 seconds of a TikTok ad — chatted out,
-          cents per clip.
+          Stop buying reaction clips. Chat out the scroll-stopping first 3
+          seconds of your ad for cents — and iterate till one converts.
         </p>
         <div className="ld-cta-row">
           <a className="btn-primary ld-cta" href="/chat">
@@ -125,7 +125,7 @@ export default function Landing() {
       </header>
 
       <section className="ld-section" id="features">
-        <span className="label">Why it&apos;s different</span>
+        <h2 className="ld-h2">Why it&apos;s different</h2>
         <div className="ld-diffs">
           {DIFFS.map((d) => (
             <div className="ld-diff" key={d.n}>
@@ -153,7 +153,10 @@ export default function Landing() {
       </section>
 
       <section className="ld-section" id="workflow">
-        <span className="label">Hook → full video in minutes</span>
+        <h2 className="ld-h2">Hook → full video in minutes</h2>
+        <p className="ld-sub">
+          The hook is the hard 20% that decides whether anyone stays.
+        </p>
         <div className="ld-steps">
           {STEPS.map((s, i) => (
             <Fragment key={s.n}>
@@ -178,10 +181,6 @@ export default function Landing() {
             </Fragment>
           ))}
         </div>
-        <p className="ld-note">
-          The hook is the hard 20% that decides whether anyone stays — ZCLIP
-          batches it, <a href={CUT_URL}>cut</a> finishes the rest.
-        </p>
       </section>
 
       <footer className="ld-footer">

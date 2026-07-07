@@ -2474,6 +2474,25 @@ button {
   margin-bottom: 26px;
 }
 
+/* Landing section titles — real headings, not eyebrow labels. */
+.ld-h2 {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(24px, 3.4vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  color: var(--fg);
+  margin-bottom: 26px;
+}
+
+.ld-sub {
+  margin: -16px 0 30px;
+  max-width: 560px;
+  color: var(--dim);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
 .ld-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
