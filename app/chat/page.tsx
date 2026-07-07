@@ -242,6 +242,11 @@ export default function Home() {
     thumb: string;
     kind: "image" | "video";
     srcSeconds?: number;
+    /** Original video bytes (base64, no prefix) — kept for Runway Act-Two,
+     *  which needs the actual driving clip, not just extracted frames.
+     *  Omitted when the file is over Runway's ~16MB inline limit. */
+    videoBase64?: string;
+    videoMime?: string;
   } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   // pasted video URL waiting to be fetched into the reference pipeline
@@ -680,12 +685,30 @@ export default function Home() {
         for (let i = 0; i < count; i++) {
           frames.push((await grab((dur * (i + 0.5)) / count)).split(",")[1]);
         }
+        // Keep the original bytes for Runway Act-Two (needs the real clip).
+        // Skip if it's over the inline cap — the adapter will ask to trim.
+        let videoBase64: string | undefined;
+        let videoMime: string | undefined;
+        if (file.size <= 22_000_000) {
+          videoBase64 = await new Promise<string>((res) => {
+            const fr = new FileReader();
+            fr.onload = () => res((fr.result as string).split(",")[1] ?? "");
+            fr.readAsDataURL(file);
+          });
+          videoMime = ["video/mp4", "video/webm", "video/quicktime"].includes(
+            file.type,
+          )
+            ? file.type
+            : "video/mp4";
+        }
         setAttach({
           frames,
           mimeType: "image/jpeg",
           thumb: toJpeg(v, v.videoWidth, v.videoHeight, 120, 0.7),
           kind: "video",
           srcSeconds: dur,
+          videoBase64,
+          videoMime,
         });
         // Nudge the take length toward the source video's length.
         const nearest = [4, 8, 12].reduce((a, b) =>
@@ -1002,6 +1025,81 @@ export default function Home() {
     setError(null);
     sendLockRef.current = true;
     try {
+
+    // ── Runway Act-Two: real performance transfer, no prompt / no refine.
+    // Sends the driving video + the chosen face card straight to Runway;
+    // the output moves like the clip and wears the card's identity. ──
+    if (providerId === "runway") {
+      const charB64 = selChar ? await assetRefB64(selChar) : null;
+      if (!manual || manual.kind !== "video" || !manual.videoBase64) {
+        setError(
+          "Act-Two needs a driving video attached — grab one with ⤓ (or drop an .mp4), then pick a face card.",
+        );
+        return;
+      }
+      if (!charB64) {
+        setError("Act-Two needs a face — pick a Character card first.");
+        return;
+      }
+      const vidSecs = Math.round(
+        Math.min(15, Math.max(1, manual.srcSeconds ?? 8)),
+      );
+      const cardThumb =
+        "custom" in selChar! && selChar!.custom
+          ? selChar!.image
+          : `/starters/${selChar!.id}.jpg`;
+      const id = `t${Date.now()}`;
+      const turn: Turn = {
+        id,
+        userText:
+          text || `Act-Two — ${selChar!.label} performs the attached clip`,
+        presetLabel: selChar!.label,
+        provider: "runway",
+        aspectRatio: aspect,
+        durationSeconds: vidSecs,
+        resolution,
+        createdAt: Date.now(),
+        status: "refining",
+        costUsd: estimateCostUsd("runway", resolution, vidSecs) ?? undefined,
+        imageThumb: cardThumb,
+        prompt: `Act-Two performance transfer · face: ${selChar!.label} · driving clip ${vidSecs}s`,
+      };
+      setTurns((ts) => [...ts, turn]);
+      setDraft("");
+      setAttach(null);
+      setSelectedId(id);
+      try {
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          headers: pwHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({
+            provider: "runway",
+            aspectRatio: aspect,
+            durationSeconds: vidSecs,
+            resolution,
+            character: { base64: charB64, mimeType: "image/jpeg" },
+            drivingVideo: {
+              base64: manual.videoBase64,
+              mimeType: manual.videoMime ?? "video/mp4",
+            },
+          }),
+        });
+        const body = await res.json();
+        if (res.status === 401) {
+          patchTurn(id, { status: "error", error: "Password rejected" });
+          setGateOpen(true);
+          return;
+        }
+        if (!res.ok) {
+          patchTurn(id, { status: "error", error: body.error ?? "Submit failed" });
+          return;
+        }
+        patchTurn(id, { status: "pending", jobId: body.jobId });
+      } catch {
+        patchTurn(id, { status: "error", error: "Network error — try again" });
+      }
+      return;
+    }
 
     // Reference precedence: manual attachment > starter-asset images >
     // continuity snapshot. Refine sees every frame; the video model gets
@@ -1525,6 +1623,7 @@ export default function Home() {
           setSideOpen(false);
           setSpendOpen(false);
           setGrabOpen(false);
+          newSession(); // logo = a fresh start, like a new chat
         }}
         onSessions={() => {
           setSideOpen((o) => !o);
@@ -2400,11 +2499,13 @@ export default function Home() {
                 placeholder={
                   busyTurn
                     ? "Rendering — wait for this take…"
-                    : starterReady
-                      ? "Action for the take — empty = default quiet-surprise beat"
-                      : turns.length === 0
-                        ? "Pick blocks above and/or describe the clip… (drop an image as reference)"
-                        : "What should change in the next take?"
+                    : providerId === "runway"
+                      ? "Act-Two: attach a driving video (⤓ Grab or Library) + pick a face card, then send — no prompt needed"
+                      : starterReady
+                        ? "Action for the take — empty = default quiet-surprise beat"
+                        : turns.length === 0
+                          ? "Pick blocks above and/or describe the clip… (drop an image as reference)"
+                          : "What should change in the next take?"
                 }
                 disabled={Boolean(busyTurn)}
               />

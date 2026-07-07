@@ -158,7 +158,7 @@ export default function Dashboard() {
     <>
       <Rail
         active={null}
-        onHome={() => go("")}
+        onHome={() => go("?new=1")}
         onSessions={() => go("?open=sessions")}
         onArchive={() => go("?open=archive")}
         onGrab={() => go("?open=grab")}

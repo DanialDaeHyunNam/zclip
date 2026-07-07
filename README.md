@@ -68,11 +68,20 @@ Next.js route handlers that exist only to keep API keys off the client.
 2. **Model swap mid-thread.** Veo, Sora, and Grok Imagine behind one
    adapter interface — flip the model on a failed take and hit retry.
    Adding a provider is [one file](#adding-a-provider).
-3. **Performance transfer.** Attach a reference video *and* a cast card:
-   the video's performance (expression beats, gaze, hand timing, camera
-   drift) is transcribed into a timestamped choreography — text, zero
-   pixels reused — and re-performed by your cast. The source's identity,
-   wardrobe, and room are deliberately never copied.
+3. **Performance transfer — two ways.** Attach a reference video *and* a
+   cast card:
+   - **Runway Act-Two** *(true transfer)* — the clip's actual motion,
+     expression, gaze and gestures are mapped onto your card's face. The
+     output moves like the reference and wears your character. This is the
+     one that really follows the video.
+   - **Transcription mode** *(any i2v provider)* — the performance is
+     transcribed into a timestamped choreography (text, zero pixels reused)
+     and re-performed. Cheaper, but a first-frame i2v model only loosely
+     follows the described motion and can drift the face.
+
+   Why the split: Veo, Sora and Grok are all *first-frame* image-to-video —
+   they animate a single still and cannot be driven by a source video's
+   movement. Only Act-Two takes a driving video as input.
 4. **Multimodal chat.** Drag in images or videos, paste a direct video URL,
    or GRAB one from YouTube/X — all become chips on the composer, like any
    modern chat.
@@ -104,6 +113,7 @@ rights to reference.
 | Google Veo *(default)* | `veo-3.1-fast-generate-preview` | ✅ verified live | $0.10 (720p) / $0.12 (1080p) | durations 4/6/8s; 1080p forces 8s; **no free tier — enable billing** |
 | OpenAI Sora | `sora-2` | ✅ verified live | $0.10 | 720×1280 only on the base model; bills min 8s; watermarked |
 | xAI Grok Imagine | `grok-imagine-video-1.5` | ✅ verified live | $0.08 + $0.05 image step | image-to-video only — ZCLIP auto-runs text→image→video; 1–15s |
+| Runway **Act-Two** | `act_two` | ✅ wired, needs a key to verify | $0.05/s (5 credits/s) | **the real performance transfer** — driving video + face card → motion mapped onto the face. Transfer-only, no text prompt. Needs a Runway key (Standard plan+) |
 | ByteDance Seedance | `seedance-1-0-pro-250528` | ⚠️ adapter written, unverified | — | verify endpoint on first run |
 
 Keys are entered in the UI (dev mode writes them to `.env.local`) or set as

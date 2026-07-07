@@ -1,28 +1,57 @@
+version: 1
+updated: 2026-07-07T04:37:57.372Z
+
 files:
-  - path: lib/auth.ts
-    source: claude
-    purpose: "Shared password helpers"
-  - path: lib/config.ts
-    source: claude
-    purpose: "Provider registry, whitelists, effectiveSeconds, cost estimates"
-  - path: lib/prompts.ts
-    source: claude
-    purpose: "Cast/settings blocks, composeStarter, surprise arc choreography"
-  - path: lib/providers/grok.ts
-    source: claude
-    purpose: "Grok adapter (text→image→video, CDN proxy, 1–15s)"
-  - path: lib/providers/index.ts
-    source: claude
-    purpose: "Provider resolver"
-  - path: lib/providers/seedance.ts
-    source: claude
-    purpose: "Seedance adapter (best-effort, unverified)"
-  - path: lib/providers/sora.ts
-    source: claude
-    purpose: "Sora 2 adapter (sizes, 8s min, multipart reference)"
-  - path: lib/providers/types.ts
-    source: claude
-    purpose: "VideoProvider adapter interface"
-  - path: lib/providers/veo.ts
-    source: claude
-    purpose: "Veo 3.1 adapter (LRO submit/poll, quota messaging)"
+  "lib/config.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T04:37:19.023Z
+    change_count: 4
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T04:37:19.023Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:37:11.714Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:37:03.335Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:36:51.563Z
+        action: edit
+        source: "claude:Danial Nam"
+  "lib/providers/types.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T04:37:25.934Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T04:37:25.934Z
+        action: edit
+        source: "claude:Danial Nam"
+  "lib/providers/runway.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T04:37:48.934Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T04:37:48.934Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/providers/index.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T04:37:57.372Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T04:37:57.372Z
+        action: edit
+        source: "claude:Danial Nam"

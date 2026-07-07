@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-07T01:50:34.876Z
+updated: 2026-07-07T04:42:28.739Z
 
 files:
   "app/api/grab/route.ts":
@@ -37,10 +37,25 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T01:50:34.876Z
-    change_count: 27
+    last_modified: 2026-07-07T04:42:28.739Z
+    change_count: 32
     purpose: "The entire studio UI (one client component): chat thread, rewind, sessions, archive, spend popover, starter carousels + Library pill, GRAB panel, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-07T04:42:28.739Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:40:57.729Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:40:22.160Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:39:38.150Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:39:28.018Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T01:50:34.876Z
         action: edit
         source: "claude:Danial Nam"
@@ -137,10 +152,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T01:46:55.932Z
-    change_count: 4
+    last_modified: 2026-07-07T04:41:02.079Z
+    change_count: 5
     purpose: "Read-only spend & config dashboard: stat tiles, 14-day stacked columns, by-session and by-model bars, provider/pricing/key config table — all from the localStorage ledger"
     change_log:
+      - date: 2026-07-07T04:41:02.079Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T01:46:55.932Z
         action: edit
         source: "claude:Danial Nam"
@@ -177,4 +195,35 @@ files:
     change_log:
       - date: 2026-07-07T01:45:54.333Z
         action: write
+        source: "claude:Danial Nam"
+  "app/api/video/route.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T04:38:18.880Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T04:38:18.880Z
+        action: edit
+        source: "claude:Danial Nam"
+  "app/api/generate/route.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T04:38:56.660Z
+    change_count: 4
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T04:38:56.660Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:38:50.060Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:38:33.522Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:38:26.076Z
+        action: edit
         source: "claude:Danial Nam"

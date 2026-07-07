@@ -5,6 +5,11 @@ export interface SubmitParams {
   /** Optional visual reference (drag-dropped in the UI, downscaled
    *  client-side). Each adapter maps it to its provider's image mode. */
   image?: { base64: string; mimeType: string };
+  /** Performance-transfer inputs (Runway Act-Two only). `character` is the
+   *  face/identity to animate; `drivingVideo` is the motion source whose
+   *  performance is mapped onto that face. */
+  character?: { base64: string; mimeType: string };
+  drivingVideo?: { base64: string; mimeType: string };
 }
 
 export type JobState = "pending" | "done" | "error";

@@ -13,7 +13,8 @@ const VEO_PREFIX = "https://generativelanguage.googleapis.com/";
 const SORA_REF = /^video_[\w-]+$/;
 // Provider CDNs that serve public presigned URLs but lack CORS headers —
 // proxied so playback is same-origin and snapshot capture works.
-const REMOTE_HOSTS = ["vidgen.x.ai"];
+// (Runway Act-Two outputs are served from CloudFront.)
+const REMOTE_HOSTS = ["vidgen.x.ai", "cloudfront.net", "runwayml.com"];
 
 function upstreamFor(url: URL): { target: string; headers: Record<string, string> } | { error: string } {
   const uri = url.searchParams.get("uri");

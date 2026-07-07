@@ -6,7 +6,7 @@
  * and redeploy.
  */
 
-export type ProviderName = "veo" | "sora" | "grok" | "seedance";
+export type ProviderName = "veo" | "sora" | "grok" | "seedance" | "runway";
 export type AspectRatio = "9:16" | "16:9";
 export type Resolution = "720p" | "1080p";
 
@@ -80,6 +80,21 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     chartColor: "#3AA468",
     note: "Endpoint/model id built from BytePlus ModelArk docs — verify on first run.",
   },
+  runway: {
+    label: "Runway Act-Two",
+    // True performance transfer: a driving video's motion+expression is
+    // mapped onto a character image. The ONLY model here that actually
+    // follows a reference video's movement (the others are first-frame i2v).
+    modelId: "act_two",
+    implemented: true,
+    envVar: "RUNWAYML_API_SECRET",
+    docsUrl: "https://docs.dev.runwayml.com/guides/generate-video/",
+    keyUrl: "https://dev.runwayml.com/",
+    adapterFile: "lib/providers/runway.ts",
+    costPerSecondUsd: { "720p": 0.05, "1080p": 0.05 }, // 5 credits/s × $0.01
+    chartColor: "#C2477E",
+    note: "TRANSFER-ONLY: needs BOTH a driving video (the motion) and a character card (the face). Follows the video's performance with the card's identity. No text prompt. Needs a Runway API key (Standard plan+).",
+  },
 };
 
 export const DEFAULT_PROVIDER: ProviderName = "veo";
@@ -94,6 +109,7 @@ export const KEY_ENV_VARS = [
   "OPENAI_API_KEY",
   "XAI_API_KEY",
   "ARK_API_KEY",
+  "RUNWAYML_API_SECRET",
 ] as const;
 
 /** Whitelists — the API routes validate against these, never raw client input. */
@@ -118,6 +134,8 @@ export function effectiveSeconds(
     return r <= 5 ? 4 : r <= 7 ? 6 : 8;
   }
   if (provider === "sora") return 8;
+  // Act-Two's output length = the driving video's length; the caller passes
+  // the reference clip's duration through as `requested`.
   return r;
 }
 

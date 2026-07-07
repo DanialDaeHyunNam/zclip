@@ -14,6 +14,8 @@ import { checkPassword, unauthorized } from "@/lib/auth";
 
 const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_B64 = 4_000_000; // ~3MB decoded — client downscales well below this
+const VIDEO_MIMES = ["video/mp4", "video/webm", "video/quicktime"];
+const MAX_VIDEO_B64 = 22_000_000; // ~16MB decoded — Runway's inline data-URI cap
 
 /** Validate an optional client-supplied reference image. Returns the image,
  *  undefined when absent, or an error string. */
@@ -31,6 +33,21 @@ function parseImage(
   return { base64, mimeType };
 }
 
+/** Validate an optional video (Act-Two driving reference). */
+function parseVideo(
+  raw: unknown,
+): { base64: string; mimeType: string } | undefined | string {
+  if (raw == null) return undefined;
+  if (typeof raw !== "object") return "Invalid video";
+  const { base64, mimeType } = raw as Record<string, unknown>;
+  if (typeof base64 !== "string" || typeof mimeType !== "string")
+    return "Invalid video";
+  if (!VIDEO_MIMES.includes(mimeType)) return "Unsupported video type";
+  if (base64.length > MAX_VIDEO_B64) return "Driving video too large (max ~16MB — trim it)";
+  if (!/^[A-Za-z0-9+/=]+$/.test(base64)) return "Invalid video encoding";
+  return { base64, mimeType };
+}
+
 /** Submit a generation job. Returns { jobId } immediately — never waits. */
 export async function POST(req: Request) {
   if (!checkPassword(req)) return unauthorized();
@@ -42,19 +59,22 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const prompt = body.prompt;
-  if (typeof prompt !== "string" || !prompt.trim()) {
-    return Response.json({ error: "Prompt is empty" }, { status: 400 });
-  }
-  if (prompt.length > 4000) {
-    return Response.json({ error: "Prompt too long (4000 char max)" }, { status: 400 });
-  }
-
   const resolved = resolveProvider(
     typeof body.provider === "string" ? body.provider : DEFAULT_PROVIDER,
   );
   if (!resolved) {
     return Response.json({ error: "Unknown provider" }, { status: 400 });
+  }
+
+  // Act-Two is a pure performance transfer (video + face); it takes no text
+  // prompt. Every other provider requires one.
+  const isTransfer = resolved.name === "runway";
+  const prompt = typeof body.prompt === "string" ? body.prompt : "";
+  if (!isTransfer && !prompt.trim()) {
+    return Response.json({ error: "Prompt is empty" }, { status: 400 });
+  }
+  if (prompt.length > 4000) {
+    return Response.json({ error: "Prompt too long (4000 char max)" }, { status: 400 });
   }
   const info = PROVIDERS[resolved.name];
   if (!info.implemented) {
@@ -84,6 +104,14 @@ export async function POST(req: Request) {
   if (typeof image === "string") {
     return Response.json({ error: image }, { status: 400 });
   }
+  const character = parseImage(body.character);
+  if (typeof character === "string") {
+    return Response.json({ error: character }, { status: 400 });
+  }
+  const drivingVideo = parseVideo(body.drivingVideo);
+  if (typeof drivingVideo === "string") {
+    return Response.json({ error: drivingVideo }, { status: 400 });
+  }
 
   try {
     const { jobId } = await resolved.adapter.submit(prompt.trim(), {
@@ -91,6 +119,8 @@ export async function POST(req: Request) {
       durationSeconds,
       resolution,
       image,
+      character,
+      drivingVideo,
     });
     return Response.json({ jobId });
   } catch (err) {

@@ -1,15 +1,21 @@
 version: 1
-updated: 2026-07-06T14:38:10.786Z
+updated: 2026-07-07T04:43:33.648Z
 
 files:
   "README.md":
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-06T14:38:10.786Z
-    change_count: 2
+    last_modified: 2026-07-07T04:43:06.397Z
+    change_count: 4
     purpose: "Open-source README: quickstart, requirements, why-not-the-playground, GRAB tool, provider/pricing table, security model, add-a-provider guide, deploy, troubleshooting"
     change_log:
+      - date: 2026-07-07T04:43:06.397Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T04:42:57.951Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-06T14:38:10.786Z
         action: edit
         source: "claude"
@@ -27,3 +33,25 @@ files:
       - date: 2026-07-06T14:37:43.353Z
         action: write
         source: "claude"
+  ".env.example":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T04:43:16.169Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T04:43:16.169Z
+        action: edit
+        source: "claude:Danial Nam"
+  "CLAUDE.md":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T04:43:33.648Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T04:43:33.648Z
+        action: edit
+        source: "claude:Danial Nam"
