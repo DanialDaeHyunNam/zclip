@@ -16,6 +16,7 @@ import {
 } from "@/lib/config";
 import { CHARACTERS, SETTINGS, composeStarter } from "@/lib/prompts";
 import { Rail } from "../rail";
+import { ModelPicker } from "../model-picker";
 
 /* ── types & storage ─────────────────────────────── */
 
@@ -2594,26 +2595,19 @@ export default function Home() {
           {/* next-take settings — one compact strip */}
           <div className="panel-controls">
             <div className="settings-strip">
-              <div className="select-wrap bare">
-                <select
-                  aria-label="Model"
-                  title={providerInfo.note ?? "Model"}
-                  value={providerId}
-                  onChange={(e) => {
-                    setProviderId(e.target.value as ProviderName);
-                    setKeyMsg("");
-                    setKeyInput("");
-                    setKeyPanelHidden(false);
-                  }}
-                >
-                  {(Object.keys(PROVIDERS) as ProviderName[]).map((p) => (
-                    <option key={p} value={p}>
-                      {PROVIDERS[p].label}
-                      {keysLoaded && !keys[PROVIDERS[p].envVar] ? " — key missing" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <ModelPicker
+                value={providerId}
+                onChange={(p) => {
+                  setProviderId(p);
+                  setKeyMsg("");
+                  setKeyInput("");
+                  setKeyPanelHidden(false);
+                }}
+                keys={keys}
+                keysLoaded={keysLoaded}
+                onConnectKey={() => setKeyPanelHidden(false)}
+                disabled={Boolean(busyTurn)}
+              />
               <div className="select-wrap bare">
                 <select
                   aria-label="Aspect ratio"

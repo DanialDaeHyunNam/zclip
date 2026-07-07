@@ -28,6 +28,66 @@ export interface ProviderInfo {
   chartColor: string;
   /** Short caveat surfaced in the UI. */
   note?: string;
+
+  // ── model-picker display metadata (the rich dropdown) ──
+  /** Compact label for the trigger + rows. */
+  short: string;
+  /** Who makes it — the picker groups nothing by this but shows it inline. */
+  company: string;
+  /** One line on what it's great at (the pro). */
+  tagline: string;
+  /** When to reach for it. */
+  bestFor: string;
+  /** recommended = shown by default; more = behind the "All models" toggle. */
+  tier: "recommended" | "more";
+  /** 1–3 meters driving the little bars (quality = fidelity, speed = latency). */
+  quality: 1 | 2 | 3;
+  speed: 1 | 2 | 3;
+  /** Act-Two-style models that need a driving video + face, not a prompt. */
+  transferOnly?: boolean;
+}
+
+/** A not-yet-wired model shown in the picker (disabled) so the landscape and
+ *  the "adding one is one file" story are visible. Not a ProviderName. */
+export interface ComingSoonModel {
+  short: string;
+  company: string;
+  tagline: string;
+  note: string;
+}
+export const COMING_SOON: ComingSoonModel[] = [
+  {
+    short: "Kling 2.5",
+    company: "Kuaishou",
+    tagline: "Strong physical motion, image-to-video",
+    note: "Adapter TODO — copy an existing lib/providers/*.ts",
+  },
+  {
+    short: "Luma Ray 3",
+    company: "Luma",
+    tagline: "Fast, cinematic generation",
+    note: "Adapter TODO",
+  },
+  {
+    short: "Hailuo 02",
+    company: "MiniMax",
+    tagline: "Lifelike i2v, budget-friendly",
+    note: "Adapter TODO",
+  },
+  {
+    short: "Pika 2.2",
+    company: "Pika",
+    tagline: "Effects, transitions, pikaframes",
+    note: "Adapter TODO",
+  },
+];
+
+/** "$0.05/s" style label from the pricing table, or "—". */
+export function priceLabel(p: ProviderName): string {
+  const c = PROVIDERS[p].costPerSecondUsd;
+  if (!c) return "—";
+  const v = c["720p"] ?? c["1080p"];
+  return v != null ? `$${v.toFixed(2)}/s` : "—";
 }
 
 export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
@@ -42,6 +102,14 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     adapterFile: "lib/providers/veo.ts",
     costPerSecondUsd: { "720p": 0.1, "1080p": 0.12 },
     chartColor: "#1E9CC9",
+    short: "Veo 3.1 Fast",
+    company: "Google",
+    tagline: "Sharpest realism + native audio",
+    bestFor: "Generating a fresh take from a card or text",
+    tier: "recommended",
+    quality: 3,
+    speed: 2,
+    note: "No free tier — the API key's project needs billing. Durations 4/6/8s (1080p ⇒ 8s).",
   },
   sora: {
     label: "Sora 2",
@@ -54,7 +122,14 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     costPerSecondUsd: { "720p": 0.1 }, // launch pricing — verify on your account
     minSeconds: 8, // Sora bills 8s even when a shorter take is requested
     chartColor: "#8465DE",
-    note: "Output carries a visible watermark. Minimum 8s per clip; 720p only (1080p needs sora-2-pro in lib/config.ts).",
+    short: "Sora 2",
+    company: "OpenAI",
+    tagline: "Cinematic motion & coherence",
+    bestFor: "Longer, story-like takes",
+    tier: "more",
+    quality: 3,
+    speed: 1,
+    note: "Visible watermark. Minimum 8s per clip; 720p only (1080p needs sora-2-pro).",
   },
   grok: {
     label: "Grok Imagine",
@@ -66,7 +141,14 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     adapterFile: "lib/providers/grok.ts",
     costPerSecondUsd: { "720p": 0.08, "1080p": 0.08 }, // $0.08/s flat (docs.x.ai pricing)
     chartColor: "#BF7A22",
-    note: "With a reference image the card face is animated directly ($0.08/s). Text-only adds a $0.05 image step.",
+    short: "Grok Imagine",
+    company: "xAI",
+    tagline: "Cheapest, fast, flexible 1–15s",
+    bestFor: "Quick iterations & cheap A/B",
+    tier: "recommended",
+    quality: 2,
+    speed: 3,
+    note: "First-frame i2v — animates a still, does NOT follow a source video's motion. Text-only adds a $0.05 image step.",
   },
   seedance: {
     label: "Seedance 1.0 Pro",
@@ -78,6 +160,13 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     adapterFile: "lib/providers/seedance.ts",
     costPerSecondUsd: null,
     chartColor: "#3AA468",
+    short: "Seedance Pro",
+    company: "ByteDance",
+    tagline: "Budget i2v (unverified)",
+    bestFor: "Experimenting once wired",
+    tier: "more",
+    quality: 2,
+    speed: 2,
     note: "Endpoint/model id built from BytePlus ModelArk docs — verify on first run.",
   },
   runway: {
@@ -93,7 +182,15 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     adapterFile: "lib/providers/runway.ts",
     costPerSecondUsd: { "720p": 0.05, "1080p": 0.05 }, // 5 credits/s × $0.01
     chartColor: "#C2477E",
-    note: "TRANSFER-ONLY: needs BOTH a driving video (the motion) and a character card (the face). Follows the video's performance with the card's identity. No text prompt. Needs a Runway API key (Standard plan+).",
+    short: "Act-Two",
+    company: "Runway",
+    tagline: "TRUE performance transfer — motion from a video onto your face",
+    bestFor: "Reaction hooks driven by a reference clip",
+    tier: "recommended",
+    quality: 3,
+    speed: 2,
+    transferOnly: true,
+    note: "TRANSFER-ONLY: needs a driving video (the motion) + a character card (the face). No text prompt. Needs a Runway key (Standard plan+).",
   },
 };
 
