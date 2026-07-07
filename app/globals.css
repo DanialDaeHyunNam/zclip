@@ -271,6 +271,21 @@ body::before {
   max-width: 1180px;
   margin: 0 auto;
   padding: 0 32px 110px;
+  transition: margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sessions panel is a persistent sidebar (open by default) — when it's open
+   the studio sits to its right instead of hiding behind it. */
+.shell.with-side {
+  margin-left: 360px;
+  margin-right: auto;
+}
+
+@media (max-width: 1100px) {
+  /* too narrow to keep both — the panel overlays and content stays put */
+  .shell.with-side {
+    margin-left: auto;
+  }
 }
 
 /* ── header ─────────────────────────────────────── */

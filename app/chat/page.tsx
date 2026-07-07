@@ -273,7 +273,7 @@ export default function Home() {
   const [noAskChecked, setNoAskChecked] = useState(false);
 
   // session sidebar — closed by default, Claude-style
-  const [sideOpen, setSideOpen] = useState(false);
+  const [sideOpen, setSideOpen] = useState(true);
   const [spendOpen, setSpendOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1803,9 +1803,6 @@ export default function Home() {
         newDisabled={Boolean(busyTurn)}
       />
 
-      {sideOpen && (
-        <div className="side-backdrop" onClick={() => setSideOpen(false)} />
-      )}
       <aside className={`side-panel ${sideOpen ? "open" : ""}`}>
         <div className="side-head">
           <span className="label">Sessions</span>
@@ -2012,7 +2009,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className="shell">
+      <div className={`shell ${sideOpen ? "with-side" : ""}`}>
       <header className="top">
         <div className="wordmark">
           ZCLIP<span>_</span>
