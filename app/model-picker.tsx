@@ -44,6 +44,7 @@ export function ModelPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [company, setCompany] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,10 +64,15 @@ export function ModelPicker({
   const cur = resolveModel(value);
   const curNoKey = keysLoaded && !keys[cur.envVar];
   const noKey = (m: ModelEntry) => keysLoaded && !keys[m.envVar];
-  const list = company ? MODELS.filter((m) => m.company === company) : MODELS;
+
+  // Default view = one headline model per company. A company chip shows that
+  // brand's full line-up; "All models" reveals every variant across brands.
+  const base = company ? MODELS.filter((m) => m.company === company) : MODELS;
+  const list =
+    company || showAll ? base : base.filter((m) => m.primary || m.key === value);
+  const hiddenCount = MODELS.length - MODELS.filter((m) => m.primary).length;
 
   const pick = (m: ModelEntry) => {
-    if (m.comingSoon) return;
     onChange(m.key);
     setOpen(false);
     if (noKey(m)) onConnectKey();
@@ -111,9 +117,8 @@ export function ModelPicker({
             {list.map((m) => (
               <button
                 key={m.key}
-                className={`mp-item ${m.key === value ? "sel" : ""} ${m.comingSoon ? "soon" : ""} ${noKey(m) && !m.comingSoon ? "nokey" : ""}`}
+                className={`mp-item ${m.key === value ? "sel" : ""} ${noKey(m) ? "nokey" : ""}`}
                 onClick={() => pick(m)}
-                disabled={m.comingSoon}
               >
                 <span className="mp-check">{m.key === value ? "✓" : ""}</span>
                 <span className="mp-body">
@@ -122,23 +127,26 @@ export function ModelPicker({
                     <span className="mp-co">{m.company}</span>
                     {m.recommended && <span className="mp-tag rec">★</span>}
                     {m.transferOnly && <span className="mp-tag xfer">transfer</span>}
-                    {m.comingSoon && <span className="mp-tag soon">soon</span>}
-                    {!m.comingSoon && noKey(m) && <span className="mp-tag warn">key</span>}
+                    {noKey(m) && <span className="mp-tag warn">key</span>}
                   </span>
                   <span className="mp-spec">
                     {modelPriceLabel(m)} · {m.tagline}
                   </span>
                 </span>
-                {!m.comingSoon && (
-                  <span className="mp-meters">
-                    <Meter n={m.quality} label="Quality" />
-                    <Meter n={m.speed} label="Speed" />
-                  </span>
-                )}
+                <span className="mp-meters">
+                  <Meter n={m.quality} label="Quality" />
+                  <Meter n={m.speed} label="Speed" />
+                </span>
               </button>
             ))}
             {list.length === 0 && <p className="mp-empty">No models for {company}.</p>}
           </div>
+
+          {company === null && hiddenCount > 0 && (
+            <button className="mp-toggle" onClick={() => setShowAll((v) => !v)}>
+              {showAll ? "Headline models only" : `All models (+${hiddenCount} variants)`}
+            </button>
+          )}
         </div>
       )}
     </div>

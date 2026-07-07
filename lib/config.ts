@@ -174,11 +174,11 @@ export interface ModelEntry {
   transferOnly?: boolean;
   recommended?: boolean;
   implemented: boolean;
-  /** true = shown greyed-out in the picker, not selectable (adapter TODO). */
-  comingSoon?: boolean;
+  /** The default/headline model for its company — shown before "All models". */
+  primary?: boolean;
 }
 
-/** Build a catalog entry for a provider's DEFAULT model from PROVIDERS. */
+/** Build a catalog entry for a provider's DEFAULT (headline) model. */
 function defaultModel(p: ProviderName): ModelEntry {
   const i = PROVIDERS[p];
   return {
@@ -195,55 +195,78 @@ function defaultModel(p: ProviderName): ModelEntry {
     transferOnly: i.transferOnly,
     recommended: i.tier === "recommended",
     implemented: i.implemented,
+    primary: true,
   };
 }
 
-/** A not-yet-wired model — visible in the picker, not selectable. */
-function soon(
-  key: string,
-  short: string,
-  company: string,
-  tagline: string,
-  provider: ProviderName = "veo",
-): ModelEntry {
+/** A REAL variant that rides the same adapter with a different modelId.
+ *  Only wired, working models live here — no placeholders. */
+function variant(v: {
+  key: string;
+  short: string;
+  provider: ProviderName;
+  modelId: string;
+  tagline: string;
+  price: Partial<Record<Resolution, number>> | null;
+  quality: 1 | 2 | 3;
+  speed: 1 | 2 | 3;
+}): ModelEntry {
   return {
-    key,
-    short,
-    company,
-    provider,
-    modelId: "",
-    envVar: PROVIDERS[provider].envVar,
-    pricePerSecUsd: null,
-    quality: 2,
-    speed: 2,
-    tagline,
-    implemented: false,
-    comingSoon: true,
+    key: v.key,
+    short: v.short,
+    company: PROVIDERS[v.provider].company,
+    provider: v.provider,
+    modelId: v.modelId,
+    envVar: PROVIDERS[v.provider].envVar,
+    pricePerSecUsd: v.price,
+    quality: v.quality,
+    speed: v.speed,
+    tagline: v.tagline,
+    implemented: true,
   };
 }
 
 export const MODELS: ModelEntry[] = [
-  // Google
+  // Google — one adapter (veo.ts), three real model ids
   defaultModel("veo"),
-  soon("veo-3.1", "Veo 3.1", "Google", "Higher fidelity + native audio", "veo"),
-  soon("veo-2", "Veo 2", "Google", "Previous generation, cheaper", "veo"),
+  variant({
+    key: "veo-3.1",
+    short: "Veo 3.1",
+    provider: "veo",
+    modelId: "veo-3.1-generate-preview",
+    tagline: "Higher fidelity, 4K, native audio",
+    price: { "720p": 0.2, "1080p": 0.4 }, // premium tier (estimate)
+    quality: 3,
+    speed: 1,
+  }),
+  variant({
+    key: "veo-3.1-lite",
+    short: "Veo 3.1 Lite",
+    provider: "veo",
+    modelId: "veo-3.1-lite-generate-preview",
+    tagline: "Cheapest Veo — high-volume iteration",
+    price: { "720p": 0.04 }, // <50% of Fast, per Google
+    quality: 2,
+    speed: 3,
+  }),
   // OpenAI
   defaultModel("sora"),
-  soon("sora-2-pro", "Sora 2 Pro", "OpenAI", "1080p, longer, higher fidelity", "sora"),
+  variant({
+    key: "sora-2-pro",
+    short: "Sora 2 Pro",
+    provider: "sora",
+    modelId: "sora-2-pro",
+    tagline: "1080p, higher fidelity",
+    price: { "720p": 0.3, "1080p": 0.5 },
+    quality: 3,
+    speed: 1,
+  }),
   // xAI
   defaultModel("grok"),
   // Runway
   defaultModel("runway"),
-  soon("rw-gen4-turbo", "Gen-4 Turbo", "Runway", "Fast text/image-to-video"),
-  soon("rw-gen4.5", "Gen-4.5", "Runway", "Flagship quality generation"),
   // ByteDance
   defaultModel("seedance"),
-  soon("seedance-lite", "Seedance Lite", "ByteDance", "Faster, cheaper tier", "seedance"),
-  // Not yet wired — the wider landscape
-  soon("kling-2.5", "Kling 2.5", "Kuaishou", "Strong physical motion, i2v"),
-  soon("luma-ray3", "Luma Ray 3", "Luma", "Fast, cinematic generation"),
-  soon("hailuo-02", "Hailuo 02", "MiniMax", "Lifelike i2v, budget-friendly"),
-  soon("pika-2.2", "Pika 2.2", "Pika", "Effects, transitions, pikaframes"),
 ];
 
 /** Company chips, in the order they appear (companies with ≥1 model). */

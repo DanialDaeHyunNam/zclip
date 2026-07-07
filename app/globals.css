@@ -1100,6 +1100,26 @@ button {
   color: var(--faint);
 }
 
+.mp-toggle {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: none;
+  padding: 11px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.mp-toggle:hover {
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .mp-item {
   display: flex;
   align-items: flex-start;
