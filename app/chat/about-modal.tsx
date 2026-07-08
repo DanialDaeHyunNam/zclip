@@ -55,8 +55,8 @@ export function AboutModal({ onClose }: { onClose: () => void }) {
             </p>
           </header>
           <div className="rlg-cta-row">
-            <a className="btn-primary" href={REPO_URL} target="_blank" rel="noreferrer">
-              ★ Star on GitHub
+            <a className="btn-ghost ld-star" href={REPO_URL} target="_blank" rel="noreferrer">
+              <span className="ld-star-icon">★</span> Star on GitHub
             </a>
             <Link className="btn-ghost" href="/">
               View the full landing →

@@ -5,6 +5,13 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.11 — 2026-07-08
+
+### Changed
+- **About dialog's "Star on GitHub" gets the gold glow** — the same gold band +
+  pulsing halo + gold star as the landing's star CTA, so the free-tool "reward"
+  reads consistently in the studio.
+
 ## 0.1.10 — 2026-07-08
 
 ### Changed
