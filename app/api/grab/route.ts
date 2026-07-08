@@ -160,8 +160,60 @@ async function trim(file: string, start: number, end: number): Promise<string> {
     "-ss", String(start),
     "-i", file,
     "-t", String(Math.max(0.5, end - start)),
-    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
     "-c:a", "aac",
+    "-movflags", "+faststart",
+    out,
+  ]);
+  return out;
+}
+
+// Codecs a browser <video> happily decodes but Apple QuickLook / QuickTime
+// can't — a VP9-in-mp4 grab plays in-app yet won't open once downloaded.
+const APPLE_INCOMPATIBLE = new Set(["vp8", "vp9", "av1"]);
+
+/** Read the primary video stream's codec (ffprobe, homebrew fallback). Returns
+ *  "" if it can't be determined — callers then leave the file untouched. */
+function probeVideoCodec(file: string): Promise<string> {
+  const args = [
+    "-v", "error",
+    "-select_streams", "v:0",
+    "-show_entries", "stream=codec_name",
+    "-of", "default=nk=1:nw=1",
+    file,
+  ];
+  const attempt = (cmd: string) =>
+    new Promise<string>((resolve, reject) => {
+      const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "ignore"] });
+      let out = "";
+      child.stdout.on("data", (d) => (out += d));
+      child.on("error", reject);
+      child.on("close", () => resolve(out.trim()));
+    });
+  return attempt("ffprobe").catch((err) => {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT")
+      return attempt("/opt/homebrew/bin/ffprobe");
+    throw err;
+  });
+}
+
+/** Guarantee the grab is playable everywhere (not just in Chrome): if it's a
+ *  VP9/AV1/VP8 video, transcode to H.264. No-op for H.264/HEVC — the common
+ *  case, so most grabs skip the re-encode entirely. */
+async function ensureAppleCompatible(file: string): Promise<string> {
+  let codec = "";
+  try {
+    codec = await probeVideoCodec(file);
+  } catch {
+    return file; // can't tell — don't risk mangling an already-fine file
+  }
+  if (!APPLE_INCOMPATIBLE.has(codec)) return file;
+  const out = file.replace(/\.mp4$/, "-h264.mp4");
+  await run("ffmpeg", [
+    "-y", "-i", file,
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+    "-c:a", "aac",
+    "-movflags", "+faststart",
     out,
   ]);
   return out;
@@ -223,10 +275,14 @@ export async function POST(req: Request) {
         if (len > MAX_BYTES) throw new Error("Video too large (200MB max)");
         await writeFile(file, Buffer.from(await res.arrayBuffer()));
       } else {
-        // yt-dlp territory (YouTube and hundreds of other sites).
+        // yt-dlp territory (YouTube and hundreds of other sites). Prefer an
+        // H.264 (avc1) rendition so the result plays everywhere, not just in
+        // Chrome — some sites (Instagram) also serve VP9, which Apple can't
+        // decode. Falls back to any mp4, then anything.
         await run("yt-dlp", [
           "--no-playlist",
-          "-f", "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
+          "-f",
+          "bv*[vcodec^=avc1][ext=mp4]+ba[ext=m4a]/b[vcodec^=avc1][ext=mp4]/bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
           "--merge-output-format", "mp4",
           "--max-filesize", "200M",
           "-o", file,
@@ -234,7 +290,10 @@ export async function POST(req: Request) {
         ]);
       }
 
+      // Trim re-encodes to H.264; otherwise normalise any VP9/AV1 grab so the
+      // downloaded file opens outside the browser too.
       if (wantTrim) file = await trim(file, start, end);
+      else file = await ensureAppleCompatible(file);
       const info = await stat(file);
       const served = path.basename(file);
       return Response.json({

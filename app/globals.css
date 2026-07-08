@@ -664,6 +664,54 @@ button {
   color: #d9a441;
 }
 
+/* Per-model context manifest — what the selected model does with each
+   attached piece (and what it drops). */
+.ctx-manifest {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.ctx-manifest-head {
+  font-family: var(--font-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 1px;
+}
+
+.ctx-manifest-row {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--fg);
+}
+
+.ctx-manifest-row b {
+  font-weight: 400;
+}
+
+.ctx-manifest-arrow {
+  color: var(--faint);
+  margin: 0 7px;
+}
+
+.ctx-manifest-row.muted {
+  color: var(--faint);
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.2);
+}
+
+.ctx-manifest-row.muted b {
+  text-decoration: none;
+}
+
 .link-btn:disabled {
   opacity: 0.35;
   cursor: default;
@@ -1024,6 +1072,87 @@ button {
 .starter {
   margin: 0 0 18px;
 }
+
+/* ── stable composer frame ─────────────────────────
+   pills header stays put on top, the input stays put on the bottom, and the
+   variable middle (chips + manifest) scrolls inside a capped band — so adding
+   or removing context never shifts the input. The picker carousel opens as a
+   popover floating ABOVE the frame, so it doesn't push anything either. */
+.composer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+}
+
+.composer-head {
+  position: relative;
+  /* lift the header (and its dropdown popover) above the input/context below,
+     which come later in the DOM and would otherwise paint on top */
+  z-index: 20;
+  margin-bottom: 12px;
+}
+
+/* chat-zone stacks the input (foot) ABOVE the context summary (body) so the
+   input sits right under the pills and never moves — chips + manifest grow
+   DOWNWARD instead of pushing the input around. */
+.chat-zone {
+  display: flex;
+  flex-direction: column;
+}
+
+.composer-foot {
+  order: 0;
+}
+
+/* the chips + manifest summary: sits under the input, grows to fit, but never
+   past ~26vh — then it scrolls internally so it never buries the take history
+   or the archive below */
+.composer-body {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  max-height: 26vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--faint) transparent;
+}
+
+.composer-body:empty {
+  display: none;
+  margin-top: 0;
+}
+
+/* picker carousel drops DOWN from just under the pills — floating over the
+   input/context area (you're not typing while picking), so it never pushes
+   the frame around. absolute with no top/bottom keeps it at its in-flow spot,
+   which is right below the header. */
+.composer-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  z-index: 30;
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: 14px 16px;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-lg);
+  /* opaque so it cleanly covers the input/context beneath — you're picking,
+     not typing */
+  background: #0c0c0f;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.72);
+}
+
+.composer-pop .starter-group {
+  margin: 0;
+}
+
 
 /* header row above the starter pills on an empty session: the central
    "How to use" entry point that opens the same help modal as the rail ? */

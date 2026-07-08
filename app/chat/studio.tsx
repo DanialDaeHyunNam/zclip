@@ -124,6 +124,78 @@ const compactTurns = (ts: Turn[]): Turn[] => {
 const fmtElapsed = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+/** One line of the "what this model does with your context" manifest. */
+interface ManifestRow {
+  icon: string;
+  label: string;
+  role: string;
+  ignored?: boolean;
+}
+
+/** Every model consumes context differently — Act-Two transfers a driving
+ *  performance onto a face and ignores scene/prompt, while Veo/Sora/Grok take
+ *  one reference image and fold everything else into the rewritten prompt.
+ *  This maps the CURRENTLY attached context to what the selected model will
+ *  actually do with each piece, flagging the parts it drops. */
+function contextManifest(
+  provider: ProviderName,
+  has: {
+    char?: string;
+    setting?: string;
+    attachKind?: "image" | "video" | null;
+    pins: number;
+    text: boolean;
+  },
+): ManifestRow[] {
+  const transfer = provider === "runway"; // Act-Two = performance transfer
+  const rows: ManifestRow[] = [];
+  if (has.char)
+    rows.push({
+      icon: "✦",
+      label: `Character · ${has.char}`,
+      role: transfer ? "face / identity — required" : "reference image (the face)",
+    });
+  if (has.setting)
+    rows.push({
+      icon: "◫",
+      label: `Background · ${has.setting}`,
+      role: transfer
+        ? "ignored — Act-Two keeps the driving clip's scene"
+        : "woven into the prompt",
+      ignored: transfer,
+    });
+  if (has.attachKind === "video")
+    rows.push({
+      icon: "▤",
+      label: "Reference video",
+      role: transfer
+        ? "driving performance — required"
+        : "motion cue for the prompt + a frame reference",
+    });
+  if (has.attachKind === "image")
+    rows.push({
+      icon: "▤",
+      label: "Reference image",
+      role: transfer ? "ignored — Act-Two needs a driving video" : "reference image",
+      ignored: transfer,
+    });
+  if (has.pins)
+    rows.push({
+      icon: "❐",
+      label: `${has.pins} pinned take${has.pins > 1 ? "s" : ""}`,
+      role: transfer ? "ignored" : "blended into the prompt",
+      ignored: transfer,
+    });
+  if (has.text)
+    rows.push({
+      icon: "✎",
+      label: "Your text",
+      role: transfer ? "ignored — Act-Two takes no prompt" : "your instruction",
+      ignored: transfer,
+    });
+  return rows;
+}
+
 // fmtCost / cssAspect / ClipCardView live in lib/clip + app/clip-card (shared
 // with the archive route).
 
@@ -251,7 +323,18 @@ export default function Home() {
   const model = resolveModel(modelKey);
   const providerId = model.provider;
   const providerInfo = PROVIDERS[providerId];
-  const estCostUsd = estimateModelCost(model, resolution, duration);
+  // Act-Two has no duration knob — its output length IS the driving clip's,
+  // clamped to Runway's 1–15s. Surface that real number (and bill on it)
+  // instead of the UI duration selector, which Act-Two ignores.
+  const runwaySecs =
+    attach?.kind === "video"
+      ? Math.round(Math.min(15, Math.max(1, attach.srcSeconds ?? 8)))
+      : null;
+  const estCostUsd = estimateModelCost(
+    model,
+    resolution,
+    providerId === "runway" && runwaySecs != null ? runwaySecs : duration,
+  );
   const keyMissing = keysLoaded && !keys[model.envVar];
 
   const pwHeaders = useCallback(
@@ -800,6 +883,7 @@ export default function Home() {
     }
   };
 
+
   /** Cover-crop a reference image to the target aspect. Mismatched
    *  aspects make i2v models tile/outpaint (duplicated frames) and drop
    *  likeness — the reference must fill the output canvas exactly. */
@@ -984,7 +1068,8 @@ export default function Home() {
     const starterText =
       turns.length === 0 && starterDraft?.trim() ? starterDraft.trim() : null;
     const starterLabel = starterText
-      ? composeStarter(selChar, selSetting, aspect, duration)?.label ?? "Custom base"
+      ? composeStarter(selChar, selSetting, aspect, duration)?.label ??
+        "Custom base"
       : undefined;
     const ctxTurns = ctxIds
       .map((id) => ({ idx: turns.findIndex((t) => t.id === id) }))
@@ -993,7 +1078,12 @@ export default function Home() {
       .map(({ idx }) => ({ take: idx + 1, turn: turns[idx] }));
     if (
       busyTurn ||
-      (!text && !starterText && !manual && !ctxTurns.length) ||
+      (!text &&
+        !starterText &&
+        !manual &&
+        !ctxTurns.length &&
+        !selChar &&
+        !selSetting) ||
       keyMissing
     )
       return;
@@ -1086,18 +1176,17 @@ export default function Home() {
       return;
     }
 
-    // Reference precedence: manual attachment > starter-asset images >
-    // continuity snapshot. Refine sees every frame; the video model gets
-    // one primary frame (middle of a video, character over setting).
+    // Context blend: Character + Background cards, a manual/library reference,
+    // and pinned takes can ALL be added at once (any model). The refiner sees
+    // every one of them; the video model gets a single primary image chosen
+    // per its own rules (character face wins — see the manifest under the
+    // composer). Cards stay live at take 1 (base compose) AND mid-thread.
     const lastSnap =
-      !manual && continuity
+      !manual && !selChar && !selSetting && !ctxIds.length && continuity
         ? [...turns].reverse().find((t) => t.snapshot)?.snapshot
         : undefined;
-    // Video attach + character card = PERFORMANCE TRANSFER: the video
-    // drives the choreography (via transcription), the card supplies the
-    // identity — so asset refs stay live even with a manual video.
     const [charImgRaw, settingImg] =
-      (!manual || manual.kind === "video") && starterText
+      selChar || selSetting
         ? await Promise.all([assetRefB64(selChar), assetRefB64(selSetting)])
         : [null, null];
     // Dress the CHARACTER reference in the picked outfit (not just Act-Two):
@@ -1106,47 +1195,52 @@ export default function Home() {
     const charImg =
       charImgRaw && selFashion ? await dressWithFashion(charImgRaw) : charImgRaw;
     const assetImages = [charImg, settingImg].filter(Boolean) as string[];
-    const transfer =
-      manual?.kind === "video" && assetImages.length > 0 && !!starterText;
-    const assetThumb = starterText
-      ? selChar
-        ? "custom" in selChar && selChar.custom
-          ? selChar.image
-          : `/starters/${selChar.id}.jpg`
-        : selSetting
-          ? "custom" in selSetting && selSetting.custom
-            ? selSetting.image
-            : `/starters/${selSetting.id}.jpg`
-          : undefined
-      : undefined;
-    const ctxImages = manual
-      ? []
-      : (ctxTurns
-          .map(({ turn }) => turn.snapshot)
-          .filter(Boolean) as string[]);
-    const refImages = manual
-      ? manual.frames.map((b) => ({ base64: b, mimeType: manual.mimeType }))
-      : ctxImages.length
-        ? ctxImages.map((d) => ({
-            base64: d.split(",")[1],
-            mimeType: "image/jpeg",
-          }))
-        : assetImages.length
-          ? assetImages.map((d) => ({
-              base64: d,
-              mimeType: "image/jpeg",
-            }))
-          : lastSnap
-            ? [{ base64: lastSnap.split(",")[1], mimeType: "image/jpeg" }]
-            : undefined;
-    const rawPrimary = transfer
-      ? { base64: assetImages[0], mimeType: "image/jpeg" } // identity = card
-      : manual && refImages
-        ? refImages[Math.floor((refImages.length - 1) / 2)]
-        : refImages?.[0];
-    const primaryImage = rawPrimary
+    // Video attach + character card = PERFORMANCE TRANSFER: the video drives
+    // the choreography (via transcription), the card supplies the identity.
+    const transfer = manual?.kind === "video" && !!charImg;
+    const assetThumb = selChar
+      ? "custom" in selChar && selChar.custom
+        ? selChar.image
+        : `/starters/${selChar.id}.jpg`
+      : selSetting
+        ? "custom" in selSetting && selSetting.custom
+          ? selSetting.image
+          : `/starters/${selSetting.id}.jpg`
+        : undefined;
+    const ctxImages = ctxTurns
+      .map(({ turn }) => turn.snapshot)
+      .filter(Boolean) as string[];
+    // Everything the refiner should see, merged (character/scene, then the
+    // manual/library reference, then pinned takes).
+    const refImages = [
+      ...assetImages.map((d) => ({ base64: d, mimeType: "image/jpeg" })),
+      ...(manual
+        ? manual.frames.map((b) => ({ base64: b, mimeType: manual.mimeType }))
+        : []),
+      ...ctxImages.map((d) => ({
+        base64: d.split(",")[1],
+        mimeType: "image/jpeg",
+      })),
+      ...(lastSnap
+        ? [{ base64: lastSnap.split(",")[1], mimeType: "image/jpeg" }]
+        : []),
+    ];
+    // Generation gets ONE image: character face first, then a manual image's
+    // middle frame, then the background, then a pinned/continuity frame.
+    const rawPrimaryB64 = charImg
+      ? charImg
+      : manual
+        ? manual.frames[Math.floor((manual.frames.length - 1) / 2)]
+        : settingImg
+          ? settingImg
+          : ctxImages.length
+            ? ctxImages[0].split(",")[1]
+            : lastSnap
+              ? lastSnap.split(",")[1]
+              : undefined;
+    const primaryImage = rawPrimaryB64
       ? {
-          base64: await normalizeRefB64(rawPrimary.base64, aspect),
+          base64: await normalizeRefB64(rawPrimaryB64, aspect),
           mimeType: "image/jpeg",
         }
       : undefined;
@@ -1192,6 +1286,11 @@ export default function Home() {
     setDraft("");
     setAttach(null);
     setCtxIds([]);
+    // Context cards are one-shot per take (like the attachment) — clear them
+    // so the next take continues cleanly instead of re-injecting the card.
+    setCharId(null);
+    setSettingId(null);
+    setFashionId(null);
     setSelectedId(id);
 
     try {
@@ -1568,7 +1667,23 @@ export default function Home() {
     !busyTurn &&
     ready &&
     !keyMissing &&
-    Boolean(draft.trim() || attach || starterReady || ctxIds.length);
+    Boolean(
+      draft.trim() ||
+        attach ||
+        starterReady ||
+        ctxIds.length ||
+        selChar ||
+        selSetting,
+    );
+
+  // What the selected model will do with each attached piece of context.
+  const manifest = contextManifest(providerId, {
+    char: selChar?.label,
+    setting: selSetting?.label,
+    attachKind: attach?.kind ?? null,
+    pins: ctxIds.length,
+    text: Boolean(draft.trim()),
+  });
 
   /* ── render ────────────────────────────────────── */
 
@@ -1614,7 +1729,9 @@ export default function Home() {
                 <span>Length</span>
                 <b>
                   {providerId === "runway"
-                    ? "driving clip length"
+                    ? runwaySecs != null
+                      ? `${runwaySecs}s · driving clip`
+                      : "driving clip length"
                     : `${effectiveSeconds(providerId, duration, resolution)}s`}
                 </b>
               </div>
@@ -1945,18 +2062,20 @@ export default function Home() {
 
           {error && <div className="error-box fade">{error}</div>}
 
-          {turns.length === 0 && (
-            <div className="starter fade">
-              <div className="starter-intro">
-                <span className="starter-intro-label">Start a clip</span>
-                <button
-                  type="button"
-                  className="starter-help"
-                  onClick={() => setShowHelp(true)}
-                >
-                  ? How to use
-                </button>
-              </div>
+          <div className="composer">
+            <div className="composer-head fade">
+              {turns.length === 0 && (
+                <div className="starter-intro">
+                  <span className="starter-intro-label">Start a clip</span>
+                  <button
+                    type="button"
+                    className="starter-help"
+                    onClick={() => setShowHelp(true)}
+                  >
+                    ? How to use
+                  </button>
+                </div>
+              )}
               <div className="starter-pills">
                 <button
                   className={`pill-btn ${pickerOpen === "char" ? "on" : ""}`}
@@ -1974,15 +2093,17 @@ export default function Home() {
                 >
                   ◫ Background{selSetting ? ` · ${selSetting.label}` : ""}
                 </button>
-                <button
-                  className={`pill-btn ${pickerOpen === "fashion" ? "on" : ""}`}
-                  onClick={() =>
-                    setPickerOpen((p) => (p === "fashion" ? null : "fashion"))
-                  }
-                  title="Dress the character in this outfit — works with any model"
-                >
-                  ⑆ Fashion{selFashion ? ` · ${selFashion.label}` : ""}
-                </button>
+                {turns.length === 0 && (
+                  <button
+                    className={`pill-btn ${pickerOpen === "fashion" ? "on" : ""}`}
+                    onClick={() =>
+                      setPickerOpen((p) => (p === "fashion" ? null : "fashion"))
+                    }
+                    title="Dress the character in this outfit — works with any model"
+                  >
+                    ⑆ Fashion{selFashion ? ` · ${selFashion.label}` : ""}
+                  </button>
+                )}
                 <button
                   className={`pill-btn ${pickerOpen === "library" ? "on" : ""}`}
                   onClick={() =>
@@ -1992,6 +2113,8 @@ export default function Home() {
                   ▤ Library{attach ? " · attached" : ""}
                 </button>
               </div>
+            {pickerOpen && (
+              <div className="composer-pop fade">
               {pickerOpen === "fashion" && (
                 <div className="starter-group">
                   <span className="picker-hint">
@@ -2008,9 +2131,10 @@ export default function Home() {
                       <button
                         key={f.id}
                         className={`starter-card ${fashionId === f.id ? "sel" : ""}`}
-                        onClick={() =>
-                          setFashionId((cur) => (cur === f.id ? null : f.id))
-                        }
+                        onClick={() => {
+                          setFashionId((cur) => (cur === f.id ? null : f.id));
+                          setPickerOpen(null);
+                        }}
                       >
                         <span className="starter-img">
                           <img
@@ -2030,9 +2154,10 @@ export default function Home() {
                       <button
                         key={f.id}
                         className={`starter-card ${fashionId === f.id ? "sel" : ""}`}
-                        onClick={() =>
-                          setFashionId((cur) => (cur === f.id ? null : f.id))
-                        }
+                        onClick={() => {
+                          setFashionId((cur) => (cur === f.id ? null : f.id));
+                          setPickerOpen(null);
+                        }}
                       >
                         <span className="starter-img">
                           {f.image && <img src={f.image} alt="" loading="lazy" />}
@@ -2164,7 +2289,11 @@ export default function Home() {
                 ]
               ).filter((g) => g.kind === pickerOpen).map((group) => (
                 <div className="starter-group" key={group.kind}>
-                  <span className="picker-hint">{group.hint}</span>
+                  <span className="picker-hint">
+                    {turns.length
+                      ? `Adds to the next take's context — ${group.kind === "char" ? "the face" : "the scene"}. See how this model uses it below the composer.`
+                      : group.hint}
+                  </span>
                   <div className="starter-carousel">
                     {group.items.map((item) => {
                       const isCustom = "custom" in item && item.custom;
@@ -2175,7 +2304,10 @@ export default function Home() {
                         <button
                           key={item.id}
                           className={`starter-card ${group.selId === item.id ? "sel" : ""}`}
-                          onClick={() => group.toggle(item.id)}
+                          onClick={() => {
+                            group.toggle(item.id);
+                            setPickerOpen(null);
+                          }}
                         >
                           {imgSrc && (
                             <span className="starter-img">
@@ -2302,9 +2434,9 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          )}
-
-          {turns.length === 0 && starterDraft != null && (
+            )}
+            </div>
+            {turns.length === 0 && starterDraft != null && (
             <div className="base-prompt fade">
               <span className="label">Base Prompt · yours to edit</span>
               <textarea
@@ -2336,10 +2468,12 @@ export default function Home() {
               if (f) attachMediaFile(f);
             }}
           >
+            <div className="composer-body">
             {(attach ||
               ctxIds.length > 0 ||
               urlCandidate ||
-              (turns.length === 0 && (selChar || selSetting))) && (
+              selChar ||
+              selSetting) && (
               <div className="chips-row">
                 {urlCandidate && (
                   <span className="sel-chip fade">
@@ -2379,7 +2513,7 @@ export default function Home() {
                     </span>
                   );
                 })}
-                {turns.length === 0 && selChar && (
+                {selChar && (
                   <span className="sel-chip fade">
                     <img
                       src={
@@ -2390,7 +2524,7 @@ export default function Home() {
                       alt=""
                       onError={(e) => (e.currentTarget.style.display = "none")}
                     />
-                    {selChar.label}
+                    ✦ {selChar.label}
                     <button
                       className="link-btn danger"
                       onClick={() => setCharId(null)}
@@ -2400,7 +2534,7 @@ export default function Home() {
                     </button>
                   </span>
                 )}
-                {turns.length === 0 && selSetting && (
+                {selSetting && (
                   <span className="sel-chip fade">
                     <img
                       src={
@@ -2411,7 +2545,7 @@ export default function Home() {
                       alt=""
                       onError={(e) => (e.currentTarget.style.display = "none")}
                     />
-                    {selSetting.label}
+                    ◫ {selSetting.label}
                     <button
                       className="link-btn danger"
                       onClick={() => setSettingId(null)}
@@ -2440,6 +2574,25 @@ export default function Home() {
                 )}
               </div>
             )}
+            {manifest.length > 0 && (
+              <div className="ctx-manifest fade">
+                <span className="ctx-manifest-head">Into {model.short}</span>
+                {manifest.map((r, i) => (
+                  <span
+                    key={i}
+                    className={`ctx-manifest-row ${r.ignored ? "muted" : ""}`}
+                  >
+                    <b>
+                      {r.icon} {r.label}
+                    </b>
+                    <span className="ctx-manifest-arrow">→</span>
+                    {r.role}
+                  </span>
+                ))}
+              </div>
+            )}
+            </div>
+            <div className="composer-foot">
             <div className="chat-bar">
               <button
                 className="attach-btn"
@@ -2513,6 +2666,8 @@ export default function Home() {
                 out muddy. 2–3 pinned takes keep each reference recognizable.
               </p>
             )}
+            </div>
+          </div>
           </div>
         </section>
 
