@@ -2342,7 +2342,7 @@ export default function Home() {
               </div>
               {pickerOpen === "fashion" && (
                 <div className="starter-group">
-                  <span className="fashion-hint">
+                  <span className="picker-hint">
                     {selChar
                       ? providerId === "runway"
                         ? "The outfit is composited onto your character before Act-Two animates it."
@@ -2443,46 +2443,47 @@ export default function Home() {
                       drop in (multimodal input) live here too, ready to reuse.
                     </li>
                   </ul>
-                  <div className="starter-carousel">
-                    {clips.filter((c) => c.videoUrl).map((c) => (
-                      <button
-                        key={c.jobId}
-                        className="starter-card"
-                        title="Attach this clip as the motion reference"
-                        onClick={() => {
-                          setPickerOpen(null);
-                          useClipAsRef(c);
-                        }}
-                      >
-                        <span className="starter-img">
-                          <video
-                            src={withPw(c.videoUrl!)}
-                            muted
-                            playsInline
-                            preload="metadata"
-                            onMouseEnter={(e) =>
-                              e.currentTarget.play().catch(() => {})
-                            }
-                            onMouseLeave={(e) => e.currentTarget.pause()}
-                          />
-                        </span>
-                        <span className="starter-name">
-                          {c.provider === "grab"
-                            ? "GRAB"
-                            : PROVIDERS[c.provider]?.label ?? c.provider}
-                        </span>
-                        <span className="starter-desc">
-                          {(c.note ?? c.prompt).slice(0, 42)}
-                        </span>
-                      </button>
-                    ))}
-                    {clips.filter((c) => c.videoUrl).length === 0 && (
-                      <p className="hint">
-                        Archive is empty — finished takes and GRABs (⤓ in the
-                        rail) appear here as motion references.
-                      </p>
-                    )}
-                  </div>
+                  {clips.filter((c) => c.videoUrl).length > 0 ? (
+                    <div className="starter-carousel">
+                      {clips.filter((c) => c.videoUrl).map((c) => (
+                        <button
+                          key={c.jobId}
+                          className="starter-card"
+                          title="Attach this clip as the motion reference"
+                          onClick={() => {
+                            setPickerOpen(null);
+                            useClipAsRef(c);
+                          }}
+                        >
+                          <span className="starter-img">
+                            <video
+                              src={withPw(c.videoUrl!)}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              onMouseEnter={(e) =>
+                                e.currentTarget.play().catch(() => {})
+                              }
+                              onMouseLeave={(e) => e.currentTarget.pause()}
+                            />
+                          </span>
+                          <span className="starter-name">
+                            {c.provider === "grab"
+                              ? "GRAB"
+                              : PROVIDERS[c.provider]?.label ?? c.provider}
+                          </span>
+                          <span className="starter-desc">
+                            {(c.note ?? c.prompt).slice(0, 42)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="hint library-empty">
+                      Archive is empty — finished takes and GRABs (⤓ in the
+                      rail) appear here as motion references.
+                    </p>
+                  )}
                 </div>
               )}
               {(
@@ -2490,6 +2491,7 @@ export default function Home() {
                   {
                     kind: "char" as const,
                     title: "Character",
+                    hint: "The face of your clip. Pick from the built-in cast, or ＋ Custom to add your own (an image + a short description).",
                     items: allCharacters,
                     selId: charId,
                     toggle: (id: string) =>
@@ -2498,6 +2500,7 @@ export default function Home() {
                   {
                     kind: "setting" as const,
                     title: "Setting",
+                    hint: "Where the clip takes place. Combine it with a character — the base prompt updates as you pick.",
                     items: allSettings,
                     selId: settingId,
                     toggle: (id: string) =>
@@ -2506,6 +2509,7 @@ export default function Home() {
                 ]
               ).filter((g) => g.kind === pickerOpen).map((group) => (
                 <div className="starter-group" key={group.kind}>
+                  <span className="picker-hint">{group.hint}</span>
                   <div className="starter-carousel">
                     {group.items.map((item) => {
                       const isCustom = "custom" in item && item.custom;

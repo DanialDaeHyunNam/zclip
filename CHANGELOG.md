@@ -5,6 +5,18 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.4 — 2026-07-08
+
+### Changed
+- **Consistent picker intros** — the Character and Background pickers now show a
+  one-line description like Fashion does, and there's proper breathing room
+  between the pill row and the opened picker content (they were flush before).
+- **Tighter empty Library** — the "Archive is empty" note no longer inherits the
+  carousel's padding, so the gap under the Library explainer is normal.
+- **Cleaner install guide** — dropped the redundant hero (title + lead) from the
+  guide; it opens straight to the 3-step pager (the landing already set that
+  context).
+
 ## 0.1.3 — 2026-07-08
 
 ### Changed

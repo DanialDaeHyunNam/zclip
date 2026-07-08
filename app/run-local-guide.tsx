@@ -363,14 +363,13 @@ function GuideBody({ os, gated, t }: { os: OS; gated: boolean; t: Copy }) {
     pagerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [page]);
 
+  // The hero (title + lead) is intentionally omitted here — the landing already
+  // sets that context, and the nav/modal head keep the ZCLIP branding, so the
+  // guide opens straight to the 3-step pager. `gated` is kept on the props for
+  // the callers' API even though it no longer drives a hero.
+  void gated;
   return (
     <>
-      <header className="rlg-hero">
-        <span className="rlg-badge">◆ {t.badge}</span>
-        <h1>{gated ? t.gatedTitle : t.soloTitle}</h1>
-        <p>{gated ? t.gatedLead : t.soloLead}</p>
-      </header>
-
       <div className="rlg-pager" ref={pagerRef}>
         {/* step tabs — click to jump, current + completed states */}
         <div className="rlg-steps-nav" role="tablist" aria-label={t.installStepTitle}>
