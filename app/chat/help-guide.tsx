@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { HowToList } from "../how-to";
+import WorkflowDemo from "../workflow-demo";
 
 /**
  * In-app "how to use" help — opened from the ? in the rail. Same visual
@@ -43,6 +44,7 @@ export function HelpGuide({ onClose }: { onClose: () => void }) {
               and iterate take by take — every take becomes context for the next.
             </p>
           </header>
+          <WorkflowDemo />
           <section className="rlg-section">
             <HowToList lang="en" />
           </section>

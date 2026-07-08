@@ -23,6 +23,7 @@ import Link from "next/link";
 import { LangProvider, LangToggle, useLang, type Lang } from "@/lib/i18n";
 import { REPO_URL, BUN_URL, GEMINI_KEY_URL } from "@/lib/links";
 import { HowToList } from "./how-to";
+import WorkflowDemo from "./workflow-demo";
 
 type OS = "mac" | "win";
 
@@ -342,6 +343,7 @@ function GuideBody({ os, gated, t }: { os: OS; gated: boolean; t: Copy }) {
       {/* what you can do — the short usage guide */}
       <section className="rlg-section">
         <h2 className="rlg-h2">{t.howToTitle}</h2>
+        <WorkflowDemo />
         <HowToList lang={lang} />
       </section>
 

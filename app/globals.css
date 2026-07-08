@@ -4169,3 +4169,222 @@ button {
   color: var(--dim);
   border-color: var(--hair-strong);
 }
+
+/* ── workflow walkthrough animation (help modal + install guide) ── */
+.wd {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: 18px;
+  align-items: center;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, 0.015);
+  padding: 18px;
+  margin: 10px 0 8px;
+}
+@media (max-width: 560px) {
+  .wd {
+    grid-template-columns: 1fr;
+  }
+}
+.wd-frame {
+  aspect-ratio: 9 / 16;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  background: #050506;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.wd-idle {
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+.wd-render {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+.wd-spin {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(111, 220, 255, 0.25);
+  border-top-color: var(--accent);
+  animation: wdSpin 0.8s linear infinite;
+}
+@keyframes wdSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.wd-clip {
+  position: absolute;
+  inset: 0;
+  animation: wdFade 0.5s ease;
+}
+.wd-clip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@keyframes wdFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.wd-clip-meta {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono), monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.05em;
+  color: var(--fg);
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: var(--r-pill);
+  padding: 3px 7px;
+  backdrop-filter: blur(4px);
+}
+.wd-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.wd-dot.done {
+  background: #28c840;
+}
+.wd-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wd-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.wd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  padding: 6px 12px;
+  font-size: 11.5px;
+  color: var(--dim);
+  position: relative;
+  transition: color 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+}
+.wd-pill-ic {
+  color: var(--faint);
+}
+.wd-pill.sel {
+  color: var(--fg);
+  border-color: var(--hair-strong);
+}
+.wd-pill.sel .wd-pill-ic {
+  color: var(--accent);
+}
+.wd-pill.sel b {
+  color: var(--accent);
+  font-weight: 500;
+}
+.wd-pill.click {
+  border-color: var(--accent);
+  background: rgba(111, 220, 255, 0.08);
+  color: var(--fg);
+}
+.wd-tap {
+  position: absolute;
+  inset: -4px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--accent);
+  animation: wdTap 0.7s ease-out;
+  pointer-events: none;
+}
+@keyframes wdTap {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+}
+.wd-composer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  padding: 8px 8px 8px 16px;
+  transition: border-color 0.3s ease;
+}
+.wd-composer.focus {
+  border-color: rgba(111, 220, 255, 0.4);
+}
+.wd-input {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--fg);
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+}
+.wd-ph {
+  color: var(--faint);
+}
+.wd-caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 14px;
+  background: var(--accent);
+  margin-left: 1px;
+  animation: wdCaret 1s steps(1) infinite;
+}
+@keyframes wdCaret {
+  50% {
+    opacity: 0;
+  }
+}
+.wd-send {
+  border: 0;
+  border-radius: var(--r-pill);
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  transition: background 0.3s ease, color 0.3s ease, transform 0.15s ease;
+  flex: none;
+}
+.wd-send.ready {
+  background: var(--fg);
+  color: #000;
+}
+.wd-send.click {
+  background: var(--accent);
+  color: #001018;
+  transform: scale(0.95);
+}
