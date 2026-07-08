@@ -22,6 +22,7 @@ import { VERSION, RELEASES_URL } from "@/lib/version";
 import { useHosted, useUpdateCheck } from "@/lib/use-version";
 import { UpdateGuide } from "./update-guide";
 import { HelpGuide } from "./help-guide";
+import { AboutModal } from "./about-modal";
 import { useRouter } from "next/navigation";
 import { Rail } from "../rail";
 import { ModelPicker } from "../model-picker";
@@ -158,6 +159,7 @@ export default function Home() {
   const [showUpdate, setShowUpdate] = useState(false);
   const [updDismissed, setUpdDismissed] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [draft, setDraft] = useState("");
   // visual starter blocks (empty-thread only)
   const [charId, setCharId] = useState<string | null>(null);
@@ -1662,6 +1664,7 @@ export default function Home() {
           // GRAB lives inside the library now — ⤓ opens it with the add form up
           router.push("/archive?add=1");
         }}
+        onAbout={() => setShowAbout(true)}
         version={VERSION}
         hasUpdate={updatable}
         latest={latest}
@@ -2754,6 +2757,7 @@ export default function Home() {
         <UpdateGuide latest={latest} onClose={() => setShowUpdate(false)} />
       )}
       {showHelp && <HelpGuide onClose={() => setShowHelp(false)} />}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
     </>
   );
 }

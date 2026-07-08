@@ -16,6 +16,7 @@ export function Rail({
   onSessions,
   onArchive,
   onGrab,
+  onAbout,
   version,
   hasUpdate = false,
   latest = null,
@@ -29,6 +30,8 @@ export function Rail({
   onSessions: () => void;
   onArchive: () => void;
   onGrab: () => void;
+  /** Opens an in-app About dialog. When omitted, About is a plain link to `/`. */
+  onAbout?: () => void;
   /** Build version (e.g. "0.1.0"); omit to hide the chip. */
   version?: string;
   /** A newer version is deployed — the chip becomes a prominent update prompt. */
@@ -100,29 +103,27 @@ export function Rail({
       >
         ⤓
       </button>
-      {/* about / home — the ZCLIP landing */}
-      <a
-        className="rail-btn rail-about"
-        href="/"
-        title="About — the ZCLIP home page"
-        aria-label="About"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
+      {/* about — an in-app dialog on the studio (with a link home), else → `/` */}
+      {onAbout ? (
+        <button
+          type="button"
+          className="rail-btn rail-about"
+          onClick={onAbout}
+          title="About ZCLIP"
+          aria-label="About"
         >
-          <circle cx="12" cy="12" r="9" />
-          <line x1="12" y1="11" x2="12" y2="16.4" />
-          <circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none" />
-        </svg>
-      </a>
+          <AboutGlyph />
+        </button>
+      ) : (
+        <a
+          className="rail-btn rail-about"
+          href="/"
+          title="About — the ZCLIP home page"
+          aria-label="About"
+        >
+          <AboutGlyph />
+        </a>
+      )}
 
       {/* pinned to the bottom — help + version chip */}
       <div className="rail-foot">
@@ -150,5 +151,26 @@ export function Rail({
         )}
       </div>
     </aside>
+  );
+}
+
+/** The info (ⓘ) glyph — shared by the About button and link variants. */
+function AboutGlyph() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" />
+      <line x1="12" y1="11" x2="12" y2="16.4" />
+      <circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
   );
 }

@@ -4043,6 +4043,39 @@ button {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
   animation: rlgRise 0.25s ease;
 }
+
+/* the compact in-studio About dialog (same modal shell, narrower + centered) */
+.about-card {
+  max-width: 440px;
+}
+.about-hero {
+  padding: 8px 0 4px;
+  text-align: center;
+}
+.about-hero h1 {
+  font-size: clamp(23px, 3.2vw, 30px);
+  line-height: 1.12;
+}
+.about-accent {
+  background: linear-gradient(100deg, var(--accent), #b7ecff 55%, #ffffff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.about-hero > p {
+  max-width: 340px;
+}
+.about-meta {
+  margin-top: 16px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.about-meta a {
+  color: var(--accent);
+}
 @keyframes rlgRise {
   from {
     transform: translateY(12px);

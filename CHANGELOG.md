@@ -5,6 +5,14 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.10 — 2026-07-08
+
+### Changed
+- **Studio ⓘ opens an in-app About dialog** instead of jumping to the full
+  marketing landing (which was jarring mid-session and hard to get back from).
+  The dialog matches the help/update modal language and keeps a "View the full
+  landing →" link, so home is still one click away — just intentional now.
+
 ## 0.1.9 — 2026-07-08
 
 ### Changed
