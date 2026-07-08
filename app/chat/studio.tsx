@@ -1113,6 +1113,37 @@ export default function Home() {
     p?.run();
   };
 
+  /** Composite the selected outfit onto a character image via /api/dress, so
+   *  the picked fashion shows up regardless of model (every video provider
+   *  takes an image reference; Act-Two takes only the dressed frame). The
+   *  outfit is best-effort — on any failure we fall back to the original card
+   *  and surface a soft note rather than blocking the take. */
+  const dressWithFashion = async (charB64: string): Promise<string> => {
+    if (!selFashion) return charB64;
+    try {
+      const outfitB64 =
+        "image" in selFashion && selFashion.image
+          ? selFashion.image.split(",")[1] // custom upload (dataURL)
+          : await attachFromPath(`/fashion/${selFashion.id}.jpg`);
+      if (!outfitB64) return charB64;
+      const dr = await fetch("/api/dress", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          character: { base64: charB64, mimeType: "image/jpeg" },
+          outfit: { base64: outfitB64, mimeType: "image/jpeg" },
+        }),
+      });
+      const db = await dr.json();
+      if (dr.ok && db.base64) return db.base64;
+      setError(`Outfit step skipped: ${db.error ?? "failed"} — using the original card.`);
+      return charB64;
+    } catch {
+      setError("Outfit step skipped (couldn't reach the dress API) — using the original card.");
+      return charB64;
+    }
+  };
+
   const send = async () => {
     if (sendLockRef.current) return; // a submit is already in flight
     const text = draft.trim();
@@ -1157,27 +1188,7 @@ export default function Home() {
       // let Act-Two animate the dressed image (Act-Two has no outfit input).
       if (selFashion && charB64) {
         setError(null);
-        try {
-          const outfitB64 =
-            "image" in selFashion && selFashion.image
-              ? selFashion.image.split(",")[1] // custom upload (dataURL)
-              : await attachFromPath(`/fashion/${selFashion.id}.jpg`);
-          if (outfitB64) {
-            const dr = await fetch("/api/dress", {
-              method: "POST",
-              headers: pwHeaders({ "content-type": "application/json" }),
-              body: JSON.stringify({
-                character: { base64: charB64, mimeType: "image/jpeg" },
-                outfit: { base64: outfitB64, mimeType: "image/jpeg" },
-              }),
-            });
-            const db = await dr.json();
-            if (dr.ok && db.base64) charB64 = db.base64;
-            else setError(`Outfit step skipped: ${db.error ?? "failed"} — using the original card.`);
-          }
-        } catch {
-          setError("Outfit step skipped (couldn't reach the dress API) — using the original card.");
-        }
+        charB64 = await dressWithFashion(charB64);
       }
       const vidSecs = Math.round(
         Math.min(15, Math.max(1, manual.srcSeconds ?? 8)),
@@ -1253,11 +1264,16 @@ export default function Home() {
     // Video attach + character card = PERFORMANCE TRANSFER: the video
     // drives the choreography (via transcription), the card supplies the
     // identity — so asset refs stay live even with a manual video.
-    const assetImages =
+    const [charImgRaw, settingImg] =
       (!manual || manual.kind === "video") && starterText
-        ? ((await Promise.all([assetRefB64(selChar), assetRefB64(selSetting)]))
-            .filter(Boolean) as string[])
-        : [];
+        ? await Promise.all([assetRefB64(selChar), assetRefB64(selSetting)])
+        : [null, null];
+    // Dress the CHARACTER reference in the picked outfit (not just Act-Two):
+    // every video provider takes an image reference, so the dressed frame
+    // makes any model render the character wearing the selected fashion.
+    const charImg =
+      charImgRaw && selFashion ? await dressWithFashion(charImgRaw) : charImgRaw;
+    const assetImages = [charImg, settingImg].filter(Boolean) as string[];
     const transfer =
       manual?.kind === "video" && assetImages.length > 0 && !!starterText;
     const assetThumb = starterText
@@ -1321,7 +1337,7 @@ export default function Home() {
         (ctxTurns.length
           ? `Blend ${ctxTurns.map((c) => `take ${c.take}`).join(" + ")}`
           : starterText
-            ? `Start: ${starterLabel}`
+            ? `Start: ${starterLabel}${selFashion ? ` · ${selFashion.label}` : ""}`
             : "Use the attached image as the reference."),
       presetLabel: starterLabel,
       provider: providerId,
@@ -2311,7 +2327,7 @@ export default function Home() {
                   onClick={() =>
                     setPickerOpen((p) => (p === "fashion" ? null : "fashion"))
                   }
-                  title="Act-Two only: dress the character in this outfit"
+                  title="Dress the character in this outfit — works with any model"
                 >
                   ⑆ Fashion{selFashion ? ` · ${selFashion.label}` : ""}
                 </button>
@@ -2327,9 +2343,11 @@ export default function Home() {
               {pickerOpen === "fashion" && (
                 <div className="starter-group">
                   <span className="fashion-hint">
-                    {providerId === "runway"
-                      ? "The outfit is composited onto your character before Act-Two animates it."
-                      : "Fashion applies in Act-Two mode — pick Runway Act-Two as the model to use it."}
+                    {selChar
+                      ? providerId === "runway"
+                        ? "The outfit is composited onto your character before Act-Two animates it."
+                        : "The outfit is composited onto your character before the first take — works with any model."
+                      : "Pick a Character first — the outfit is composited onto them."}
                   </span>
                   <div className="starter-carousel">
                     {FASHION.filter(

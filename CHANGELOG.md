@@ -5,6 +5,16 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.3 — 2026-07-08
+
+### Changed
+- **Fashion works with any model** — the picked outfit is composited onto the
+  character reference (via the dress op) for the first take regardless of the
+  selected model, not just Runway Act-Two. Every video provider takes an image
+  reference, so the dressed frame carries the outfit through. The picker hint
+  and pill tooltip no longer claim it's Act-Two-only, and prompt a Character
+  first when none is selected.
+
 ## 0.1.2 — 2026-07-08
 
 ### Added
