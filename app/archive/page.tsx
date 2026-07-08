@@ -232,6 +232,7 @@ export default function ArchivePage() {
       <Rail
         active="archive"
         onHome={() => go("/chat?new=1")}
+        onDashboard={() => go("/dashboard")}
         onSessions={() => go("/chat?open=sessions")}
         onArchive={() => go("/archive")}
         onGrab={() => setAddOpen(true)}

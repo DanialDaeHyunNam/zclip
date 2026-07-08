@@ -1649,6 +1649,7 @@ export default function Home() {
           setSpendOpen(false);
           newSession(); // logo = a fresh start, like a new chat
         }}
+        onDashboard={() => router.push("/dashboard")}
         onSessions={() => {
           setSideOpen((o) => !o);
         }}
@@ -1701,9 +1702,6 @@ export default function Home() {
       <aside className={`side-panel ${sideOpen ? "open" : ""}`}>
         <div className="side-head">
           <span className="label">Sessions</span>
-          <a className="link-btn" href="/dashboard">
-            Dashboard
-          </a>
           <button
             className="link-btn"
             onClick={() => {

@@ -7,11 +7,12 @@
  * reads on mount. Same markup, same CSS, so it feels like one surface.
  */
 
-export type RailPanel = "sessions" | "archive" | "grab";
+export type RailPanel = "sessions" | "archive" | "grab" | "dashboard";
 
 export function Rail({
   active = null,
   onHome,
+  onDashboard,
   onSessions,
   onArchive,
   onGrab,
@@ -25,6 +26,8 @@ export function Rail({
 }: {
   active?: RailPanel | null;
   onHome: () => void;
+  /** Opens the spend & config dashboard. Omit to hide the button. */
+  onDashboard?: () => void;
   onSessions: () => void;
   onArchive: () => void;
   onGrab: () => void;
@@ -49,6 +52,30 @@ export function Rail({
       >
         Z<span>_</span>
       </button>
+      {onDashboard && (
+        <button
+          className={`rail-btn ${active === "dashboard" ? "on" : ""}`}
+          onClick={onDashboard}
+          title="Dashboard — spend & config"
+          aria-label="Dashboard"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <line x1="6" y1="20" x2="6" y2="13" />
+            <line x1="12" y1="20" x2="12" y2="8" />
+            <line x1="18" y1="20" x2="18" y2="4" />
+          </svg>
+        </button>
+      )}
       <button
         className={`rail-btn ${active === "sessions" ? "on" : ""}`}
         onClick={onSessions}

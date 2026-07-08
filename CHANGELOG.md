@@ -5,6 +5,13 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.8 — 2026-07-08
+
+### Changed
+- **Dashboard moved to the rail** — it's now the second item in the left rail
+  (a bar-chart icon, right under the logo) instead of a link buried in the
+  sessions sidebar header, which is now just Sessions · + New.
+
 ## 0.1.7 — 2026-07-08
 
 ### Changed

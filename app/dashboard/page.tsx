@@ -167,8 +167,9 @@ export default function Dashboard() {
   return (
     <>
       <Rail
-        active={null}
+        active="dashboard"
         onHome={() => go("?new=1")}
+        onDashboard={() => {}}
         onSessions={() => go("?open=sessions")}
         onArchive={() => {
           window.location.href = "/archive";
