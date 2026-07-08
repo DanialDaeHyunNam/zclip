@@ -45,11 +45,23 @@ runs theirs on :3000; test against it with client-side checks only.
   (effective immediately). Env-var allowlist in config `KEY_ENV_VARS`.
 - `app/api/auth` — optional shared-password gate (`APP_PASSWORD` env).
   Client sends `x-app-password` header; `<video>` URLs use `?pw=` param.
-- `app/chat/page.tsx` — the whole studio UI (single client component;
-  `app/page.tsx` is the static landing):
+- `app/chat/page.tsx` — SERVER GATE (not the studio): `isCloud()` →
+  `<RunLocalGuide gated>` on the cloud deploy, else `<Studio>`. The studio
+  UI itself is `app/chat/studio.tsx` (the single big client component):
   chat thread (turns) / rewind / sessions sidebar / preview / params /
   key panel / spend chart / archive. State shapes documented inline
   (`Turn`, `Clip`, `StoredSession`).
+- `app/page.tsx` — server shell (metadata + `isCloud()`) → `app/landing-client.tsx`
+  (the bilingual EN/KO landing). Studio CTA → `/install` on cloud, `/chat` local.
+- `app/run-local-guide.tsx` — macOS/Windows local-install guide (EN/KO),
+  served standalone at `/install` and as the `/chat` gate. Ported from the
+  Libertas page's terminal/trust-diagram kit, recolored to ZCLIP tokens.
+- `lib/deploy.ts` — `isCloud()` = `VERCEL==="1"` (auto) or `ZCLIP_CLOUD` override.
+  The one cloud-vs-local switch. `VERCEL` is server-only → call server-side,
+  pass the result as a prop (why landing/chat are server shells).
+- `lib/i18n.tsx` — EN/KO `LangProvider`/`useLang`/`LangToggle` for the PUBLIC
+  pages only (studio stays English). Each page holds its own `COPY={en,ko}`.
+  Always render `en` on server + first paint (hydration), then adopt stored/nav.
 
 ## localStorage keys
 
@@ -125,13 +137,31 @@ colors, not UI accents.
 - `/api/refine` is safe to curl-test with the real key (text = ~free).
   NEVER auto-trigger `/api/generate` in tests — real money (~$0.40/clip).
 
+## Versioning / releases (IMPORTANT — don't skip on a release)
+
+Version awareness: `package.json` `version` → inlined as `NEXT_PUBLIC_APP_VERSION`
+(`next.config.ts`) → shown in the rail chip + landing footer. A LOCAL copy fetches
+`CANONICAL_URL/api/version` (`lib/version.ts` = `zclip.vercel.app`) and, if the
+deploy is newer, shows an update banner + `UpdateGuide`. Files: `lib/version.ts`,
+`lib/use-version.ts`, `app/api/version/route.ts`, `app/chat/update-guide.tsx`,
+`data-hosted` stamp in `app/layout.tsx`.
+
+**Every release MUST bump `package.json` version + add a `CHANGELOG.md` entry +
+tag + `gh release create` + redeploy** — else the update prompt never fires (a
+local copy thinks it's current forever). Full steps: `docs/ARCHITECTURE.md` §
+Releasing. Preview locally: `NEXT_PUBLIC_APP_VERSION=0.0.1 bun dev`.
+
 ## Open items / cheap next steps
 
-- Seedance adapter unverified end-to-end.
-- Grok pricing unpublished → cost shows "—"; fill `costPerSecondUsd`
-  when known.
-- Sora `input_reference` resolution-match constraint may reject continuity
-  snapshots if aspect/res changed between takes.
-- Retry does not re-send the reference image (only stored as thumb).
+- Seedance adapter unverified end-to-end (`costPerSecondUsd: null` → cost
+  shows "—" until a real run confirms endpoint/shape + pricing).
+- Retry does not re-send the reference image (only stored as thumb) —
+  `retryTurn` generate body omits `image`.
 - Session titles = first message truncated; could LLM-summarize.
+- Sora `input_reference` res-match: `normalizeRefB64` now cover-crops every
+  reference to the selected 720×1280/1280×720 at send time (mitigated) —
+  not yet confirmed against a live Sora call.
 - `next.config.ts` empty; no ESLint configured (intentional, minimal).
+
+Resolved (kept for history): Grok pricing filled ($0.08/s flat, docs.x.ai;
+retro-backfilled in DEVLOG #25).

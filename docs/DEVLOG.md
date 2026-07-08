@@ -404,6 +404,43 @@ All entries 2026-07-06 (single build session, owner: Dan).
   recovered via git checkout + component-based rewrite (lesson: never
   string-slice JSX blocks; extract components instead).
 
+## 26. Public deploy = about page, studio gated to local, EN/KO, docs
+
+- Owner: put the about page on Vercel, but when someone tries to actually
+  run the studio, show a mac/Windows install guide (à la
+  all-libertas.vercel.app) and make clear it only runs locally. EN/KO only.
+  Plus a detailed README + a separate technical doc for people who fork it.
+- **Cloud-vs-local switch** = `lib/deploy.ts` `isCloud()`: `VERCEL==="1"`
+  (auto on Vercel, nowhere else) or `ZCLIP_CLOUD` override. `bun dev`/local
+  `bun start` read as local; only a real deploy gates.
+- **Server/client split on /chat** (the important move): `app/chat/page.tsx`
+  became a SERVER component that renders `<Studio>` (moved to
+  `app/chat/studio.tsx`, unchanged) locally, or `<RunLocalGuide gated>` on
+  cloud — so the 2800-line studio bundle never ships to a cloud visitor.
+  `app/page.tsx` likewise split into a server shell + `app/landing-client.tsx`.
+- **Install guide** `app/run-local-guide.tsx` (also standalone at `/install`):
+  ported the Libertas kit — mac/Win segmented toggle (state, persisted to
+  `zclip.os`), terminal mocks with copy buttons + expected output, a
+  "runs on your machine / nothing on our servers" trust diagram, numbered
+  steps (install bun → clone → bun install → bun dev → paste key), cost
+  callout — recolored to ZCLIP tokens (`#000`/`#6fdcff`/JetBrains Mono).
+- **i18n** `lib/i18n.tsx`: tiny `LangProvider`/`useLang`/`LangToggle`, PUBLIC
+  pages only (landing + guide; studio stays English — owner's scope call).
+  Persists `zclip.lang`, mirrors `<html lang>`. Hydration rule: render `en` on
+  server + first paint, adopt stored/nav in an effect (no localStorage in
+  useState init). Each page owns its `COPY={en,ko}` deck.
+- **Docs**: README overhauled (hosted-site-is-an-about-page model, unlock-a-
+  hosted-studio recipe with `APP_PASSWORD`+`ZCLIP_CLOUD=0`, route map) + new
+  `docs/ARCHITECTURE.md` (mental model, repo map, request lifecycle, the
+  two-function adapter contract + add-a-provider, config switchboard,
+  localStorage shapes, the gate, i18n, security, dev/verify rules, gotchas).
+- Verified with dev server live on :3000: `bun x tsc --noEmit` clean (NOT
+  `bun run build` — would kill the owner's server); `/`, `/install`, `/chat`
+  all 200; SSR markers present (landing 한국어 toggle + English default,
+  guide trust-diagram/req/mac-win, /chat local still the studio w/ rail).
+  The gated cloud render is the same verified component + swapped hero —
+  confirm on a Vercel preview or `ZCLIP_CLOUD=1 bun dev`.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

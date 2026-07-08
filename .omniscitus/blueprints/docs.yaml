@@ -1,4 +1,29 @@
+version: 1
+updated: 2026-07-07T13:57:15.404Z
+
 files:
-  - path: docs/DEVLOG.md
-    source: claude
-    purpose: "Chronological decision log with evidence (#1–25)"
+  "docs/ARCHITECTURE.md":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T13:57:15.404Z
+    change_count: 2
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T13:57:15.404Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:08:14.419Z
+        action: write
+        source: "claude:Danial Nam"
+  "docs/DEVLOG.md":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T08:09:02.882Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T08:09:02.882Z
+        action: edit
+        source: "claude:Danial Nam"
