@@ -2318,6 +2318,20 @@ button {
   background: rgba(10, 10, 12, 0.92);
 }
 
+/* the GRAB tool inline inside the Library page (not a centered overlay) —
+   full width of the column, sits right under the header */
+.library-grab {
+  max-width: none;
+  margin: 4px 0 26px;
+  padding: 22px 24px 24px;
+}
+.library-grab .grab-lead {
+  margin: 0;
+}
+.library-grab .grab-row:first-of-type {
+  margin-top: 16px;
+}
+
 .grab-row {
   display: flex;
   align-items: center;

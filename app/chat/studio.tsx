@@ -244,17 +244,7 @@ export default function Home() {
   /** Turn ids pinned as context for the NEXT take. */
   const [ctxIds, setCtxIds] = useState<string[]>([]);
 
-  // GRAB — local reference-video fetcher (rail tool, dev only)
-  const [grabOpen, setGrabOpen] = useState(false);
-  const [grabUrl, setGrabUrl] = useState("");
-  const [grabStart, setGrabStart] = useState("");
-  const [grabEnd, setGrabEnd] = useState("");
-  const [grabVideos, setGrabVideos] = useState<
-    { id: string; url: string; res: string }[] | null
-  >(null);
-  const [grabPick, setGrabPick] = useState<string | null>(null);
-  const [grabBusy, setGrabBusy] = useState<"scan" | "fetch" | "attach" | null>(null);
-  const [grabErr, setGrabErr] = useState<string | null>(null);
+  // GRAB (fetch a reference video by URL) now lives on the /archive page.
 
   const model = resolveModel(modelKey);
   const providerId = model.provider;
@@ -788,90 +778,6 @@ export default function Home() {
     }
   };
 
-  /** GRAB step 1 — X URLs get probed first (an article can hold several
-   *  videos); everything else goes straight to fetch. */
-  const grabScan = async () => {
-    const url = grabUrl.trim();
-    if (!url || grabBusy) return;
-    setGrabErr(null);
-    setGrabVideos(null);
-    if (/^https?:\/\/(www\.)?(x|twitter)\.com\//i.test(url)) {
-      setGrabBusy("scan");
-      try {
-        const r = await fetch("/api/grab", {
-          method: "POST",
-          headers: pwHeaders({ "content-type": "application/json" }),
-          body: JSON.stringify({ action: "probe", url }),
-        });
-        const b = await r.json();
-        if (!r.ok) throw new Error(b.error ?? "Scan failed");
-        if (b.videos) {
-          setGrabVideos(b.videos);
-          setGrabPick(b.videos[0]?.url ?? null);
-          return;
-        }
-      } catch (e) {
-        setGrabErr(e instanceof Error ? e.message : "Scan failed");
-        return;
-      } finally {
-        setGrabBusy(null);
-      }
-    }
-    await grabFetch(null);
-  };
-
-  /** GRAB step 2 — download (and optionally trim) on the server. The
-   *  result lands in the archive as a GRAB card and the view moves there. */
-  const grabFetch = async (videoUrl: string | null) => {
-    const url = videoUrl ?? grabPick ?? grabUrl.trim();
-    if (!url || grabBusy) return;
-    setGrabBusy("fetch");
-    setGrabErr(null);
-    try {
-      const start = grabStart.trim() === "" ? null : Number(grabStart);
-      const end = grabEnd.trim() === "" ? null : Number(grabEnd);
-      if ((start != null && !Number.isFinite(start)) || (end != null && !Number.isFinite(end)))
-        throw new Error("Trim values must be seconds, e.g. 3 and 9.5");
-      const r = await fetch("/api/grab", {
-        method: "POST",
-        headers: pwHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify({ action: "fetch", url, start, end }),
-      });
-      const b = await r.json();
-      if (!r.ok) throw new Error(b.error ?? "Download failed");
-      const source = grabUrl.trim();
-      const newClip: Clip = {
-        jobId: b.name,
-        sessionId,
-        provider: "grab",
-        prompt: source,
-        note: `Reference · ${source.replace(/^https?:\/\/(www\.)?/, "")}${
-          start != null && end != null ? ` · ${start}–${end}s` : ""
-        }`,
-        variantLabel: "Reference",
-        createdAt: Date.now(),
-        status: "done",
-        aspectRatio: "9:16",
-        durationSeconds: start != null && end != null ? end - start : 0,
-        resolution: "720p",
-        videoUrl: b.url,
-        costUsd: 0,
-      };
-      const nextClips = [newClip, ...clips];
-      setClips(nextClips);
-      // write through to the store cache, then client-nav to the archive so the
-      // new grab is visible immediately (no disk round-trip / flush race)
-      store.set(GALLERY_KEY, JSON.stringify(nextClips));
-      setGrabUrl("");
-      setGrabVideos(null);
-      setGrabOpen(false);
-      router.push("/archive");
-    } catch (e) {
-      setGrabErr(e instanceof Error ? e.message : "Download failed");
-    } finally {
-      setGrabBusy(null);
-    }
-  };
 
   /** Feed an archived GRAB clip into the normal attach pipeline (frames,
    *  transfer mode, the lot) and return to the composer. */
@@ -885,7 +791,6 @@ export default function Home() {
       await attachMediaFile(
         new File([blob], `${clip.jobId}.mp4`, { type: "video/mp4" }),
       );
-      setGrabOpen(false);
     } catch {
       setError(
         "Could not load that reference — the grabbed file may have been cleaned up. Grab it again.",
@@ -1101,7 +1006,7 @@ export default function Home() {
       let charB64 = selChar ? await assetRefB64(selChar) : null;
       if (!manual || manual.kind !== "video" || !manual.videoBase64) {
         setError(
-          "Act-Two needs a driving video attached — grab one with ⤓ (or drop an .mp4), then pick a face card.",
+          "Act-Two needs a driving video attached — add one in the Library (▦ → ＋ Add reference), or drop an .mp4 here, then pick a face card.",
         );
         return;
       }
@@ -1415,7 +1320,6 @@ export default function Home() {
     const q = new URLSearchParams(window.location.search);
     const open = q.get("open");
     if (open === "sessions") setSideOpen(true);
-    else if (open === "grab") setGrabOpen(true);
     if (q.get("new") === "1") newSession();
     if (open || q.get("new")) {
       window.history.replaceState(null, "", window.location.pathname);
@@ -1740,25 +1644,22 @@ export default function Home() {
       )}
       {/* left rail — always visible; panel slides out Claude-style */}
       <Rail
-        active={
-          sideOpen ? "sessions" : grabOpen ? "grab" : null
-        }
+        active={sideOpen ? "sessions" : null}
         onHome={() => {
           setSpendOpen(false);
-          setGrabOpen(false);
           newSession(); // logo = a fresh start, like a new chat
         }}
         onSessions={() => {
           setSideOpen((o) => !o);
-          setGrabOpen(false);
         }}
         onArchive={() => {
-          // the archive is its own page now (keeps the left rail, no overlay);
+          // the library is its own page now (keeps the left rail, no overlay);
           // client nav preserves the store cache so recent takes show up
           router.push("/archive");
         }}
         onGrab={() => {
-          setGrabOpen((o) => !o);
+          // GRAB lives inside the library now — ⤓ opens it with the add form up
+          router.push("/archive?add=1");
         }}
         onNew={() => {
           newSession();
@@ -1852,104 +1753,6 @@ export default function Home() {
           ))}
         </div>
       </aside>
-
-      {grabOpen && (
-        <div className="archive-overlay fade">
-          <div className="grab-card">
-            <div className="archive-head">
-              <span className="label">Grab · Reference Video</span>
-              <button
-                className="btn-ghost overlay-back"
-                onClick={() => setGrabOpen(false)}
-              >
-                ← Back to Studio
-              </button>
-            </div>
-            <p className="archive-note">
-              Pulls a video onto this machine so it can drive a take —
-              YouTube link, X post (x.com/user/status/…), or a direct
-              .mp4 URL. Optional trim keeps only the beat you want.
-              Local dev tool; use sources you have the rights to reference.
-            </p>
-            <div className="grab-row">
-              <input
-                className="grab-input"
-                type="url"
-                placeholder="https://x.com/user/status/…  ·  youtube.com/watch?v=…  ·  …mp4"
-                value={grabUrl}
-                onChange={(e) => setGrabUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && grabScan()}
-                disabled={Boolean(grabBusy)}
-              />
-              <button
-                className="btn-ghost"
-                onClick={grabScan}
-                disabled={!grabUrl.trim() || Boolean(grabBusy)}
-              >
-                {grabBusy === "scan" ? "SCANNING…" : grabBusy === "fetch" ? "FETCHING…" : "FETCH"}
-              </button>
-            </div>
-            {grabVideos && (
-              <div className="grab-videos">
-                <span className="label">
-                  {grabVideos.length} video{grabVideos.length > 1 ? "s" : ""} in this post
-                </span>
-                {grabVideos.map((v, i) => (
-                  <label key={v.id} className="grab-video-opt">
-                    <input
-                      type="radio"
-                      name="grab-pick"
-                      checked={grabPick === v.url}
-                      onChange={() => setGrabPick(v.url)}
-                    />
-                    <span className="mono">
-                      VIDEO {i + 1} · {v.res}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-            <div className="grab-row grab-trim">
-              <span className="label">Trim (optional)</span>
-              <input
-                className="grab-num"
-                type="number"
-                min={0}
-                step={0.5}
-                placeholder="from s"
-                value={grabStart}
-                onChange={(e) => setGrabStart(e.target.value)}
-                disabled={Boolean(grabBusy)}
-              />
-              <span className="mono">→</span>
-              <input
-                className="grab-num"
-                type="number"
-                min={0}
-                step={0.5}
-                placeholder="to s"
-                value={grabEnd}
-                onChange={(e) => setGrabEnd(e.target.value)}
-                disabled={Boolean(grabBusy)}
-              />
-              {grabVideos && (
-                <button
-                  className="btn-ghost"
-                  onClick={() => grabFetch(null)}
-                  disabled={!grabPick || Boolean(grabBusy)}
-                >
-                  {grabBusy === "fetch" ? "FETCHING…" : "DOWNLOAD"}
-                </button>
-              )}
-            </div>
-            {grabErr && <div className="error-box">{grabErr}</div>}
-            <p className="hint">
-              Finished grabs land in the archive (▦) with a
-              &quot;use as reference&quot; button.
-            </p>
-          </div>
-        </div>
-      )}
 
       <div className={`shell ${sideOpen ? "with-side" : ""}`}>
       <main className="grid-main">
@@ -2292,13 +2095,16 @@ export default function Home() {
                       reference.
                     </li>
                     <li>
-                      <b>Grab from a URL.</b> Paste a YouTube / X / direct link
-                      into <span className="mono">⤓</span> in the rail and the
-                      reference video is downloaded straight into the library.
+                      <b>Grab from a URL.</b> Open the Library
+                      (<span className="mono">▦</span>), hit{" "}
+                      <span className="mono">＋ Add reference</span>, and paste a
+                      YouTube / X / direct link — the video downloads straight
+                      into the library.
                     </li>
                     <li>
                       <b>Your own uploads.</b> Reference images and videos you
-                      drop in (multimodal input) live here too, ready to reuse.
+                      drop onto the composer (multimodal input) live here too,
+                      ready to reuse.
                     </li>
                   </ul>
                   {clips.filter((c) => c.videoUrl).length > 0 ? (

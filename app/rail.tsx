@@ -68,8 +68,8 @@ export function Rail({
       <button
         className={`rail-btn ${active === "grab" ? "on" : ""}`}
         onClick={onGrab}
-        title="Grab — download a reference video from YouTube / X / a direct link"
-        aria-label="Toggle video grabber"
+        title="Add a reference — grab a video (YouTube / X / direct link) into the Library"
+        aria-label="Add a reference to the library"
       >
         ⤓
       </button>

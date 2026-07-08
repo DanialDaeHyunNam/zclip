@@ -5,6 +5,18 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.6 — 2026-07-08
+
+### Changed
+- **GRAB moved into the Library.** Fetching a reference video by URL is no
+  longer a separate covering overlay — it's a collapsible **＋ Add reference**
+  action inside the `/archive` (Library) page, sitting inline under the header
+  (no more centered-island layout). The ⤓ rail icon now opens the Library with
+  that add form already expanded; ▦ opens it to browse.
+- **Copy follow-through** — the studio's Library explainer, the Act-Two
+  "needs a driving video" hint, and the ⤓ tooltip now point at the new
+  in-Library add flow instead of the old rail overlay.
+
 ## 0.1.5 — 2026-07-08
 
 ### Changed
