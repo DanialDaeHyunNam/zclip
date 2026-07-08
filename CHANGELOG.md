@@ -5,6 +5,34 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.2.0 — 2026-07-08
+
+### Added
+- **Stack context freely, on any model.** Character, Background, and a
+  Library/dropped reference now coexist on the next take instead of overwriting
+  each other — the prompt refiner sees all of them and the video model gets a
+  single primary image (the character face first).
+- **Per-model context manifest.** A summary under the composer spells out what
+  the selected model does with each attached piece, and flags what it drops
+  (e.g. Act-Two ignores the background and any text prompt).
+- **Context blocks work mid-conversation**, not just on take 1 — pick a
+  Character / Background / Library at any point to steer the next take.
+
+### Changed
+- **Composer reworked into a stable frame.** The pills and input no longer jump
+  as you add or remove context: the input stays anchored, chips + manifest form
+  a scrollable summary beneath it, and the picker carousel opens as a dropdown
+  popover that closes on select. "Start a clip" / "How to use" show only on an
+  empty session.
+- **Act-Two confirm dialog** shows the real driving-clip length and the cost
+  computed from it, instead of a generic "driving clip length".
+
+### Fixed
+- **GRAB downloads play everywhere.** Instagram (and other VP9) grabs that
+  played in-browser but showed up blank in QuickLook / QuickTime now download as
+  H.264 — yt-dlp prefers an H.264 rendition, VP9/AV1 is transcoded, and outputs
+  are written faststart.
+
 ## 0.1.11 — 2026-07-08
 
 ### Changed
