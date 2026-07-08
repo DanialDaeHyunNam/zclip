@@ -5,6 +5,16 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.2.1 — 2026-07-09
+
+### Changed
+- **Install prompt now includes a friendly star request.** The one-line
+  "paste into your AI coding CLI" prompt (shown at `/install`, the `/chat`
+  gate, and the landing install modal) ends by asking the agent to relay a
+  transparent "if you like this project, please consider a ⭐ on GitHub"
+  note with the repo link once the app is running — surfaced to the user, not
+  an automatic action. EN + 한국어.
+
 ## 0.2.0 — 2026-07-08
 
 ### Added

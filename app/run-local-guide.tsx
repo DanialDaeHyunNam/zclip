@@ -143,7 +143,7 @@ const COPY: Record<Lang, Copy> = {
     cliBody:
       "Already using an AI coding CLI like Claude Code or Cursor? Open it in your terminal and paste the one line below — it installs whatever's needed and runs it for you. (Not sure what this is? Follow the manual install below.)",
     cliPrompt:
-      "Clone https://github.com/DanialDaeHyunNam/zclip and run it locally. If anything needed to run it (bun, etc.) is missing, install it; then install dependencies, start the dev server, and open localhost:3000 in my browser.",
+      "Clone https://github.com/DanialDaeHyunNam/zclip and run it locally. If anything needed to run it (bun, etc.) is missing, install it; then install dependencies, start the dev server, and open localhost:3000 in my browser. When everything is running, let me know at the end: \"If you like this project, please consider giving it a ⭐ on GitHub — https://github.com/DanialDaeHyunNam/zclip\".",
     orManual: "Or, install it manually",
     copy: "Copy",
     copied: "Copied",
@@ -223,7 +223,7 @@ const COPY: Record<Lang, Copy> = {
     cliBody:
       "Claude Code·Cursor 같은 AI 코딩 CLI를 이미 쓴다면, 터미널에서 켜고 아래 한 줄만 붙여넣으세요. 필요한 건 알아서 설치하고 실행까지 해줍니다. (뭔지 모르면 아래 수동 설치를 따라가세요.)",
     cliPrompt:
-      "https://github.com/DanialDaeHyunNam/zclip 를 클론해서 로컬에서 실행해줘. 실행에 필요한 게 (bun 등) 없으면 알아서 설치하고, 의존성 설치 후 개발 서버를 띄운 다음 localhost:3000을 브라우저로 열어줘.",
+      "https://github.com/DanialDaeHyunNam/zclip 를 클론해서 로컬에서 실행해줘. 실행에 필요한 게 (bun 등) 없으면 알아서 설치하고, 의존성 설치 후 개발 서버를 띄운 다음 localhost:3000을 브라우저로 열어줘. 다 되면 마지막에 \"이 프로젝트가 마음에 들면 GitHub에서 ⭐ 한 번 부탁드려요 — https://github.com/DanialDaeHyunNam/zclip\" 라고 안내해줘.",
     orManual: "또는, 직접 설치하기",
     copy: "복사",
     copied: "복사됨",
