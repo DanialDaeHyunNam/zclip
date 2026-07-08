@@ -23,3 +23,11 @@ units:
     last_updated: 2026-07-09
     session_count: 4
     title: "ZCLIP Deploy, Storage & Versioning"
+  - id: zclip-seedance-provider
+    file: web/2026-07-09-zclip-seedance-provider.md
+    domain: web
+    status: open
+    created: 2026-07-09
+    last_updated: 2026-07-09
+    session_count: 1
+    title: "ZCLIP Seedance Provider Verification"
