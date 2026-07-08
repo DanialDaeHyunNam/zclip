@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-07T07:35:26.518Z
+updated: 2026-07-08T01:31:28.360Z
 
 files:
   "app/api/grab/route.ts":
@@ -26,10 +26,13 @@ files:
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-07T07:29:35.848Z
-    change_count: 18
+    last_modified: 2026-07-07T08:00:45.105Z
+    change_count: 19
     purpose: "Public landing page: hero, numbered differentiators, real-output demo reel, cut.donkeyuse.com workflow, star-the-repo CTA"
     change_log:
+      - date: 2026-07-07T08:00:45.105Z
+        action: write
+        source: "claude:Danial Nam"
       - date: 2026-07-07T07:29:35.848Z
         action: edit
         source: "claude:Danial Nam"
@@ -88,10 +91,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T07:35:14.524Z
-    change_count: 78
+    last_modified: 2026-07-07T07:58:51.878Z
+    change_count: 79
     purpose: "The entire studio UI (one client component): chat thread, rewind, sessions, archive, spend popover, starter carousels + Library pill, GRAB panel, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-07T07:58:51.878Z
+        action: write
+        source: "claude:Danial Nam"
       - date: 2026-07-07T07:35:14.524Z
         action: edit
         source: "claude:Danial Nam"
@@ -388,10 +394,43 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T07:35:26.518Z
-    change_count: 26
+    last_modified: 2026-07-07T13:48:18.276Z
+    change_count: 37
     purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
+      - date: 2026-07-07T13:48:18.276Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:36:31.965Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:32:43.592Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T12:57:32.705Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:38:53.710Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:38:41.889Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:38:34.385Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:38:26.240Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:37:27.705Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:25:55.363Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:03:33.640Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T07:35:26.518Z
         action: edit
         source: "claude:Danial Nam"
@@ -474,10 +513,31 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T01:45:54.333Z
-    change_count: 1
+    last_modified: 2026-07-08T01:29:29.870Z
+    change_count: 8
     purpose: "Shared left rail component (logo/sessions/archive/grab/new) used by both /chat (toggles overlays) and /dashboard (navigates to /chat with ?open= hint)"
     change_log:
+      - date: 2026-07-08T01:29:29.870Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T01:29:22.130Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:46:10.796Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:45:55.962Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:32:22.543Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:32:13.048Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:27:31.519Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T01:45:54.333Z
         action: write
         source: "claude:Danial Nam"
@@ -588,5 +648,244 @@ files:
         action: write
         source: "claude:Danial Nam"
       - date: 2026-07-07T06:30:07.825Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/run-local-guide.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-08T01:28:45.632Z
+    change_count: 11
+    purpose: ""
+    change_log:
+      - date: 2026-07-08T01:28:45.632Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T01:28:27.849Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T01:28:20.521Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T01:28:07.877Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T01:28:00.076Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T12:57:16.070Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T12:56:04.934Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T12:55:35.762Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T12:55:24.160Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:24:18.341Z
+        action: write
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:58:35.269Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/install/page.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T07:58:58.531Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T07:58:58.531Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/landing-client.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-08T01:31:28.360Z
+    change_count: 14
+    purpose: ""
+    change_log:
+      - date: 2026-07-08T01:31:28.360Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T01:31:15.598Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:54:18.361Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:54:03.941Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:53:37.711Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:53:24.255Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:53:03.229Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:52:47.853Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:25:37.717Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:25:27.447Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:25:19.643Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:25:11.777Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:25:01.489Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:00:39.132Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/api/store/route.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T13:07:40.530Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T13:07:40.530Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/chat/studio.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-08T01:30:03.329Z
+    change_count: 20
+    purpose: ""
+    change_log:
+      - date: 2026-07-08T01:30:03.329Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T01:29:55.077Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T01:29:48.190Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T01:29:39.620Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:47:55.677Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:47:18.373Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:47:01.165Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:46:41.951Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:46:32.100Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:26:55.810Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:26:38.586Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:26:25.912Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:21:15.773Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:11:39.267Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:11:21.789Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:10:58.792Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:10:33.889Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:09:47.784Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:09:36.468Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:09:28.590Z
+        action: edit
+        source: "claude:Danial Nam"
+  "app/api/version/route.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T13:44:16.861Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T13:44:16.861Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/layout.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T13:44:37.059Z
+    change_count: 2
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T13:44:37.059Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T13:44:28.165Z
+        action: edit
+        source: "claude:Danial Nam"
+  "app/chat/update-guide.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T13:45:36.858Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T13:45:36.858Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/how-to.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-08
+    last_modified: 2026-07-08T01:27:32.891Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-08T01:27:32.891Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/chat/help-guide.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-08
+    last_modified: 2026-07-08T01:29:07.252Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-08T01:29:07.252Z
         action: write
         source: "claude:Danial Nam"

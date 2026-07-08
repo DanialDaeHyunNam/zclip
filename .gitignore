@@ -10,3 +10,6 @@ next-env.d.ts
 .DS_Store
 .gstack/
 .grabs/
+.vercel
+# local session store (filesystem persistence — dev only, per-machine data)
+.zclip-data/

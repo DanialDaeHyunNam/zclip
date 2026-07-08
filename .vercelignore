@@ -1,0 +1,17 @@
+# Vercel가 이 파일이 있으면 이걸로 업로드 대상을 판단하므로,
+# 실제 키가 든 .env 계열을 여기서도 반드시 제외한다 (belt-and-suspenders).
+.env
+.env.*
+!.env.example
+
+# 빌드/툴 산출물
+node_modules
+.next
+.vercel
+.git
+tsconfig.tsbuildinfo
+
+# 내부 전용 (배포에 불필요)
+.gstack
+.grabs
+.omniscitus

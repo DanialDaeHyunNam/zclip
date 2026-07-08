@@ -76,7 +76,7 @@ const CHAR_BASES: CharBase[] = [
     core: "A very pretty young East Asian woman in her early-to-mid 20s with a fresh natural look, clear realistic skin",
     variants: [
       "long dark hair with soft balayage, soft natural makeup, cozy cream oversized cardigan",
-      "chin-length dark bob, barely-there makeup, oversized white tee",
+      "chin-length dark bob, barely-there makeup, oversized white t-shirt",
       "long straight black hair half-tied, thin wire glasses, beige hoodie",
     ],
   },
@@ -89,7 +89,7 @@ const CHAR_BASES: CharBase[] = [
     variants: [
       "curly copper hair worn loose, green eyes, vintage band t-shirt",
       "straight auburn hair with curtain bangs, black turtleneck",
-      "copper hair in a messy bun, denim jacket over a white tee",
+      "copper hair in a messy bun, denim jacket over a white t-shirt",
     ],
   },
   {
@@ -124,7 +124,7 @@ const CHAR_BASES: CharBase[] = [
     core: "A very pretty brunette woman in her mid-20s with a warm relatable look and natural realistic skin",
     variants: [
       "shoulder-length brown hair, comfortable knit top",
-      "brown hair in a loose ponytail, striped long-sleeve tee",
+      "brown hair in a loose ponytail, striped long-sleeve t-shirt",
       "layered brown hair, thin gold necklace, chambray shirt",
     ],
   },
@@ -137,7 +137,7 @@ const CHAR_BASES: CharBase[] = [
     variants: [
       "tousled dark-blond hair, light stubble, heather-gray crewneck",
       "short brown hair, clean shave, navy henley",
-      "medium wavy hair, casual glasses, plain black tee",
+      "medium wavy hair, casual glasses, plain black t-shirt",
     ],
   },
   {
@@ -266,18 +266,18 @@ const garment = (what: string) =>
 export const FASHION: Fashion[] = [
   // women
   { id: "w-hoodie", label: "Oversized Hoodie", desc: "STREET · COZY", gender: "She", prompt: garment("an oversized heather-grey cotton hoodie") },
-  { id: "w-blazer", label: "Tailored Blazer", desc: "SMART · CLEAN", gender: "She", prompt: garment("a fitted black tailored blazer over a white tee") },
+  { id: "w-blazer", label: "Tailored Blazer", desc: "SMART · CLEAN", gender: "She", prompt: garment("a fitted black tailored blazer over a white t-shirt") },
   { id: "w-knit", label: "Chunky Knit", desc: "SOFT · WARM", gender: "She", prompt: garment("a chunky cream cable-knit sweater") },
   { id: "w-slip", label: "Satin Slip Dress", desc: "NIGHT · SLEEK", gender: "She", prompt: garment("a champagne satin slip dress") },
   { id: "w-denim", label: "Cropped Denim", desc: "CASUAL · COOL", gender: "She", prompt: garment("a cropped light-wash denim jacket") },
-  { id: "w-tee", label: "Oversized Tee", desc: "MINIMAL · EASY", gender: "She", prompt: garment("an oversized plain white heavyweight t-shirt") },
+  { id: "w-tee", label: "Oversized T-Shirt", desc: "MINIMAL · EASY", gender: "She", prompt: garment("an oversized plain white heavyweight t-shirt") },
   { id: "w-trench", label: "Beige Trench", desc: "CLASSIC · CHIC", gender: "She", prompt: garment("a beige belted trench coat") },
   { id: "w-crop", label: "Ribbed Crop", desc: "FRESH · FIT", gender: "She", prompt: garment("a fitted ribbed sage-green crop top") },
   // men
   { id: "m-hoodie", label: "Oversized Hoodie", desc: "STREET · COZY", gender: "He", prompt: garment("an oversized washed-black cotton hoodie") },
-  { id: "m-blazer", label: "Casual Blazer", desc: "SMART · CLEAN", gender: "He", prompt: garment("a navy unstructured casual blazer over a white tee") },
+  { id: "m-blazer", label: "Casual Blazer", desc: "SMART · CLEAN", gender: "He", prompt: garment("a navy unstructured casual blazer over a white t-shirt") },
   { id: "m-knit", label: "Crewneck Knit", desc: "SOFT · WARM", gender: "He", prompt: garment("a charcoal merino crewneck knit sweater") },
-  { id: "m-tee", label: "Heavyweight Tee", desc: "MINIMAL · EASY", gender: "He", prompt: garment("a plain white heavyweight boxy t-shirt") },
+  { id: "m-tee", label: "Heavyweight T-Shirt", desc: "MINIMAL · EASY", gender: "He", prompt: garment("a plain white heavyweight boxy t-shirt") },
   { id: "m-denim", label: "Denim Trucker", desc: "CASUAL · COOL", gender: "He", prompt: garment("a mid-wash denim trucker jacket") },
   { id: "m-flannel", label: "Plaid Flannel", desc: "RUGGED · WARM", gender: "He", prompt: garment("a red-and-black plaid flannel button-up shirt") },
   { id: "m-bomber", label: "Bomber Jacket", desc: "SPORT · SHARP", gender: "He", prompt: garment("an olive-green MA-1 bomber jacket") },

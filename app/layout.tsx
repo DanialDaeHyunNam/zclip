@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { isCloud } from "@/lib/deploy";
 import "./globals.css";
 
 const sans = Inter({
@@ -35,6 +36,9 @@ export default function RootLayout({
     // attributes into <html> before React hydrates — not an app bug.
     <html
       lang="en"
+      // `data-hosted="1"` on the hosted (Vercel) deploy, read client-side so the
+      // studio never runs its self-update check against itself. See lib/use-version.
+      data-hosted={isCloud() ? "1" : undefined}
       className={`${sans.variable} ${mono.variable} ${display.variable}`}
       suppressHydrationWarning
     >

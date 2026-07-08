@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-07T05:46:50.047Z
+updated: 2026-07-07T13:52:29.650Z
 
 files:
   "lib/config.ts":
@@ -127,10 +127,94 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T05:46:50.047Z
-    change_count: 1
+    last_modified: 2026-07-07T08:29:48.756Z
+    change_count: 6
     purpose: "Built-in cast (CHARACTERS), SETTINGS, FASHION outfits, surprise-arc beat maps, composeStarter — the visible base prompts"
     change_log:
+      - date: 2026-07-07T08:29:48.756Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:29:42.839Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:29:36.285Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:29:29.520Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T08:29:23.610Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T05:46:50.047Z
         action: edit
+        source: "claude:Danial Nam"
+  "lib/deploy.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T07:55:43.930Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T07:55:43.930Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/i18n.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T07:56:09.807Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T07:56:09.807Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/links.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T13:52:29.650Z
+    change_count: 2
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T13:52:29.650Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-07T07:57:17.379Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/store.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T13:09:13.434Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T13:09:13.434Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/version.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T13:44:07.739Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T13:44:07.739Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/use-version.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-07
+    last_modified: 2026-07-07T13:44:50.550Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-07T13:44:50.550Z
+        action: write
         source: "claude:Danial Nam"
