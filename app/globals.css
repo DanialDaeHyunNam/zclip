@@ -879,8 +879,12 @@ button {
   gap: 14px;
   margin-bottom: 22px;
   min-height: 60px;
+  /* cap the take history so a long session scrolls INSIDE the column
+     instead of pushing the composer off-screen */
+  max-height: 52vh;
   overflow-y: auto;
   padding-right: 6px;
+  scroll-behavior: smooth;
 }
 
 .thread-empty {
@@ -1019,6 +1023,74 @@ button {
 
 .starter {
   margin: 0 0 18px;
+}
+
+/* header row above the starter pills on an empty session: the central
+   "How to use" entry point that opens the same help modal as the rail ? */
+.starter-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.starter-intro-label {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.starter-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: rgba(111, 220, 255, 0.05);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  cursor: pointer;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.starter-help:hover {
+  border-color: var(--accent);
+  background: rgba(111, 220, 255, 0.1);
+}
+
+/* the 3-point library explainer shown when the Library picker opens */
+.library-intro {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.015);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.library-intro li {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+.library-intro b {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.library-intro .mono {
+  font-family: var(--font-mono), monospace;
+  color: var(--accent);
 }
 
 .settings-strip {
@@ -3252,6 +3324,131 @@ button {
   margin-bottom: 22px;
 }
 
+/* ── paginated guide (3 sequential steps) ─────────────────────────── */
+.rlg-pager {
+  scroll-margin-top: 16px;
+}
+
+.rlg-steps-nav {
+  display: flex;
+  gap: 8px;
+  padding: 14px 0 4px;
+  border-bottom: 1px solid var(--hair);
+  flex-wrap: wrap;
+}
+
+.rlg-step-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 16px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  color: var(--faint);
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+.rlg-step-tab:hover {
+  color: var(--dim);
+}
+
+.rlg-step-tab.on {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
+.rlg-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--hair-strong);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  flex-shrink: 0;
+  transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.rlg-step-tab.on .rlg-step-num {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #001318;
+}
+
+.rlg-step-tab.done .rlg-step-num {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.rlg-step-label {
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.rlg-page {
+  animation: fadeUp 0.4s ease both;
+}
+
+.rlg-pager-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 40px;
+  padding-top: 26px;
+  border-top: 1px solid var(--hair);
+}
+
+/* pager buttons hug their label instead of the full-width .btn-primary default */
+.rlg-pager-prev,
+.rlg-pager-next {
+  width: auto;
+  min-width: 120px;
+  padding: 15px 26px;
+}
+
+.rlg-pager-dots {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.rlg-pager-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hair-strong);
+  transition: background 0.3s ease, width 0.3s ease;
+}
+
+.rlg-pager-dots i.on {
+  width: 20px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+
+.rlg-pager-next-spacer {
+  /* keeps the dots centered on the last page (no Next button) */
+  min-width: 96px;
+}
+
+@media (max-width: 560px) {
+  .rlg-step-label {
+    display: none;
+  }
+  .rlg-step-tab {
+    padding: 10px 10px 12px;
+  }
+  .rlg-pager-next-spacer {
+    min-width: 60px;
+  }
+}
+
 /* trust diagram — "runs on your machine" */
 .rlg-trust {
   display: flex;
@@ -3905,7 +4102,7 @@ button {
 /* ── update-available banner (local copy, top-center of the studio) ── */
 .update-banner {
   position: fixed;
-  top: 14px;
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 80;
@@ -3919,6 +4116,18 @@ button {
   overflow: hidden;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   max-width: calc(100vw - 90px);
+  animation: bannerUp 0.4s ease both;
+}
+
+@keyframes bannerUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 .update-banner-main {
   display: flex;

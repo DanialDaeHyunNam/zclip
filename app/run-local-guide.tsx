@@ -18,7 +18,7 @@
  * state (persisted), because the two OSes need genuinely different commands.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LangProvider, LangToggle, useLang, type Lang } from "@/lib/i18n";
 import { REPO_URL, BUN_URL, GEMINI_KEY_URL } from "@/lib/links";
@@ -65,6 +65,8 @@ type Copy = {
   s5t: string; s5b: string; keyName: string; keySave: string; keyHint: string;
   costLabel: string; costBody: string;
   howToTitle: string;
+  installStepTitle: string;
+  next: string; prev: string; stepOf: string;
   cliTitle: string; cliBadge: string; cliBody: string; cliPrompt: string; orManual: string;
   copy: string; copied: string; expect: string;
   ctaStar: string; ctaBack: string; close: string; foot: string;
@@ -132,6 +134,10 @@ const COPY: Record<Lang, Copy> = {
     costBody:
       "Generation runs on your own provider keys: about $0.30–0.80 per take. ZCLIP shows the estimate next to Send before every take and tracks spend in a built-in dashboard. The text refiner is effectively free.",
     howToTitle: "What you can do",
+    installStepTitle: "Install guide",
+    next: "Next",
+    prev: "Back",
+    stepOf: "Step",
     cliTitle: "Easiest way — an AI coding CLI",
     cliBadge: "Recommended",
     cliBody:
@@ -208,6 +214,10 @@ const COPY: Record<Lang, Copy> = {
     costBody:
       "생성은 당신 소유의 제공자 키로 실행됩니다: 테이크당 약 $0.30–0.80. ZCLIP은 매 테이크 전 전송 버튼 옆에 예상 비용을 보여주고, 내장 대시보드로 지출을 추적합니다. 텍스트 리파이너는 사실상 무료입니다.",
     howToTitle: "무엇을 할 수 있나",
+    installStepTitle: "설치 가이드",
+    next: "다음",
+    prev: "이전",
+    stepOf: "단계",
     cliTitle: "가장 쉬운 방법 — AI 코딩 CLI",
     cliBadge: "강력 추천",
     cliBody:
@@ -329,9 +339,30 @@ function Term({ os, title, cmd, expect, t }: { os: OS; title: string; cmd: strin
 }
 
 // ── the shared guide body (no page chrome — parents wrap it) ──────────
+// Paginated into three sequential pages so the guide never becomes one
+// overwhelming scroll: (1) what you can do, (2) the local-by-design trust
+// diagram, (3) the actual install steps. The hero stays fixed above the pager.
 function GuideBody({ os, gated, t }: { os: OS; gated: boolean; t: Copy }) {
   const { lang } = useLang();
   const termTitle = os === "mac" ? "Terminal" : "PowerShell";
+  const [page, setPage] = useState(0);
+  const pagerRef = useRef<HTMLDivElement>(null);
+  const mounted = useRef(false);
+
+  const steps = [t.howToTitle, t.trustTitle, t.installStepTitle];
+  const last = steps.length - 1;
+  const go = (p: number) => setPage(Math.max(0, Math.min(last, p)));
+
+  // on page change (not initial mount) bring the pager top into view — inside
+  // the modal this scrolls the modal body, on the full page it scrolls the window
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    pagerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [page]);
+
   return (
     <>
       <header className="rlg-hero">
@@ -340,149 +371,203 @@ function GuideBody({ os, gated, t }: { os: OS; gated: boolean; t: Copy }) {
         <p>{gated ? t.gatedLead : t.soloLead}</p>
       </header>
 
-      {/* what you can do — the short usage guide */}
-      <section className="rlg-section">
-        <h2 className="rlg-h2">{t.howToTitle}</h2>
-        <WorkflowDemo />
-        <HowToList lang={lang} />
-      </section>
-
-      {/* local-by-design trust diagram */}
-      <section className="rlg-section">
-        <h2 className="rlg-h2">{t.trustTitle}</h2>
-        <div className="rlg-trust">
-          <div className="rlg-td you">
-            <span className="rlg-td-label">{t.youLabel}</span>
-            <div className="rlg-td-items">
-              {t.youItems.map((it, i) => (
-                <span key={i}>{it}</span>
-              ))}
-            </div>
-          </div>
-          <div className="rlg-td-link">
-            <span className="rlg-arrow" aria-hidden>→</span>
-            <em>{t.arrow}</em>
-          </div>
-          <div className="rlg-td prov">
-            <span className="rlg-td-label">{t.provLabel}</span>
-            <div className="rlg-td-items">
-              {t.provItems.map((it, i) => (
-                <span key={i}>{it}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-        <p className="rlg-td-note">{t.trustNote}</p>
-      </section>
-
-      {/* easiest path — paste a one-liner into an AI coding CLI */}
-      <section className="rlg-section">
-        <div className="rlg-cli">
-          <div className="rlg-cli-head">
-            <span className="rlg-cli-title">⚡ {t.cliTitle}</span>
-            <span className="rlg-cli-badge">{t.cliBadge}</span>
-          </div>
-          <p className="rlg-cli-body">{t.cliBody}</p>
-          <div className="rlg-cli-prompt">
-            <p>{t.cliPrompt}</p>
-            <CopyBtn text={t.cliPrompt} label={t.copy} okLabel={t.copied} />
-          </div>
-        </div>
-        <div className="rlg-or">{t.orManual} ↓</div>
-      </section>
-
-      {/* requirements */}
-      <section className="rlg-section">
-        <h2 className="rlg-h2">{t.reqTitle}</h2>
-        <ul className="rlg-req">
-          {t.req.map((r) => (
-            <li key={r.name}>
-              <span className={`rlg-req-tag ${r.need ? "need" : "opt"}`}>
-                {r.need ? t.needTag : t.optTag}
-              </span>
-              <b>{r.name}</b>
-              <span className="rlg-req-why">{r.why}</span>
-            </li>
+      <div className="rlg-pager" ref={pagerRef}>
+        {/* step tabs — click to jump, current + completed states */}
+        <div className="rlg-steps-nav" role="tablist" aria-label={t.installStepTitle}>
+          {steps.map((label, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={page === i}
+              className={`rlg-step-tab ${page === i ? "on" : ""} ${i < page ? "done" : ""}`}
+              onClick={() => go(i)}
+            >
+              <span className="rlg-step-num">{i + 1}</span>
+              <span className="rlg-step-label">{label}</span>
+            </button>
           ))}
-        </ul>
-      </section>
-
-      {/* steps */}
-      <section className="rlg-section">
-        <h2 className="rlg-h2">{t.stepsTitle}</h2>
-        <ol className="rlg-steps">
-          <li>
-            <h3>{t.s1t}</h3>
-            <p>{t.s1b}</p>
-            <Term os={os} title={termTitle} cmd={CMD.installBun[os]} t={t} />
-            {os === "win" && <p className="rlg-step-note">{t.s1win}</p>}
-          </li>
-          <li>
-            <h3>{t.s2t}</h3>
-            <p>{t.s2b}</p>
-            <Term os={os} title={termTitle} cmd={CMD.clone} t={t} />
-          </li>
-          <li>
-            <h3>{t.s3t}</h3>
-            <p>{t.s3b}</p>
-            <Term os={os} title={termTitle} cmd={CMD.install} t={t} />
-          </li>
-          <li>
-            <h3>{t.s4t}</h3>
-            <p>{t.s4b}</p>
-            <Term
-              os={os}
-              title={termTitle}
-              cmd={CMD.dev}
-              expect={`  ▲ Next.js 16.2\n  - Local:   http://localhost:3000\n  ✓ Ready`}
-              t={t}
-            />
-            <div className="rlg-browser">
-              <div className="rlg-bar">
-                <span className="rlg-dots" aria-hidden>
-                  <i /><i /><i />
-                </span>
-                <span className="rlg-url">
-                  <span className="host">localhost</span>
-                  <span className="port">:3000</span>/chat
-                </span>
-              </div>
-              <div className="rlg-browser-view">
-                <span className="rlg-phone" aria-hidden><i /></span>
-                <span className="rlg-browser-cap">{t.s4cap}</span>
-              </div>
-            </div>
-          </li>
-          <li>
-            <h3>{t.s5t}</h3>
-            <p>{t.s5b}</p>
-            <div className="rlg-keypanel">
-              <div className="rlg-bar">
-                <span className="rlg-dots" aria-hidden>
-                  <i /><i /><i />
-                </span>
-                <span className="rlg-bar-title">API keys</span>
-              </div>
-              <div className="rlg-key-body">
-                <span className="rlg-key-name">{t.keyName}</span>
-                <span className="rlg-key-input">
-                  AIza<span className="rlg-caret" />
-                </span>
-                <span className="rlg-key-save">{t.keySave}</span>
-              </div>
-              <p className="rlg-key-hint">{t.keyHint}</p>
-            </div>
-          </li>
-        </ol>
-      </section>
-
-      {/* cost callout */}
-      <section className="rlg-section">
-        <div className="rlg-callout">
-          <span className="rlg-callout-label">{t.costLabel}</span>
-          <p>{t.costBody}</p>
         </div>
-      </section>
+
+        <div className="rlg-page">
+          {/* page 1 — what you can do (the short usage guide) */}
+          {page === 0 && (
+            <section className="rlg-section">
+              <h2 className="rlg-h2">{t.howToTitle}</h2>
+              <WorkflowDemo />
+              <HowToList lang={lang} />
+            </section>
+          )}
+
+          {/* page 2 — local-by-design trust diagram */}
+          {page === 1 && (
+            <section className="rlg-section">
+              <h2 className="rlg-h2">{t.trustTitle}</h2>
+              <div className="rlg-trust">
+                <div className="rlg-td you">
+                  <span className="rlg-td-label">{t.youLabel}</span>
+                  <div className="rlg-td-items">
+                    {t.youItems.map((it, i) => (
+                      <span key={i}>{it}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="rlg-td-link">
+                  <span className="rlg-arrow" aria-hidden>→</span>
+                  <em>{t.arrow}</em>
+                </div>
+                <div className="rlg-td prov">
+                  <span className="rlg-td-label">{t.provLabel}</span>
+                  <div className="rlg-td-items">
+                    {t.provItems.map((it, i) => (
+                      <span key={i}>{it}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <p className="rlg-td-note">{t.trustNote}</p>
+            </section>
+          )}
+
+          {/* page 3 — the actual install guide */}
+          {page === 2 && (
+            <>
+              {/* easiest path — paste a one-liner into an AI coding CLI */}
+              <section className="rlg-section">
+                <div className="rlg-cli">
+                  <div className="rlg-cli-head">
+                    <span className="rlg-cli-title">⚡ {t.cliTitle}</span>
+                    <span className="rlg-cli-badge">{t.cliBadge}</span>
+                  </div>
+                  <p className="rlg-cli-body">{t.cliBody}</p>
+                  <div className="rlg-cli-prompt">
+                    <p>{t.cliPrompt}</p>
+                    <CopyBtn text={t.cliPrompt} label={t.copy} okLabel={t.copied} />
+                  </div>
+                </div>
+                <div className="rlg-or">{t.orManual} ↓</div>
+              </section>
+
+              {/* requirements */}
+              <section className="rlg-section">
+                <h2 className="rlg-h2">{t.reqTitle}</h2>
+                <ul className="rlg-req">
+                  {t.req.map((r) => (
+                    <li key={r.name}>
+                      <span className={`rlg-req-tag ${r.need ? "need" : "opt"}`}>
+                        {r.need ? t.needTag : t.optTag}
+                      </span>
+                      <b>{r.name}</b>
+                      <span className="rlg-req-why">{r.why}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              {/* steps */}
+              <section className="rlg-section">
+                <h2 className="rlg-h2">{t.stepsTitle}</h2>
+                <ol className="rlg-steps">
+                  <li>
+                    <h3>{t.s1t}</h3>
+                    <p>{t.s1b}</p>
+                    <Term os={os} title={termTitle} cmd={CMD.installBun[os]} t={t} />
+                    {os === "win" && <p className="rlg-step-note">{t.s1win}</p>}
+                  </li>
+                  <li>
+                    <h3>{t.s2t}</h3>
+                    <p>{t.s2b}</p>
+                    <Term os={os} title={termTitle} cmd={CMD.clone} t={t} />
+                  </li>
+                  <li>
+                    <h3>{t.s3t}</h3>
+                    <p>{t.s3b}</p>
+                    <Term os={os} title={termTitle} cmd={CMD.install} t={t} />
+                  </li>
+                  <li>
+                    <h3>{t.s4t}</h3>
+                    <p>{t.s4b}</p>
+                    <Term
+                      os={os}
+                      title={termTitle}
+                      cmd={CMD.dev}
+                      expect={`  ▲ Next.js 16.2\n  - Local:   http://localhost:3000\n  ✓ Ready`}
+                      t={t}
+                    />
+                    <div className="rlg-browser">
+                      <div className="rlg-bar">
+                        <span className="rlg-dots" aria-hidden>
+                          <i /><i /><i />
+                        </span>
+                        <span className="rlg-url">
+                          <span className="host">localhost</span>
+                          <span className="port">:3000</span>/chat
+                        </span>
+                      </div>
+                      <div className="rlg-browser-view">
+                        <span className="rlg-phone" aria-hidden><i /></span>
+                        <span className="rlg-browser-cap">{t.s4cap}</span>
+                      </div>
+                    </div>
+                  </li>
+                  <li>
+                    <h3>{t.s5t}</h3>
+                    <p>{t.s5b}</p>
+                    <div className="rlg-keypanel">
+                      <div className="rlg-bar">
+                        <span className="rlg-dots" aria-hidden>
+                          <i /><i /><i />
+                        </span>
+                        <span className="rlg-bar-title">API keys</span>
+                      </div>
+                      <div className="rlg-key-body">
+                        <span className="rlg-key-name">{t.keyName}</span>
+                        <span className="rlg-key-input">
+                          AIza<span className="rlg-caret" />
+                        </span>
+                        <span className="rlg-key-save">{t.keySave}</span>
+                      </div>
+                      <p className="rlg-key-hint">{t.keyHint}</p>
+                    </div>
+                  </li>
+                </ol>
+              </section>
+
+              {/* cost callout */}
+              <section className="rlg-section">
+                <div className="rlg-callout">
+                  <span className="rlg-callout-label">{t.costLabel}</span>
+                  <p>{t.costBody}</p>
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+
+        {/* pager controls — Back / dots / Next */}
+        <div className="rlg-pager-nav">
+          <button
+            type="button"
+            className="btn-ghost rlg-pager-prev"
+            onClick={() => go(page - 1)}
+            style={{ visibility: page === 0 ? "hidden" : "visible" }}
+          >
+            ← {t.prev}
+          </button>
+          <span className="rlg-pager-dots" aria-hidden>
+            {steps.map((_, i) => (
+              <i key={i} className={page === i ? "on" : ""} />
+            ))}
+          </span>
+          {page < last ? (
+            <button type="button" className="btn-primary rlg-pager-next" onClick={() => go(page + 1)}>
+              {t.next} →
+            </button>
+          ) : (
+            <span className="rlg-pager-next-spacer" aria-hidden />
+          )}
+        </div>
+      </div>
     </>
   );
 }

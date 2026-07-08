@@ -28,7 +28,7 @@ export const HOWTO: Record<Lang, HowStep[]> = {
     {
       icon: "▤",
       title: "Library — grab & reuse",
-      body: "Paste a **YouTube / X / direct link** and the reference video is downloaded. And **every take you generate keeps piling into the library**, so you can pull any past clip back as a reference anytime.",
+      body: "**Every take you generate piles into the library** automatically. Paste a **YouTube / X / direct link** and the reference video is downloaded in too. And **anything you upload** (your own reference images or videos) lands there as well — pull any of it back as a reference anytime.",
     },
     {
       icon: "⑆",
@@ -50,7 +50,7 @@ export const HOWTO: Record<Lang, HowStep[]> = {
     {
       icon: "▤",
       title: "라이브러리 — 가져오고 재사용",
-      body: "**YouTube / X / 직접 링크**를 붙이면 참조 영상이 받아집니다. 그리고 **생성한 테이크는 라이브러리에 계속 쌓여서**, 지난 클립을 언제든 참조로 다시 불러올 수 있어요.",
+      body: "**생성한 테이크는 라이브러리에 자동으로 계속 쌓입니다.** **YouTube / X / 직접 링크**를 붙이면 참조 영상도 받아지고, **직접 올린 것**(참조 이미지·영상)도 함께 들어가요 — 무엇이든 언제든 참조로 다시 불러올 수 있습니다.",
     },
     {
       icon: "⑆",

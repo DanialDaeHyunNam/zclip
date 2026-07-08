@@ -298,6 +298,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const pollFails = useRef(0);
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
   /** Synchronous re-entry lock: React state (busyTurn) commits async, so a
    *  double-fired send (IME Enter, double click) would both pass the
    *  busyTurn guard before the first take registers. This blocks it. */
@@ -626,10 +627,18 @@ export default function Home() {
     }
   }, [turns]);
 
-  /* keep the thread scrolled to the latest turn */
+  /* keep the thread scrolled to the latest turn as takes land */
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [turns.length, busyTurn?.status]);
+
+  /* on session enter / switch, snap the thread straight to the newest take
+     (no smooth scroll) so you always start at the bottom of the history */
+  useEffect(() => {
+    if (!hydrated) return;
+    const el = threadRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [sessionId, hydrated]);
 
   /* hide starter-card images that 404'd BEFORE hydration (React's onError
      misses those) — onError on the element covers late failures */
@@ -2166,7 +2175,7 @@ export default function Home() {
             </span>
           </div>
 
-          <div className="thread">
+          <div className="thread" ref={threadRef}>
             {turns.map((t, i) => (
               <div
                 key={t.id}
@@ -2270,6 +2279,16 @@ export default function Home() {
 
           {turns.length === 0 && (
             <div className="starter fade">
+              <div className="starter-intro">
+                <span className="starter-intro-label">Start a clip</span>
+                <button
+                  type="button"
+                  className="starter-help"
+                  onClick={() => setShowHelp(true)}
+                >
+                  ? How to use
+                </button>
+              </div>
               <div className="starter-pills">
                 <button
                   className={`pill-btn ${pickerOpen === "char" ? "on" : ""}`}
@@ -2390,6 +2409,22 @@ export default function Home() {
               )}
               {pickerOpen === "library" && (
                 <div className="starter-group">
+                  <ul className="library-intro">
+                    <li>
+                      <b>Takes pile up.</b> Every clip you generate is archived
+                      here automatically — pull any past take back as a
+                      reference.
+                    </li>
+                    <li>
+                      <b>Grab from a URL.</b> Paste a YouTube / X / direct link
+                      into <span className="mono">⤓</span> in the rail and the
+                      reference video is downloaded straight into the library.
+                    </li>
+                    <li>
+                      <b>Your own uploads.</b> Reference images and videos you
+                      drop in (multimodal input) live here too, ready to reuse.
+                    </li>
+                  </ul>
                   <div className="starter-carousel">
                     {clips.filter((c) => c.videoUrl).map((c) => (
                       <button

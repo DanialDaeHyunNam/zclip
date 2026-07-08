@@ -5,6 +5,27 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.2 — 2026-07-08
+
+### Added
+- **"How to use?" from the empty session** — a central entry point in the
+  SESSION column (next to "Start a clip") opens the same help modal as the
+  rail's `?`, so the guide is reachable without hunting for the rail button.
+- **Library explainer** — opening the Library picker now shows what the
+  library is: takes pile up automatically, URLs are downloaded via GRAB, and
+  your own uploads land there too. The in-app how-to step says the same.
+- **Paginated install guide** — the local-install guide (and its popup) is now
+  three sequential steps — *What you can do* → *Nothing runs on our servers* →
+  *Install guide* — with a tabbed stepper and Back/Next, instead of one long
+  scroll.
+
+### Changed
+- **Session history scrolls internally** — the take list is capped and scrolls
+  within the column (the composer no longer gets pushed off-screen), and every
+  session opens scrolled to its most recent take.
+- **Update banner floats at the bottom** — moved from the top center, where it
+  overlapped the column headers.
+
 ## 0.1.1 — 2026-07-08
 
 ### Added
