@@ -675,15 +675,9 @@ export function InstallModal({
           </span>
         </div>
         <div className="rlg-modal-body">
+          {/* No footer CTA here — the ✕ in the head closes, and the popup is
+              fired from the landing which already has the GitHub star. */}
           <GuideBody os={os} gated={gated} t={t} />
-          <div className="rlg-cta-row">
-            <a className="btn-primary" href={REPO_URL} target="_blank" rel="noreferrer">
-              ★ {t.ctaStar}
-            </a>
-            <button type="button" className="btn-ghost" onClick={onClose}>
-              {t.close}
-            </button>
-          </div>
         </div>
       </div>
     </div>

@@ -5,6 +5,22 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.5 — 2026-07-08
+
+### Changed
+- **Archive is its own page** (`/archive`) instead of a covering overlay — it
+  keeps the left rail, gets a real URL and back button, and is reached by
+  client-side navigation so freshly-finished takes show without a reload.
+  "Use as reference" hands the clip back to the studio composer. (The grab tool
+  can move to a route the same way next.)
+- **Leaner install popup** — dropped the redundant "Star on GitHub / Close"
+  footer row from the install-guide modal; the ✕ in its header already closes
+  it and the landing already has the star.
+
+### Internal
+- Extracted the shared `Clip` type/keys (`lib/clip`) and the `ClipCardView`
+  card (`app/clip-card`) so the studio and the archive page share one source.
+
 ## 0.1.4 — 2026-07-08
 
 ### Changed

@@ -22,8 +22,20 @@ import { VERSION, RELEASES_URL } from "@/lib/version";
 import { useHosted, useUpdateCheck } from "@/lib/use-version";
 import { UpdateGuide } from "./update-guide";
 import { HelpGuide } from "./help-guide";
+import { useRouter } from "next/navigation";
 import { Rail } from "../rail";
 import { ModelPicker } from "../model-picker";
+import { ClipCardView } from "../clip-card";
+import {
+  type Clip,
+  fmtCost,
+  cssAspect,
+  GALLERY_KEY,
+  SESSIONS_KEY,
+  SESSION_ID_KEY,
+  PW_KEY,
+  PENDING_REF_KEY,
+} from "@/lib/clip";
 
 /* ── types & storage ─────────────────────────────── */
 
@@ -61,24 +73,6 @@ interface Turn {
 }
 
 /** Append-only archive entry — survives rewinds. */
-interface Clip {
-  jobId: string;
-  sessionId?: string;
-  /** "grab" marks a reference video pulled with the GRAB tool — archived
-   *  alongside takes but excluded from the spend ledger. */
-  provider: ProviderName | "grab";
-  prompt: string;
-  note?: string;
-  variantLabel: string;
-  createdAt: number;
-  status: "done";
-  aspectRatio: AspectRatio;
-  durationSeconds: number;
-  resolution: Resolution;
-  videoUrl?: string;
-  costUsd?: number;
-}
-
 /** User-created starter block. `image` doubles as the card visual AND the
  *  generation reference for the first take. */
 interface CustomAsset {
@@ -100,10 +94,8 @@ interface StoredSession {
 
 const THREAD_KEY = "hooklab.thread";
 const ASSETS_KEY = "hooklab.customAssets";
-const SESSIONS_KEY = "hooklab.sessions";
-const SESSION_ID_KEY = "hooklab.sessionId";
-const GALLERY_KEY = "hooklab.gallery";
-const PW_KEY = "hooklab.pw";
+// GALLERY_KEY / SESSIONS_KEY / SESSION_ID_KEY / PW_KEY are shared with the
+// archive & grab routes — imported from lib/clip.
 const POLL_MS = 3000;
 const GIVE_UP_MS = 12 * 60 * 1000;
 const MAX_SESSIONS = 20;
@@ -131,74 +123,8 @@ const compactTurns = (ts: Turn[]): Turn[] => {
 const fmtElapsed = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-const fmtCost = (c?: number) => (c != null ? `$${c.toFixed(2)}` : null);
-
-const cssAspect = (a: AspectRatio) => (a === "16:9" ? "16 / 9" : "9 / 16");
-
-/** One archive card — shared by the session strip and the full-archive
- *  overlay. */
-function ClipCardView({
-  clip,
-  withPw,
-  onDownload,
-  onRemove,
-  onUse,
-}: {
-  clip: Clip;
-  withPw: (u: string) => string;
-  onDownload: (u: string) => void;
-  onRemove: (id: string) => void;
-  onUse?: (clip: Clip) => void;
-}) {
-  return (
-    <div className="card">
-      <div className="thumb" style={{ aspectRatio: cssAspect(clip.aspectRatio) }}>
-        {clip.videoUrl ? (
-          <video
-            src={withPw(clip.videoUrl)}
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
-            onMouseLeave={(e) => e.currentTarget.pause()}
-          />
-        ) : (
-          <span className="thumb-state">Unavailable</span>
-        )}
-      </div>
-      <div className="card-meta">
-        <div className="card-row">
-          <span>
-            {clip.provider === "grab"
-              ? "GRAB"
-              : PROVIDERS[clip.provider]?.label ?? clip.provider}{" "}
-            · {clip.variantLabel}
-          </span>
-          <span>{clip.provider === "grab" ? "" : fmtCost(clip.costUsd) ?? ""}</span>
-        </div>
-        <p className="card-prompt" title={clip.prompt}>
-          {clip.note ?? clip.prompt}
-        </p>
-        <div className="card-actions">
-          {clip.provider === "grab" && clip.videoUrl && onUse && (
-            <button className="link-btn ctx-on" onClick={() => onUse(clip)}>
-              → Use as reference
-            </button>
-          )}
-          {clip.videoUrl && (
-            <button className="link-btn" onClick={() => onDownload(clip.videoUrl!)}>
-              Download
-            </button>
-          )}
-          <button className="link-btn danger" onClick={() => onRemove(clip.jobId)}>
-            Remove
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// fmtCost / cssAspect / ClipCardView live in lib/clip + app/clip-card (shared
+// with the archive route).
 
 /* ── page ────────────────────────────────────────── */
 
@@ -292,13 +218,15 @@ export default function Home() {
   // session sidebar — closed by default, Claude-style
   const [sideOpen, setSideOpen] = useState(true);
   const [spendOpen, setSpendOpen] = useState(false);
-  const [archiveOpen, setArchiveOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const pollFails = useRef(0);
   const threadEndRef = useRef<HTMLDivElement>(null);
   const threadRef = useRef<HTMLDivElement>(null);
+  // client-side nav to sibling pages (archive) — keeps the lib/store in-memory
+  // cache alive so freshly-written clips are visible without a disk round-trip
+  const router = useRouter();
   /** Synchronous re-entry lock: React state (busyTurn) commits async, so a
    *  double-fired send (IME Enter, double click) would both pass the
    *  busyTurn guard before the first take registers. This blocks it. */
@@ -664,19 +592,16 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [charId, settingId, custom, turns.length, aspect, duration]);
 
-  /* Escape closes overlays — but NOT the sessions sidebar, which stays open
-     until the user toggles it shut with the ≡ rail button. */
+  /* Escape closes the spend popover — but NOT the sessions sidebar, which
+     stays open until the user toggles it shut with the ≡ rail button. */
   useEffect(() => {
-    if (!spendOpen && !archiveOpen) return;
+    if (!spendOpen) return;
     const h = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setSpendOpen(false);
-        setArchiveOpen(false);
-      }
+      if (e.key === "Escape") setSpendOpen(false);
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [spendOpen, archiveOpen]);
+  }, [spendOpen]);
 
   /* actions */
 
@@ -915,30 +840,32 @@ export default function Home() {
       const b = await r.json();
       if (!r.ok) throw new Error(b.error ?? "Download failed");
       const source = grabUrl.trim();
-      setClips((cs) => [
-        {
-          jobId: b.name,
-          sessionId,
-          provider: "grab",
-          prompt: source,
-          note: `Reference · ${source.replace(/^https?:\/\/(www\.)?/, "")}${
-            start != null && end != null ? ` · ${start}–${end}s` : ""
-          }`,
-          variantLabel: "Reference",
-          createdAt: Date.now(),
-          status: "done",
-          aspectRatio: "9:16",
-          durationSeconds: start != null && end != null ? end - start : 0,
-          resolution: "720p",
-          videoUrl: b.url,
-          costUsd: 0,
-        },
-        ...cs,
-      ]);
+      const newClip: Clip = {
+        jobId: b.name,
+        sessionId,
+        provider: "grab",
+        prompt: source,
+        note: `Reference · ${source.replace(/^https?:\/\/(www\.)?/, "")}${
+          start != null && end != null ? ` · ${start}–${end}s` : ""
+        }`,
+        variantLabel: "Reference",
+        createdAt: Date.now(),
+        status: "done",
+        aspectRatio: "9:16",
+        durationSeconds: start != null && end != null ? end - start : 0,
+        resolution: "720p",
+        videoUrl: b.url,
+        costUsd: 0,
+      };
+      const nextClips = [newClip, ...clips];
+      setClips(nextClips);
+      // write through to the store cache, then client-nav to the archive so the
+      // new grab is visible immediately (no disk round-trip / flush race)
+      store.set(GALLERY_KEY, JSON.stringify(nextClips));
       setGrabUrl("");
       setGrabVideos(null);
       setGrabOpen(false);
-      setArchiveOpen(true);
+      router.push("/archive");
     } catch (e) {
       setGrabErr(e instanceof Error ? e.message : "Download failed");
     } finally {
@@ -958,13 +885,11 @@ export default function Home() {
       await attachMediaFile(
         new File([blob], `${clip.jobId}.mp4`, { type: "video/mp4" }),
       );
-      setArchiveOpen(false);
       setGrabOpen(false);
     } catch {
       setError(
         "Could not load that reference — the grabbed file may have been cleaned up. Grab it again.",
       );
-      setArchiveOpen(false);
     }
   };
 
@@ -1483,17 +1408,28 @@ export default function Home() {
     setError(null);
   };
 
-  /* Rail on the dashboard navigates here with a hint of what to open. */
+  /* Rail on other pages navigates here with a hint of what to open, and the
+     /archive page hands off a clip to attach as a reference. */
   useEffect(() => {
     if (!ready) return;
     const q = new URLSearchParams(window.location.search);
     const open = q.get("open");
     if (open === "sessions") setSideOpen(true);
-    else if (open === "archive") setArchiveOpen(true);
     else if (open === "grab") setGrabOpen(true);
     if (q.get("new") === "1") newSession();
     if (open || q.get("new")) {
       window.history.replaceState(null, "", window.location.pathname);
+    }
+    // a clip the /archive page picked "use as reference" on → attach it here
+    const pending = store.get(PENDING_REF_KEY);
+    if (pending) {
+      store.remove(PENDING_REF_KEY);
+      try {
+        const clip = JSON.parse(pending) as Clip;
+        if (clip?.videoUrl) useClipAsRef(clip);
+      } catch {
+        /* malformed handoff — ignore */
+      }
     }
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1641,10 +1577,6 @@ export default function Home() {
   const removeClip = (jobId: string) =>
     setClips((cs) => cs.filter((c) => c.jobId !== jobId));
 
-  const clearArchive = () => {
-    if (window.confirm("Clear the whole archive?")) setClips([]);
-  };
-
   /* derived: what the preview shows */
   const previewTurn =
     turns.find((t) => t.id === selectedId) ??
@@ -1664,29 +1596,9 @@ export default function Home() {
 
   const frameAspect = cssAspect(previewTurn?.aspectRatio ?? aspect);
 
-  /* archive views: this session's takes below the chat; everything,
-     grouped by owning session, in the rail overlay */
+  /* archive view: this session's takes below the chat (everything, grouped by
+     session, lives on the /archive page now) */
   const sessionClips = clips.filter((c) => c.sessionId === sessionId);
-  const archiveGroups = (() => {
-    const m = new Map<string, Clip[]>();
-    for (const c of clips) {
-      const k = c.sessionId ?? "earlier";
-      if (!m.has(k)) m.set(k, []);
-      m.get(k)!.push(c);
-    }
-    return [...m.entries()]
-      .map(([key, list]) => ({
-        key,
-        label:
-          key === sessionId
-            ? "Current session"
-            : sessions.find((s) => s.id === key)?.title ??
-              (key === "earlier" ? "Earlier takes" : "Removed session"),
-        list,
-        latest: Math.max(...list.map((c) => c.createdAt)),
-      }))
-      .sort((a, b) => b.latest - a.latest);
-  })();
 
   /* spend rollup: archive is the ledger (append-only, survives rewinds) */
   const spend = (() => {
@@ -1829,26 +1741,24 @@ export default function Home() {
       {/* left rail — always visible; panel slides out Claude-style */}
       <Rail
         active={
-          sideOpen ? "sessions" : archiveOpen ? "archive" : grabOpen ? "grab" : null
+          sideOpen ? "sessions" : grabOpen ? "grab" : null
         }
         onHome={() => {
-          setArchiveOpen(false);
           setSpendOpen(false);
           setGrabOpen(false);
           newSession(); // logo = a fresh start, like a new chat
         }}
         onSessions={() => {
           setSideOpen((o) => !o);
-          setArchiveOpen(false);
           setGrabOpen(false);
         }}
         onArchive={() => {
-          setArchiveOpen((o) => !o);
-          setGrabOpen(false);
+          // the archive is its own page now (keeps the left rail, no overlay);
+          // client nav preserves the store cache so recent takes show up
+          router.push("/archive");
         }}
         onGrab={() => {
           setGrabOpen((o) => !o);
-          setArchiveOpen(false);
         }}
         onNew={() => {
           newSession();
@@ -1942,58 +1852,6 @@ export default function Home() {
           ))}
         </div>
       </aside>
-
-      {archiveOpen && (
-        <div className="archive-overlay fade">
-          <div className="archive-page">
-            <div className="archive-head">
-              <span className="label">
-                Archive · All Sessions · {clips.length}
-              </span>
-              <span className="session-tools">
-                {clips.length > 0 && (
-                  <button className="link-btn danger" onClick={clearArchive}>
-                    Clear All
-                  </button>
-                )}
-                <button
-                  className="btn-ghost overlay-back"
-                  onClick={() => setArchiveOpen(false)}
-                >
-                  ← Back to Studio
-                </button>
-              </span>
-            </div>
-            <p className="archive-note">
-              Every finished take, grouped by the session it came from.
-              Stored in this browser only; providers purge source files
-              (~2 days on Veo) — download anything you want to keep.
-            </p>
-            {clips.length === 0 && (
-              <p className="hint">Nothing archived yet.</p>
-            )}
-            {archiveGroups.map((g) => (
-              <div key={g.key} className="archive-group">
-                <span className="label">
-                  {g.label} · {g.list.length}
-                </span>
-                <div className="gallery-grid">
-                  {g.list.map((c) => (
-                    <ClipCardView
-                      key={c.jobId}
-                      clip={c}
-                      withPw={withPw}
-                      onDownload={download}
-                      onRemove={removeClip}
-                      onUse={useClipAsRef}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {grabOpen && (
         <div className="archive-overlay fade">
@@ -3072,7 +2930,7 @@ export default function Home() {
           <span className="label">
             Archive · This Session · {sessionClips.length}
           </span>
-          <button className="link-btn" onClick={() => setArchiveOpen(true)}>
+          <button className="link-btn" onClick={() => router.push("/archive")}>
             All takes ({clips.length}) →
           </button>
         </div>

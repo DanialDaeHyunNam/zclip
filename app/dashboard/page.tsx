@@ -170,7 +170,9 @@ export default function Dashboard() {
         active={null}
         onHome={() => go("?new=1")}
         onSessions={() => go("?open=sessions")}
-        onArchive={() => go("?open=archive")}
+        onArchive={() => {
+          window.location.href = "/archive";
+        }}
         onGrab={() => go("?open=grab")}
         onNew={() => go("?new=1")}
       />
