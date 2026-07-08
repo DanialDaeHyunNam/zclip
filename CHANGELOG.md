@@ -5,6 +5,17 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.9 — 2026-07-08
+
+### Changed
+- **Rail reordered & decluttered** — top group is now Sessions · Dashboard ·
+  Library · Download, with the About (ⓘ) affordance moved up next to them.
+  Help (?) and the version chip stay pinned at the bottom.
+- **Removed the ＋ New rail button** — start a new session from the sessions
+  sidebar's **+ New** (or the logo, which is still a fresh start).
+- **Sessions sidebar is persistent** on the studio — it no longer auto-closes
+  when you pick a session or start a new one; only the ≡ button toggles it.
+
 ## 0.1.8 — 2026-07-08
 
 ### Changed

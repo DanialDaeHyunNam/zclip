@@ -236,7 +236,6 @@ export default function ArchivePage() {
         onSessions={() => go("/chat?open=sessions")}
         onArchive={() => go("/archive")}
         onGrab={() => setAddOpen(true)}
-        onNew={() => go("/chat?new=1")}
       />
       <div className="dash-page">
         <div className="archive-head">

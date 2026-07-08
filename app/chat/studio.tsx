@@ -1662,10 +1662,6 @@ export default function Home() {
           // GRAB lives inside the library now — ⤓ opens it with the add form up
           router.push("/archive?add=1");
         }}
-        onNew={() => {
-          newSession();
-        }}
-        newDisabled={Boolean(busyTurn)}
         version={VERSION}
         hasUpdate={updatable}
         latest={latest}
@@ -1704,10 +1700,7 @@ export default function Home() {
           <span className="label">Sessions</span>
           <button
             className="link-btn"
-            onClick={() => {
-              newSession();
-              setSideOpen(false);
-            }}
+            onClick={() => newSession()}
             disabled={Boolean(busyTurn)}
           >
             + New
@@ -1721,10 +1714,7 @@ export default function Home() {
             <div
               key={s.id}
               className={`side-item ${s.id === sessionId ? "active" : ""}`}
-              onClick={() => {
-                openSession(s.id);
-                setSideOpen(false);
-              }}
+              onClick={() => openSession(s.id)}
             >
               <div className="side-title">{s.title}</div>
               <div className="side-sub">

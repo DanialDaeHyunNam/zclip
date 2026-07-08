@@ -16,8 +16,6 @@ export function Rail({
   onSessions,
   onArchive,
   onGrab,
-  onNew,
-  newDisabled = false,
   version,
   hasUpdate = false,
   latest = null,
@@ -31,8 +29,6 @@ export function Rail({
   onSessions: () => void;
   onArchive: () => void;
   onGrab: () => void;
-  onNew: () => void;
-  newDisabled?: boolean;
   /** Build version (e.g. "0.1.0"); omit to hide the chip. */
   version?: string;
   /** A newer version is deployed — the chip becomes a prominent update prompt. */
@@ -52,6 +48,16 @@ export function Rail({
       >
         Z<span>_</span>
       </button>
+      {/* 1 — Sessions */}
+      <button
+        className={`rail-btn ${active === "sessions" ? "on" : ""}`}
+        onClick={onSessions}
+        title="Sessions"
+        aria-label="Toggle session sidebar"
+      >
+        ≡
+      </button>
+      {/* 2 — Dashboard */}
       {onDashboard && (
         <button
           className={`rail-btn ${active === "dashboard" ? "on" : ""}`}
@@ -76,22 +82,16 @@ export function Rail({
           </svg>
         </button>
       )}
-      <button
-        className={`rail-btn ${active === "sessions" ? "on" : ""}`}
-        onClick={onSessions}
-        title="Sessions"
-        aria-label="Toggle session sidebar"
-      >
-        ≡
-      </button>
+      {/* 3 — Library */}
       <button
         className={`rail-btn ${active === "archive" ? "on" : ""}`}
         onClick={onArchive}
-        title="Archive — every take, grouped by session"
-        aria-label="Toggle archive"
+        title="Library — every take & reference, grouped by session"
+        aria-label="Toggle library"
       >
         ▦
       </button>
+      {/* 4 — Download / add a reference */}
       <button
         className={`rail-btn ${active === "grab" ? "on" : ""}`}
         onClick={onGrab}
@@ -100,17 +100,31 @@ export function Rail({
       >
         ⤓
       </button>
-      <button
-        className="rail-btn"
-        onClick={onNew}
-        disabled={newDisabled}
-        title="New session"
-        aria-label="New session"
+      {/* about / home — the ZCLIP landing */}
+      <a
+        className="rail-btn rail-about"
+        href="/"
+        title="About — the ZCLIP home page"
+        aria-label="About"
       >
-        ＋
-      </button>
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="9" />
+          <line x1="12" y1="11" x2="12" y2="16.4" />
+          <circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none" />
+        </svg>
+      </a>
 
-      {/* pinned to the bottom — help + version chip + about/home affordance */}
+      {/* pinned to the bottom — help + version chip */}
       <div className="rail-foot">
         {onHelp && (
           <button
@@ -134,28 +148,6 @@ export function Rail({
             {hasUpdate ? "⬆" : `v${version}`}
           </button>
         )}
-        <a
-          className="rail-btn rail-about"
-          href="/"
-          title="About — the ZCLIP home page"
-          aria-label="About"
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <circle cx="12" cy="12" r="9" />
-            <line x1="12" y1="11" x2="12" y2="16.4" />
-            <circle cx="12" cy="7.6" r="0.9" fill="currentColor" stroke="none" />
-          </svg>
-        </a>
       </div>
     </aside>
   );

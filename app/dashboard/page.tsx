@@ -177,7 +177,6 @@ export default function Dashboard() {
         onGrab={() => {
           window.location.href = "/archive?add=1";
         }}
-        onNew={() => go("?new=1")}
       />
       <div className="dash-page">
         <header className="top">
