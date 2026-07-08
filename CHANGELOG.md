@@ -5,6 +5,17 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.1 — 2026-07-08
+
+### Added
+- **Workflow walkthrough animation** — a CSS/JS state machine (like the landing
+  demo reel, but of the UI itself) that clicks Character → Background → Fashion,
+  types the beat, hits Send, renders, and lands a take. Shown in the in-app help
+  and the install guide's "What you can do" section.
+
+### Changed
+- How-to steps highlight their key phrases (accent bold).
+
 ## 0.1.0 — 2026-07-07
 
 First versioned release. The core studio (chat-driven takes, model marketplace,
