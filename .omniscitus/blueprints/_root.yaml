@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-08T01:52:17.591Z
+updated: 2026-07-08T15:08:36.738Z
 
 files:
   "README.md":
@@ -82,7 +82,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T08:19:30.021Z
     change_count: 1
-    purpose: ""
+    purpose: "Keeps dev-only artifacts (.zclip-data, .grabs, .gstack logs) out of Vercel deploys"
     change_log:
       - date: 2026-07-07T08:19:30.021Z
         action: write
@@ -93,7 +93,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T13:07:23.526Z
     change_count: 1
-    purpose: ""
+    purpose: "Ignores env files (.env, .env.* except .env.example), node_modules, .next, and the dev-only .zclip-data / .grabs stores"
     change_log:
       - date: 2026-07-07T13:07:23.526Z
         action: edit
@@ -102,10 +102,46 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-08T01:52:08.941Z
-    change_count: 2
-    purpose: ""
+    last_modified: 2026-07-08T15:08:27.690Z
+    change_count: 14
+    purpose: "Deps (next/react/typescript only) + scripts; `version` is the release source of truth, inlined as NEXT_PUBLIC_APP_VERSION by next.config"
     change_log:
+      - date: 2026-07-08T15:08:27.690Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T10:32:21.396Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T05:53:34.560Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T05:48:11.387Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T05:10:44.755Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T04:55:29.405Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T04:47:58.263Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T03:16:10.147Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T03:02:20.649Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T02:47:53.849Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T02:31:20.535Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T02:21:27.094Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-08T01:52:08.941Z
         action: edit
         source: "claude:Danial Nam"
@@ -118,7 +154,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T13:43:50.409Z
     change_count: 1
-    purpose: ""
+    purpose: "Inlines package.json version → NEXT_PUBLIC_APP_VERSION for the version-awareness UI"
     change_log:
       - date: 2026-07-07T13:43:50.409Z
         action: write
@@ -127,10 +163,46 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-08T01:52:17.591Z
-    change_count: 2
-    purpose: ""
+    last_modified: 2026-07-08T15:08:36.738Z
+    change_count: 14
+    purpose: "Per-release notes (Added/Changed/Fixed) surfaced via the version chip; every release bumps it (the update prompt depends on it)"
     change_log:
+      - date: 2026-07-08T15:08:36.738Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T10:32:35.131Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T05:53:44.083Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T05:48:19.628Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T05:10:56.445Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T04:55:36.366Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T04:48:04.649Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T03:16:18.749Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T03:02:29.665Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T02:48:08.135Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T02:31:26.182Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T02:21:35.795Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-08T01:52:17.591Z
         action: edit
         source: "claude:Danial Nam"

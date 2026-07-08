@@ -23,6 +23,12 @@ Runway Act-Two performance transfer with outfit compositing, and a spend confirm
   provider (Veo 4/6/8, Sora 8, Grok 1–15); expression-hold recipe: no emotional
   background actors + verbatim action + counter-negatives; frame-seed wins over
   wardrobe/location prompts (seed only for emotion/camera changes).
+  Later (v0.1.2–v0.1.9): the full archive is a real page (`/archive`, "Library"),
+  not an overlay — cross-page state rides the `lib/store` cache via client nav +
+  handoff keys; GRAB lives inside the Library as "+ Add reference"; Fashion applies
+  to any model via `/api/dress` pre-compositing; the studio stays English-only
+  (owner's call — no globe); rail order is Sessions·Dashboard·Library·Download·About
+  with a persistent sessions sidebar and no ＋ New rail button.
 - **Constraints**: Veo daily quota (RPD) resets midnight PT regardless of payment;
   Grok has no text-to-video (text→image→video, $0.08/s + $0.05 image step);
   Sora base = 720p/8s+watermark; Seedance adapter unverified; NEVER run
@@ -117,7 +123,115 @@ tracks — a long value pushes the grid past the container; fix with a value
 column of `auto` + bar on `minmax(0,1fr)`. Modal→persistent is a small change
 (drop the backdrop, shift content) when close-on-outside-click was never wired.
 
+### 2026-07-08 (chrome cleanup + filesystem store + in-studio version/help UI)
+**Focus**: Studio chrome, resilient storage, version/help modals.
+- Removed the top `ZCLIP_ / About` header and the "Make the hook." empty-state
+  hero; restored top margin (shell padding). Sessions sidebar now stays open until
+  the ≡ toggle (Escape/archive/grab/+New no longer close it). Rail gained an about
+  (ⓘ) link → `/`, a `?` help button, and a version chip at the bottom.
+- Swapped all `localStorage.*` for the filesystem store (`lib/store`): sessions/
+  gallery/assets persist to `.zclip-data` (dev). Save effects gated on a `hydrated`
+  flag so empty initial state can't clobber the file. Fixes the "sessions vanish"
+  bug (5MB quota + per-port :3000/:3001 split). See [[zclip-deploy-versioning]].
+- In-studio version awareness: rail chip + "update available" banner + `UpdateGuide`
+  (`useUpdateCheck` vs the deploy). In-app `?` help modal (`help-guide`) with a
+  `WorkflowDemo` animation + how-to steps. `tee` → `t-shirt` in cast/wardrobe.
+
+**Learned**: an uncaught `localStorage.setItem` quota error silently drops the
+save — the biggest sessions (most base64 snapshots) were exactly the ones that
+vanished on reload; a shared on-disk file also erases the per-port origin split.
+
+### 2026-07-08 (rapid UX polish + rail/library restructure — v0.1.2→v0.1.9)
+**Focus**: Studio guidance, cross-picker consistency, and a routes/rail
+restructure, shipped across 8 review-driven releases.
+- Guidance: "How to use?" entry point in the empty session (opens the same help
+  modal as rail `?`); session thread capped (max-height 52vh) with internal
+  scroll that always opens at the newest take; per-picker intro lines
+  (Character/Background now match Fashion) with breathing room from the pills;
+  3-point Library explainer.
+- Fashion for ANY model: the picked outfit is composited onto the character
+  reference (`/api/dress`) for take 1 regardless of the selected model, not just
+  Act-Two (every provider takes an image ref) — extracted a shared
+  `dressWithFashion` helper used by both send paths.
+- Empty output frame left blank by default (briefly tried an autoplay sample
+  reel; owner found it too much → removed).
+- **Archive → its own `/archive` route** (was a covering overlay): keeps the
+  rail, real URL + back button; "use as reference" hands a clip back to the
+  composer via `PENDING_REF_KEY`. Extracted the shared `Clip` type/keys
+  (`lib/clip`) + `ClipCardView` (`app/clip-card`). Renamed Archive → Library.
+- **GRAB folded INTO the Library page** as a collapsible "+ Add reference"
+  (removed the studio grab overlay + all its state/logic); ⤓ opens the library
+  with the add form expanded (`/archive?add=1`), ▦ opens it to browse.
+- Workflow demo now lands on the real take-1 video, not a still (see
+  [[zclip-landing-demo]]).
+- **Rail restructure**: Dashboard moved onto the rail (bar-chart icon), then
+  final order Sessions · Dashboard · Library · Download · About (moved up from
+  the foot); dropped the ＋ New rail button (new session = sidebar's + New or the
+  logo); sessions sidebar is now truly persistent — removed the auto-close on
+  session-pick / +New so only ≡ toggles it.
+
+**Learned**: client-side `router.push` (not `window.location`) keeps the
+`lib/store` singleton cache alive across page nav, so a fresh `/archive` read
+sees just-written clips WITHOUT a disk round-trip — the store's disk flush is
+debounced 400ms, so a full reload would race it; a deep-link param
+(⤓ → `/archive?add=1`) expresses cross-page intent without prop-drilling;
+reusing an overlay's markup inline needs a layout reset (`.grab-card`'s
+max-width + 10vh margin → a `.library-grab` modifier); a demo's *result* should
+be the clip its typed prompt would produce (video, not a stock still).
+
+### 2026-07-08 (in-studio About dialog — v0.1.10→v0.1.11)
+**Focus**: Stop the rail ⓘ from yanking you out to the marketing landing.
+- The rail ⓘ opened the full landing (`/`) mid-session — jarring + hard to
+  return. Replaced it with an in-studio `AboutModal` (`app/chat/about-modal.tsx`,
+  same `.rlg-modal` shell as help/update): wordmark, gradient tagline,
+  "Open source · MIT · vX" (→ releases), a Star CTA, and a "View the full
+  landing →" link — so home is reachable, but only on purpose.
+- Rail's About is now a button when an `onAbout` handler is passed (studio →
+  opens the modal), else the plain `<a href="/">` (archive/dashboard keep it);
+  shared the ⓘ SVG as an `AboutGlyph` helper.
+- The About Star CTA reuses the landing's gold band (`.ld-star` + `starHalo`
+  pulse + gold `.ld-star-icon`), so the free-tool "reward" reads the same
+  in-studio as on the home page.
+
+**Learned**: for a deep, focused workspace, "About/home" should be an in-context
+dialog (dismiss to stay put) with an *explicit* link out — an accidental
+full-page jump to marketing breaks flow; gate the disruptive nav behind intent.
+
+### 2026-07-08 (multi-input context blend + stable composer — v0.2.0)
+**Focus**: Let context stack instead of overwrite, and stop the composer jumping.
+- **Multi-input blend**: Character, Background, and a Library/dropped reference now
+  COEXIST on the next take (previously each new pick overwrote the last). The refine
+  step sees all of them; the video model still gets ONE primary image (character
+  face first). Works mid-conversation, not just take 1 — pick any block at any point
+  to steer the next take.
+- **Per-model context manifest** under the composer spells out what the selected
+  model does with each attached piece and flags what it drops (Act-Two ignores the
+  background + any text prompt) — so a capability gap is visible, not silent.
+- **Composer reworked into a stable frame**: input stays anchored, chips + manifest
+  form a scrollable summary beneath it, picker carousel opens as a dropdown popover
+  that closes on select (no more layout jump on add/remove). "Start a clip" / "How
+  to use" only on an empty session. Act-Two confirm now shows the REAL driving-clip
+  length + cost computed from it.
+- **GRAB downloads play everywhere**: Instagram/VP9 grabs that played in-browser but
+  were blank in QuickLook now download as H.264 (yt-dlp prefers H.264, VP9/AV1
+  transcoded, faststart). See [[zclip-deploy-versioning]].
+
+**Learned**: when several inputs can conflict, blend + a per-model manifest beats
+overwrite — surface what each model actually consumes (and drops) rather than
+guessing; a composer that reflows as you attach context feels broken, so anchor the
+input and let the summary scroll beneath it.
+
 ## Pending
+- [x] "How to use?" entry point in the empty session center (rail `?` stays)
+- [x] Session thread: max-height + internal scroll + always start at bottom (recent)
+- [x] Pickers: confirm real asset images render (they do); demo video now on the
+      workflow demo (owner asked to keep the studio render frame blank by default)
+- [x] Library intro: generated-takes / URL-grab / direct multimodal-upload sources
+- [ ] Direct upload INTO the Library (a real library item, not just a composer
+      drop) needs a server endpoint to persist the file + return a URL — offered,
+      not yet built; composer drag/drop is the current path
+- [ ] ⤓ vs ▦ now sit adjacent in the rail (both open /archive) — consider
+      collapsing into one entry point
 - [ ] Verify Runway Act-Two end-to-end (needs a Runway key; adapter built to spec)
 - [ ] Verify the /api/dress outfit compositing quality on real cards
 - [ ] Optional: LivePortrait adapter as a cheaper Act-Two alternative (user asked)

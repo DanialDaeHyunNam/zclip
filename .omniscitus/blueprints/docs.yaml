@@ -8,7 +8,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T13:57:15.404Z
     change_count: 2
-    purpose: ""
+    purpose: "Contributor deep-dive: mental model, repo map, request lifecycle, the two-function adapter contract, config switchboard, the cloud gate, i18n, security, dev/verify rules, and the Releasing process"
     change_log:
       - date: 2026-07-07T13:57:15.404Z
         action: edit
@@ -22,7 +22,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T08:09:02.882Z
     change_count: 1
-    purpose: ""
+    purpose: "Chronological build log (#1–26) with evidence for every decision and pivot"
     change_log:
       - date: 2026-07-07T08:09:02.882Z
         action: edit

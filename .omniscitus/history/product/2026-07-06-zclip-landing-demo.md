@@ -71,6 +71,32 @@ balance` fights meaningful line breaks, so use explicit `<br>` for punch lines.
 On positioning: a pretty-woman demo reads as product-accurate (UGC market skews
 female) when balanced by a mixed cast — don't swap to male, add balance.
 
+### 2026-07-08 (footer rebuild, version chips, install/usage guide)
+**Focus**: Landing chrome + guides tie into the deploy/versioning work.
+- Footer rebuilt Card News-style (brand / project / follow columns + a bottom bar:
+  © · v{VERSION} · "check latest" / social icons). Nav gained a `v{VERSION}` chip
+  → GitHub releases.
+- Install guide (`run-local-guide`) opens as a POPUP from the landing CTAs on
+  cloud, with a bilingual "What you can do" usage section + a `WorkflowDemo`
+  animation (a UI-click walkthrough, like the demo reel but of the flow).
+- Landing split into a server shell + `landing-client.tsx`; EN/한국어 toggle.
+
+**Learned**: the version chip + "check latest" belongs in the footer (where users
+look for meta); the studio surfaces the active update prompt — same data, two
+audiences. See [[zclip-deploy-versioning]].
+
+### 2026-07-08 (workflow demo lands on a real take — v0.1.7)
+**Focus**: The "What you can do" walkthrough shows real video, not a still.
+- Swapped the `WorkflowDemo` result frame from a static portrait
+  (`/starters/asian-f-1.jpg`) to the real `/demo/take-1.mp4` — the exact scene
+  the demo builds up (asian-f-1, bedroom, the quiet 'wait, what?' beat it types).
+  Muted/looping with a forced-play ref (React's muted-as-property misses the
+  autoplay policy); `.wd-clip img` → `img, video`.
+
+**Learned**: the demo's *result* should be the clip its typed prompt would
+actually produce — a still portrait where the flow promises a video reads as a
+stock placeholder and undercuts the "real output" pitch.
+
 ## Pending
 - [ ] Owner eyeball pass on all 37 baked card photos (re-bake singles as needed)
 - [ ] Optional: add a male-led demo take set to fully balance the reel

@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-07T05:47:18.548Z
+updated: 2026-07-08T06:51:33.640Z
 
 files:
   "scripts/bake-fashion.mjs":
@@ -11,5 +11,41 @@ files:
     purpose: "Bakes the 16 Fashion garment reference images (gemini-2.5-flash-image) into public/fashion/"
     change_log:
       - date: 2026-07-07T05:47:18.548Z
+        action: write
+        source: "claude:Danial Nam"
+  "scripts/bake-starters.mjs":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-06
+    last_modified: 2026-07-06T00:00:00.000Z
+    change_count: 1
+    purpose: "Bakes the built-in starter-block card images into public/starters/ via the Gemini image model (GEMINI_API_KEY); --force re-bakes all, ~$0.04/image"
+    change_log:
+      - date: 2026-07-06T00:00:00.000Z
+        action: write
+        source: "claude:Danial Nam"
+  "scripts/regen-demo-takes.mjs":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-06
+    last_modified: 2026-07-06T00:00:00.000Z
+    change_count: 1
+    purpose: "Regenerates landing-demo takes 2 & 3 with expression-hold prompt engineering on Veo Fast (~$0.80); needs the dev server up"
+    change_log:
+      - date: 2026-07-06T00:00:00.000Z
+        action: write
+        source: "claude:Danial Nam"
+  "scripts/bake-filmshots.ts":
+    status: deleted
+    source: "claude:Danial Nam"
+    created: 2026-07-08
+    last_modified: 2026-07-08T06:51:33.640Z
+    change_count: 2
+    purpose: "(deleted) One-off baker for film-shot reference stills"
+    change_log:
+      - date: 2026-07-08T06:51:33.640Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T06:43:02.245Z
         action: write
         source: "claude:Danial Nam"
