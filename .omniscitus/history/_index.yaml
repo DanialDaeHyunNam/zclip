@@ -4,14 +4,22 @@ units:
     domain: web
     status: open
     created: 2026-07-06
-    last_updated: 2026-07-07
-    session_count: 4
+    last_updated: 2026-07-09
+    session_count: 8
     title: "ZCLIP Chat Studio"
   - id: zclip-landing-demo
     file: product/2026-07-06-zclip-landing-demo.md
     domain: product
     status: open
     created: 2026-07-06
-    last_updated: 2026-07-07
-    session_count: 3
+    last_updated: 2026-07-08
+    session_count: 5
     title: "ZCLIP Landing & Demo Reel"
+  - id: zclip-deploy-versioning
+    file: web/2026-07-07-zclip-deploy-versioning.md
+    domain: web
+    status: open
+    created: 2026-07-07
+    last_updated: 2026-07-09
+    session_count: 4
+    title: "ZCLIP Deploy, Storage & Versioning"

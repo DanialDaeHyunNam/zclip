@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-07T13:52:29.650Z
+updated: 2026-07-08T07:06:22.394Z
 
 files:
   "lib/config.ts":
@@ -127,10 +127,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T08:29:48.756Z
-    change_count: 6
+    last_modified: 2026-07-08T07:06:22.394Z
+    change_count: 10
     purpose: "Built-in cast (CHARACTERS), SETTINGS, FASHION outfits, surprise-arc beat maps, composeStarter — the visible base prompts"
     change_log:
+      - date: 2026-07-08T07:06:22.394Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T07:06:02.426Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T06:32:10.226Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-08T06:31:58.048Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T08:29:48.756Z
         action: edit
         source: "claude:Danial Nam"
@@ -155,7 +167,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T07:55:43.930Z
     change_count: 1
-    purpose: ""
+    purpose: "isCloud() — the single cloud-vs-local switch (VERCEL==='1' or ZCLIP_CLOUD override); called server-side, result passed down as a prop"
     change_log:
       - date: 2026-07-07T07:55:43.930Z
         action: write
@@ -166,7 +178,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T07:56:09.807Z
     change_count: 1
-    purpose: ""
+    purpose: "EN/한국어 LangProvider/useLang/LangToggle for the PUBLIC pages only (landing + install guide); persists zclip.lang, mirrors <html lang>"
     change_log:
       - date: 2026-07-07T07:56:09.807Z
         action: write
@@ -177,7 +189,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T13:52:29.650Z
     change_count: 2
-    purpose: ""
+    purpose: "Canonical outbound URLs (repo, cut.donkeyuse, bun, gemini key)"
     change_log:
       - date: 2026-07-07T13:52:29.650Z
         action: edit
@@ -191,7 +203,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T13:09:13.434Z
     change_count: 1
-    purpose: ""
+    purpose: "Client persistence for hooklab.* — filesystem-backed (dev, via /api/store) with a localStorage mirror fallback; hydrate() then sync get/set; fixes the 5MB quota + per-port origin split"
     change_log:
       - date: 2026-07-07T13:09:13.434Z
         action: write
@@ -202,7 +214,7 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T13:44:07.739Z
     change_count: 1
-    purpose: ""
+    purpose: "VERSION, CANONICAL_URL (zclip.vercel.app), isNewerVersion, RELEASES_URL — the version-compare primitives"
     change_log:
       - date: 2026-07-07T13:44:07.739Z
         action: write
@@ -213,8 +225,19 @@ files:
     created: 2026-07-07
     last_modified: 2026-07-07T13:44:50.550Z
     change_count: 1
-    purpose: ""
+    purpose: "useHosted() (reads the data-hosted stamp) + useUpdateCheck() (local copies fetch CANONICAL_URL/api/version and compare)"
     change_log:
       - date: 2026-07-07T13:44:50.550Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/clip.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-08
+    last_modified: 2026-07-08T02:50:38.081Z
+    change_count: 1
+    purpose: "Shared Clip type + hooklab.* storage keys + fmtCost/cssAspect helpers, used by the studio, the /archive page, and ClipCardView"
+    change_log:
+      - date: 2026-07-08T02:50:38.081Z
         action: write
         source: "claude:Danial Nam"
