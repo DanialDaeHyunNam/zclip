@@ -45,8 +45,20 @@ export default function WorkflowDemo() {
       <div className="wd-frame">
         {landed ? (
           <div className="wd-clip">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/starters/asian-f-1.jpg" alt="" />
+            {/* the real first take from the landing reel — asian-f-1 in the
+                bedroom, the quiet 'wait, what?' beat this demo just typed */}
+            <video
+              src="/demo/take-1.mp4"
+              muted
+              loop
+              playsInline
+              ref={(el) => {
+                if (el) {
+                  el.muted = true;
+                  el.play().catch(() => {});
+                }
+              }}
+            />
             <span className="wd-clip-meta">
               <span className="wd-dot done" /> TAKE 1 · VEO · $0.40
             </span>

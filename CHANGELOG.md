@@ -5,6 +5,14 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.1.7 — 2026-07-08
+
+### Changed
+- **Workflow demo lands on a real clip** — the "What you can do" walkthrough
+  (in the help modal and install guide) now plays the actual first take from
+  the landing reel (`take-1.mp4` — asian-f-1 in the bedroom, the exact beat it
+  types) instead of a static portrait.
+
 ## 0.1.6 — 2026-07-08
 
 ### Changed

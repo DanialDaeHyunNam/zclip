@@ -4465,7 +4465,8 @@ button {
   inset: 0;
   animation: wdFade 0.5s ease;
 }
-.wd-clip img {
+.wd-clip img,
+.wd-clip video {
   width: 100%;
   height: 100%;
   object-fit: cover;
