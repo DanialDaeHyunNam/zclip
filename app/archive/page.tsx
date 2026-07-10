@@ -48,6 +48,12 @@ export default function ArchivePage() {
   const [pw, setPw] = useState("");
   const [addOpen, setAddOpen] = useState(false);
 
+  // Clear All — a real warning dialog (native confirm undersells what's lost)
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearBusy, setClearBusy] = useState(false);
+  const [clearErr, setClearErr] = useState<string | null>(null);
+  const [vaultBytes, setVaultBytes] = useState<number | null>(null);
+
   // GRAB — add a reference video by URL (dev-only; /api/grab is 403 on cloud)
   const [grabUrl, setGrabUrl] = useState("");
   const [grabStart, setGrabStart] = useState("");
@@ -112,9 +118,64 @@ export default function ArchivePage() {
   const removeClip = (jobId: string) =>
     persist(clips.filter((c) => c.jobId !== jobId));
 
-  const clearArchive = () => {
-    if (window.confirm("Clear the whole archive?")) persist([]);
+  const fmtBytes = (b: number) =>
+    b >= 1e9
+      ? `${(b / 1e9).toFixed(1)} GB`
+      : b >= 1e6
+        ? `${Math.round(b / 1e6)} MB`
+        : `${Math.max(1, Math.round(b / 1e3))} KB`;
+
+  /** Open the Clear All dialog and look up how much disk it would free
+   *  (saved takes + grabbed references). */
+  const openClear = () => {
+    setClearErr(null);
+    setVaultBytes(null);
+    setClearOpen(true);
+    if (hosted) return;
+    void Promise.all([
+      fetch("/api/clips?usage=1", { headers: pwHeaders() }).then((r) => r.json()),
+      fetch("/api/grab?usage=1", { headers: pwHeaders() }).then((r) => r.json()),
+    ])
+      .then(([c, g]) => setVaultBytes((c.bytes ?? 0) + (g.bytes ?? 0)))
+      .catch(() => setVaultBytes(null));
   };
+
+  /** Delete every saved video file (vault + grabs) AND the library entries.
+   *  Permanent — providers purge their copies within days, so nothing can be
+   *  re-downloaded afterwards. */
+  const clearAll = async () => {
+    if (clearBusy) return;
+    setClearBusy(true);
+    setClearErr(null);
+    try {
+      if (!hosted) {
+        const results = await Promise.all([
+          fetch("/api/clips", { method: "DELETE", headers: pwHeaders() }),
+          fetch("/api/grab", { method: "DELETE", headers: pwHeaders() }),
+        ]);
+        const failed = results.find((r) => !r.ok);
+        if (failed) {
+          const b = await failed.json().catch(() => ({}));
+          throw new Error(b.error ?? "Couldn't delete the saved files");
+        }
+      }
+      persist([]);
+      setClearOpen(false);
+    } catch (e) {
+      setClearErr(e instanceof Error ? e.message : "Clear failed");
+    } finally {
+      setClearBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!clearOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !clearBusy) setClearOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [clearOpen, clearBusy]);
 
   /** Hand a GRAB clip back to the studio composer as a reference. */
   const useClipAsRef = (clip: Clip) => {
@@ -250,7 +311,7 @@ export default function ArchivePage() {
               </button>
             )}
             {clips.length > 0 && (
-              <button className="link-btn danger" onClick={clearArchive}>
+              <button className="link-btn danger" onClick={openClear}>
                 Clear All
               </button>
             )}
@@ -378,6 +439,64 @@ export default function ArchivePage() {
           </div>
         ))}
       </div>
+
+      {/* Clear All — spells out exactly what is lost before anything deletes */}
+      {clearOpen && (
+        <div
+          className="rlg-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Clear all saved videos"
+          onClick={() => !clearBusy && setClearOpen(false)}
+        >
+          <div className="rlg-modal-card about-card" onClick={(e) => e.stopPropagation()}>
+            <div className="rlg-modal-head">
+              <span className="label">Clear all saved videos</span>
+              <button
+                type="button"
+                className="rlg-modal-close"
+                onClick={() => setClearOpen(false)}
+                aria-label="Close"
+                disabled={clearBusy}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="rlg-modal-body">
+              <p className="archive-note">
+                This permanently deletes <b>every video saved on this machine</b>{" "}
+                — all {clips.length} library {clips.length === 1 ? "entry" : "entries"}
+                {vaultBytes != null ? ` (~${fmtBytes(vaultBytes)} on disk)` : ""}:
+                generated takes and grabbed references alike.
+              </p>
+              <p className="archive-note">
+                Once deleted, past takes <b>cannot be played again</b> and{" "}
+                <b>cannot be used as references</b>{" "}for new takes — providers
+                purge their own copies within days, so there is nothing left to
+                re-download. The dashboard&apos;s spend history resets too.
+                Download anything you want to keep first.
+              </p>
+              {clearErr && <div className="error-box">{clearErr}</div>}
+              <div className="rlg-cta-row">
+                <button
+                  className="btn-ghost"
+                  onClick={() => setClearOpen(false)}
+                  disabled={clearBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn-ghost btn-danger"
+                  onClick={clearAll}
+                  disabled={clearBusy}
+                >
+                  {clearBusy ? "DELETING…" : "Delete all videos"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

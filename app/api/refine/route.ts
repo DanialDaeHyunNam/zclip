@@ -35,9 +35,9 @@ export async function POST(req: Request) {
     );
   }
 
-  let base: unknown, message: unknown, images: unknown, history: unknown, contexts: unknown, mode: unknown, targetSeconds: unknown;
+  let base: unknown, message: unknown, images: unknown, history: unknown, contexts: unknown, mode: unknown, targetSeconds: unknown, rules: unknown;
   try {
-    ({ base, message, images, history, contexts, mode, targetSeconds } = await req.json());
+    ({ base, message, images, history, contexts, mode, targetSeconds, rules } = await req.json());
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -106,10 +106,24 @@ HARD RULES:
 - REPLACE ONLY the performer's identity/appearance (use the BASE PROMPT's subject wording verbatim) and the location (use the BASE PROMPT's setting wording verbatim). Never describe the source person's face, hair, clothing, or room.
 - Output shape: one line of subject + setting from the base prompt, then a timestamped beat map "(0-1.5s) ..." covering all ${secs} seconds with no gaps, then the realism clauses.\n\n`
       : "";
+  // The reference-mix checkboxes — the user's explicit per-aspect choices
+  // about the attached reference. Placed AFTER the transfer block so they
+  // override its blanket copy-everything instructions where they conflict.
+  let rulesBlock = "";
+  if (Array.isArray(rules)) {
+    const lines = rules
+      .filter((r): r is string => typeof r === "string" && r.trim().length > 0)
+      .slice(0, 12)
+      .map((r) => `- ${r.slice(0, 300)}`);
+    if (lines.length) {
+      rulesBlock = `REFERENCE CARRY-OVER SETTINGS (the user's explicit checkbox choices for the attached reference — apply STRICTLY; where these conflict with anything above, THESE win):\n${lines.join("\n")}\n\n`;
+    }
+  }
+
   const user =
     typeof base === "string" && base.trim()
-      ? `${transferBlock}${ctxBlock}${historyBlock}BASE PROMPT (latest take — edit this one):\n${base}\n\nREQUESTED CHANGE:\n${message}`
-      : `${transferBlock}${ctxBlock}${historyBlock}Write a complete video prompt from this description:\n${message}`;
+      ? `${transferBlock}${rulesBlock}${ctxBlock}${historyBlock}BASE PROMPT (latest take — edit this one):\n${base}\n\nREQUESTED CHANGE:\n${message}`
+      : `${transferBlock}${rulesBlock}${ctxBlock}${historyBlock}Write a complete video prompt from this description:\n${message}`;
 
   // Gemini Flash is multimodal — pass attached reference frames inline so
   // the rewrite can describe what's actually in them. A video reference

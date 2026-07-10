@@ -267,6 +267,17 @@ export const MODELS: ModelEntry[] = [
   defaultModel("runway"),
   // ByteDance
   defaultModel("seedance"),
+  variant({
+    key: "seedance-2",
+    short: "Seedance 2.0",
+    provider: "seedance",
+    modelId: "dreamina-seedance-2-0-260128",
+    tagline: "Reads the whole reference video + audio; sound in output",
+    // ≈$4.3/M tokens with video input (ModelArk) — estimate until a metered run
+    price: { "720p": 0.1, "1080p": 0.22 },
+    quality: 3,
+    speed: 1,
+  }),
 ];
 
 /** Company chips, in the order they appear (companies with ≥1 model). */
@@ -300,6 +311,8 @@ export const KEY_ENV_VARS = [
   "XAI_API_KEY",
   "ARK_API_KEY",
   "RUNWAYML_API_SECRET",
+  // Vercel Blob RW token — hosts Seedance 2.0 reference videos (URL-only input)
+  "BLOB_READ_WRITE_TOKEN",
 ] as const;
 
 /** Whitelists — the API routes validate against these, never raw client input. */
@@ -307,7 +320,9 @@ export const ASPECT_RATIOS: AspectRatio[] = ["9:16", "16:9"];
 export const DURATION_MIN = 1;
 export const DURATION_MAX = 15;
 /** Preset choices shown in the UI (server still accepts 1–15). */
-export const DURATION_CHOICES = [4, 8, 12];
+/** All values must be Seedance-2.0-legal (4|5|6|8|10|12|15 — it rejects
+ *  in-between lengths); 15 is its single-shot ceiling. */
+export const DURATION_CHOICES = [4, 8, 12, 15];
 export const RESOLUTIONS: Resolution[] = ["720p", "1080p"];
 
 /** The slider is a REQUEST; providers only bill/support certain lengths.

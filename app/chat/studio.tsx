@@ -31,12 +31,23 @@ import {
   type Clip,
   fmtCost,
   cssAspect,
+  isLocalVideoUrl,
   GALLERY_KEY,
   SESSIONS_KEY,
   SESSION_ID_KEY,
   PW_KEY,
   PENDING_REF_KEY,
 } from "@/lib/clip";
+import { persistRemoteVideo } from "@/lib/persist-clip";
+import {
+  type RefMix,
+  DEFAULT_REF_MIX,
+  REF_MIX_KEY,
+  REF_MIX_FIELDS,
+  loadRefMix,
+  refMixRules,
+  refMixSummary,
+} from "@/lib/ref-mix";
 
 /* ── types & storage ─────────────────────────────── */
 
@@ -69,6 +80,10 @@ interface Turn {
   snapshot?: string;
   /** This take was generated from the previous take's snapshot. */
   usedContinuity?: boolean;
+  /** This take was sent with a manual/library reference attachment. The
+   *  attachment itself is NOT stored (too big), so a retry can't reproduce
+   *  it — retryTurn refuses instead of silently re-running without it. */
+  usedRef?: boolean;
   /** Labels of takes the user pinned as context for this one, e.g. "T2 T4". */
   ctxLabel?: string;
 }
@@ -90,8 +105,41 @@ interface StoredSession {
   id: string;
   title: string;
   updatedAt: number;
+  /** Sidebar order is creation time DESC, stable across opens/saves. Older
+   *  sessions predate this field — their id (`s${Date.now()}`) carries it. */
+  createdAt?: number;
+  /** The user renamed this session — auto-save must never overwrite the
+   *  title with the first message again. */
+  renamed?: boolean;
+  /** Pinned sessions float above the rest of the sidebar list. */
+  pinned?: boolean;
   turns: Turn[];
 }
+
+const sessionCreatedAt = (s: StoredSession): number =>
+  s.createdAt ?? Number(/^s(\d+)$/.exec(s.id)?.[1] ?? s.updatedAt);
+
+/** Pinned first, then creation time DESC — stable across opens/saves. */
+const sessionOrder = (a: StoredSession, b: StoredSession): number =>
+  Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+  sessionCreatedAt(b) - sessionCreatedAt(a);
+
+const PinGlyph = () => (
+  <svg
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M12 16v6" />
+    <path d="M9 4h6l-1 6 3.5 4h-11L10 10 9 4z" />
+  </svg>
+);
 
 const THREAD_KEY = "hooklab.thread";
 const ASSETS_KEY = "hooklab.customAssets";
@@ -142,9 +190,15 @@ function contextManifest(
   has: {
     char?: string;
     setting?: string;
+    fashion?: string;
     attachKind?: "image" | "video" | null;
     pins: number;
     text: boolean;
+    /** Reference-mix summary shown on the video row, e.g. "drops: on-screen text". */
+    mixNote?: string;
+    /** True when the selected model ingests the actual video (Seedance 2.0),
+     *  not just extracted frames. */
+    fullVideoRef?: boolean;
   },
 ): ManifestRow[] {
   const transfer = provider === "runway"; // Act-Two = performance transfer
@@ -153,7 +207,11 @@ function contextManifest(
     rows.push({
       icon: "✦",
       label: `Character · ${has.char}`,
-      role: transfer ? "face / identity — required" : "reference image (the face)",
+      role: transfer
+        ? "face / identity — required"
+        : has.fullVideoRef
+          ? "described in the prompt only — Seedance 2.0 can't mix a frame image with a video reference"
+          : "reference image (the face)",
     });
   if (has.setting)
     rows.push({
@@ -164,13 +222,26 @@ function contextManifest(
         : "woven into the prompt",
       ignored: transfer,
     });
+  if (has.fashion)
+    rows.push({
+      icon: "⑆",
+      label: `Fashion · ${has.fashion}`,
+      role: has.char
+        ? "composited onto the character before generation"
+        : "needs a Character — pick one or the outfit is ignored",
+      ignored: !has.char,
+    });
   if (has.attachKind === "video")
     rows.push({
       icon: "▤",
       label: "Reference video",
-      role: transfer
-        ? "driving performance — required"
-        : "motion cue for the prompt + a frame reference",
+      role:
+        (transfer
+          ? "driving performance — required"
+          : has.fullVideoRef
+            ? "read directly — motion + audio (uploaded for the job)"
+            : "motion cue for the prompt + a frame reference") +
+        (has.mixNote ? ` · ${has.mixNote}` : ""),
     });
   if (has.attachKind === "image")
     rows.push({
@@ -275,6 +346,14 @@ export default function Home() {
     videoMime?: string;
   } | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // Reference carry-over mix — which aspects of an attached reference video
+  // the next take copies vs. explicitly drops (each choice becomes a labeled
+  // hard rule for the refiner). Sticky: saved as the default for future
+  // references; the dialog auto-opens ONCE on the first-ever video reference
+  // ("take everything from this?").
+  const [refMix, setRefMix] = useState<RefMix>(DEFAULT_REF_MIX);
+  const [mixOpen, setMixOpen] = useState(false);
+  const mixAsked = useRef(false);
   // pasted video URL waiting to be fetched into the reference pipeline
   const [urlCandidate, setUrlCandidate] = useState<string | null>(null);
   const [urlFetching, setUrlFetching] = useState(false);
@@ -282,6 +361,10 @@ export default function Home() {
   /** Carry each take's snapshot into the next take automatically. */
   const [continuity, setContinuity] = useState(true);
   const snapCapturing = useRef(new Set<string>());
+  const vaultTried = useRef(new Set<string>());
+  /** `${turnId}:${videoUrl}` of a preview <video> that failed to load — keyed
+   *  on the URL too, so a vault recovery swapping in a local URL retries. */
+  const [deadPreview, setDeadPreview] = useState<string | null>(null);
   /** Pre-spend confirm: a paid action waits here until the user OKs it.
    *  "Don't ask again" is SESSION-scoped on purpose — a reload/new session
    *  re-arms it, since it's real money. */
@@ -315,6 +398,11 @@ export default function Home() {
   const [keySaving, setKeySaving] = useState(false);
   const [keyMsg, setKeyMsg] = useState("");
   const [keyPanelHidden, setKeyPanelHidden] = useState(false);
+  // Vercel Blob token onboarding (Seedance 2.0 video references only)
+  const [blobInput, setBlobInput] = useState("");
+  const [blobSaving, setBlobSaving] = useState(false);
+  const [blobMsg, setBlobMsg] = useState("");
+  const [blobPanelHidden, setBlobPanelHidden] = useState(false);
   /** Turn ids pinned as context for the NEXT take. */
   const [ctxIds, setCtxIds] = useState<string[]>([]);
 
@@ -353,6 +441,29 @@ export default function Home() {
 
   const patchTurn = useCallback((id: string, patch: Partial<Turn>) => {
     setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }, []);
+
+  /** Persist a mix change immediately — it doubles as the sticky default. */
+  const saveRefMix = useCallback((mix: RefMix) => {
+    setRefMix(mix);
+    store.set(REF_MIX_KEY, JSON.stringify(mix));
+  }, []);
+
+  /** Desktop notification when a take lands while this tab is hidden —
+   *  pointless while the user is already looking at it. */
+  const notifyDone = useCallback((title: string, body: string) => {
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission !== "granted") return;
+    if (document.visibilityState === "visible") return;
+    try {
+      const n = new Notification(title, { body });
+      n.onclick = () => {
+        window.focus();
+        n.close();
+      };
+    } catch {
+      /* some browsers restrict constructor use — silently skip */
+    }
   }, []);
 
   const refreshKeys = useCallback(
@@ -409,6 +520,9 @@ export default function Home() {
           fashion: c.fashion ?? [],
         });
       }
+      setRefMix(loadRefMix(store.get(REF_MIX_KEY)));
+      // A saved mix means the "take everything?" first-ask already happened.
+      mixAsked.current = Boolean(store.get(REF_MIX_KEY));
       const sid = store.get(SESSION_ID_KEY) ?? `s${Date.now()}`;
       store.set(SESSION_ID_KEY, sid);
       setSessionId(sid);
@@ -471,17 +585,29 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated || !sessionId) return;
     setSessions((prev) => {
+      const existing = prev.find((s) => s.id === sessionId);
       let next = prev.filter((s) => s.id !== sessionId);
       if (turns.length) {
         next = [
           {
             id: sessionId,
-            title: turns[0].userText.slice(0, 60),
+            title: existing?.renamed
+              ? existing.title
+              : turns[0].userText.slice(0, 60),
+            renamed: existing?.renamed,
+            pinned: existing?.pinned,
             updatedAt: Date.now(),
+            createdAt: existing
+              ? sessionCreatedAt(existing)
+              : Number(/^s(\d+)$/.exec(sessionId)?.[1]) || Date.now(),
             turns: compactTurns(turns),
           },
           ...next,
         ].slice(0, MAX_SESSIONS);
+      } else if (existing) {
+        // Keep the empty entry (+ New's "New session" placeholder) listed —
+        // dropping it made + New look like nothing happened.
+        next = [existing, ...next];
       }
       store.set(SESSIONS_KEY, JSON.stringify(next));
       return next;
@@ -563,9 +689,11 @@ export default function Home() {
       if (message) setError(message);
     };
 
+    const modelLabel = pollTurn.modelLabel ?? provider;
     const poll = async () => {
       if (Date.now() - createdAt > GIVE_UP_MS) {
         finish({ status: "error", error: "Timed out after 12 minutes" });
+        notifyDone("ZCLIP — take failed", `${modelLabel} · timed out after 12 minutes`);
         return;
       }
       try {
@@ -582,8 +710,13 @@ export default function Home() {
         pollFails.current = 0;
         if (body.state === "done") {
           finish({ status: "done", videoUrl: body.videoUrl });
+          notifyDone("ZCLIP — take is ready", `${modelLabel} · click to view`);
         } else if (body.state === "error") {
           finish({ status: "error", error: body.error }, body.error);
+          notifyDone(
+            "ZCLIP — take failed",
+            `${modelLabel} · ${String(body.error ?? "generation failed").slice(0, 120)}`,
+          );
         }
       } catch {
         if (++pollFails.current >= 5) {
@@ -598,7 +731,7 @@ export default function Home() {
     poll();
     const iv = setInterval(poll, POLL_MS);
     return () => clearInterval(iv);
-  }, [pollTurn?.jobId, ready, pwHeaders, patchTurn]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pollTurn?.jobId, ready, pwHeaders, patchTurn, notifyDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* archive every finished take (survives rewinds) */
   useEffect(() => {
@@ -629,6 +762,53 @@ export default function Home() {
       );
     }
   }, [turns]);
+
+  /* vault every finished take's video into .zclip-data/clips — provider
+     links are signed and expire within a day or two, so a take not saved
+     locally is eventually a dead <video>. Clips whose stored link already
+     died get one recovery attempt: re-poll the provider by jobId for a
+     fresh signed URL, then vault that. Unrecoverable clips keep their dead
+     URL and the preview shows a "source expired" fault. */
+  useEffect(() => {
+    if (!hydrated || !ready || hosted) return;
+    const candidates = new Map<string, { provider: string; url: string }>();
+    for (const c of clips) {
+      if (c.provider === "grab" || !c.videoUrl || isLocalVideoUrl(c.videoUrl)) continue;
+      candidates.set(c.jobId, { provider: c.provider, url: c.videoUrl });
+    }
+    for (const t of turns) {
+      if (t.status !== "done" || !t.jobId || !t.videoUrl || isLocalVideoUrl(t.videoUrl)) continue;
+      candidates.set(t.jobId, { provider: t.provider, url: t.videoUrl });
+    }
+    for (const [jobId, { provider, url }] of candidates) {
+      if (vaultTried.current.has(jobId)) continue;
+      vaultTried.current.add(jobId);
+      void persistRemoteVideo(
+        jobId,
+        provider,
+        url,
+        pwHeaders({ "content-type": "application/json" }),
+      ).then((local) => {
+        if (!local) return;
+        setTurns((ts) => ts.map((t) => (t.jobId === jobId ? { ...t, videoUrl: local } : t)));
+        setClips((cs) =>
+          cs.map((c) =>
+            c.jobId === jobId
+              ? { ...c, videoUrl: local, remoteUrl: c.remoteUrl ?? c.videoUrl }
+              : c,
+          ),
+        );
+      });
+    }
+  }, [turns, clips, hydrated, ready, hosted, pwHeaders]);
+
+  /* first-ever video reference → ask once what to carry over from it */
+  useEffect(() => {
+    if (attach?.kind === "video" && !mixAsked.current) {
+      mixAsked.current = true;
+      setMixOpen(true);
+    }
+  }, [attach?.kind]);
 
   /* keep the thread scrolled to the latest turn as takes land */
   useEffect(() => {
@@ -1016,12 +1196,21 @@ export default function Home() {
   /** Gate any money-spending action behind the pre-spend confirm (unless the
    *  user opted out with "don't ask again"). */
   const guardRun = (run: () => void) => {
+    // First generation request = the user-gesture moment browsers accept a
+    // Notification permission prompt (renders take 60–180s; people tab away).
+    if (
+      typeof Notification !== "undefined" &&
+      Notification.permission === "default"
+    ) {
+      void Notification.requestPermission();
+    }
     if (noAskGen) run();
     else {
       setNoAskChecked(false);
       setPendingRun({ run });
     }
   };
+
   const confirmRun = () => {
     const p = pendingRun;
     setPendingRun(null);
@@ -1181,8 +1370,14 @@ export default function Home() {
     // every one of them; the video model gets a single primary image chosen
     // per its own rules (character face wins — see the manifest under the
     // composer). Cards stay live at take 1 (base compose) AND mid-thread.
+    // Seedance 2.0 hard-rejects image inputs that look like real people
+    // ("input image may contain real person", verified live 2026-07-10) —
+    // and continuity snapshots are exactly that, so they never go to it.
+    // The refiner (Gemini) still sees them via refImages; only the video
+    // model's primary image is affected.
     const lastSnap =
-      !manual && !selChar && !selSetting && !ctxIds.length && continuity
+      !manual && !selChar && !selSetting && !ctxIds.length && continuity &&
+      model.key !== "seedance-2"
         ? [...turns].reverse().find((t) => t.snapshot)?.snapshot
         : undefined;
     const [charImgRaw, settingImg] =
@@ -1278,6 +1473,7 @@ export default function Home() {
       usedContinuity: Boolean(
         lastSnap && !manual && !assetImages.length && !ctxImages.length,
       ),
+      usedRef: Boolean(manual),
       ctxLabel: ctxTurns.length
         ? ctxTurns.map((c) => `T${c.take}`).join(" ")
         : undefined,
@@ -1308,6 +1504,8 @@ export default function Home() {
             targetSeconds: transfer
               ? effectiveSeconds(providerId, duration, resolution)
               : undefined,
+            // The reference-mix checkboxes, as labeled hard rules.
+            rules: manual?.kind === "video" ? refMixRules(refMix) : undefined,
             contexts: ctxTurns.map((c) => ({
               take: c.take,
               prompt: c.turn.prompt!,
@@ -1347,6 +1545,17 @@ export default function Home() {
           durationSeconds: duration,
           resolution,
           image: primaryImage,
+          // Seedance 2.0 reads the WHOLE reference clip (motion + audio) —
+          // send the actual video, not just the extracted frames.
+          drivingVideo:
+            model.key === "seedance-2" &&
+            manual?.kind === "video" &&
+            manual.videoBase64
+              ? {
+                  base64: manual.videoBase64,
+                  mimeType: manual.videoMime ?? "video/mp4",
+                }
+              : undefined,
         }),
       });
       const body = await res.json();
@@ -1401,6 +1610,9 @@ export default function Home() {
   /** Current thread is already auto-saved — just move to a fresh id. */
   const newSession = () => {
     if (busyTurn) return;
+    // Already on a fresh, empty session — a second + New would only stack
+    // empty "New session" entries in the sidebar.
+    if (!turns.length) return;
     const nid = `s${Date.now()}`;
     store.set(SESSION_ID_KEY, nid);
     setSessionId(nid);
@@ -1412,6 +1624,24 @@ export default function Home() {
     setFashionId(null);
     setNoAskGen(false); // re-arm the pre-spend confirm each new session
     setError(null);
+    // Materialize the session in the sidebar immediately — a + New that only
+    // swaps the main view reads as "nothing happened". The first message
+    // replaces this placeholder title via the auto-save effect.
+    setSessions((prev) => {
+      const next = [
+        {
+          id: nid,
+          title: "New session",
+          updatedAt: Date.now(),
+          createdAt: Date.now(),
+          turns: [],
+        },
+        // …and sweep any stale never-sent placeholders while we're at it.
+        ...prev.filter((s) => s.id !== nid && s.turns.length > 0),
+      ].slice(0, MAX_SESSIONS);
+      store.set(SESSIONS_KEY, JSON.stringify(next));
+      return next;
+    });
   };
 
   /* Rail on other pages navigates here with a hint of what to open, and the
@@ -1438,6 +1668,56 @@ export default function Home() {
     }
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Inline session rename (sidebar ⋯ menu / double-click on the title).
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  // The one open ⋯ menu (Rename / Delete) — outside click / Escape closes.
+  const [menuId, setMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!menuId) return;
+    const close = () => setMenuId(null);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuId]);
+
+  const togglePin = (id: string) => {
+    setSessions((prev) => {
+      const next = prev.map((s) =>
+        s.id === id ? { ...s, pinned: !s.pinned } : s,
+      );
+      store.set(SESSIONS_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const startRename = (s: StoredSession) => {
+    setRenamingId(s.id);
+    setRenameDraft(s.title);
+  };
+
+  const commitRename = () => {
+    const id = renamingId;
+    setRenamingId(null);
+    if (!id) return;
+    const title = renameDraft.trim().slice(0, 60);
+    if (!title) return;
+    setSessions((prev) => {
+      const next = prev.map((s) =>
+        s.id === id ? { ...s, title, renamed: true } : s,
+      );
+      store.set(SESSIONS_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const openSession = (id: string) => {
     if (!id || id === sessionId || busyTurn) return;
     const found = sessions.find((s) => s.id === id);
@@ -1448,6 +1728,16 @@ export default function Home() {
     setSelectedId(null);
     setCtxIds([]);
     setError(null);
+    // Walking away from a session where nothing was ever SENT (no turns —
+    // a turn exists once a prompt is sent, even if it errored) drops its
+    // "New session" placeholder: an untouched session isn't worth keeping.
+    setSessions((prev) => {
+      const next = prev.filter((s) => s.turns.length > 0 || s.id === id);
+      if (next.length !== prev.length) {
+        store.set(SESSIONS_KEY, JSON.stringify(next));
+      }
+      return next;
+    });
   };
 
   const deleteSession = (id: string) => {
@@ -1475,6 +1765,15 @@ export default function Home() {
     const idx = turns.findIndex((t) => t.id === id);
     const turn = turns[idx];
     if (!turn || turn.status !== "error") return;
+    // References aren't stored after sending, so a retry could only re-run
+    // WITHOUT them — silently billing for a take the user didn't ask for.
+    // Refuse loudly instead (visible-errors principle).
+    if (turn.usedRef) {
+      setError(
+        `Take ${idx + 1} was sent with an attached reference, which isn't kept after sending — a retry would re-run (and bill) without it. Re-attach the reference (Library → "use as reference") and send the message again instead.`,
+      );
+      return;
+    }
     setError(null);
     setSelectedId(id);
     patchTurn(id, {
@@ -1562,6 +1861,37 @@ export default function Home() {
       setKeyMsg("Network error — could not save the key.");
     } finally {
       setKeySaving(false);
+    }
+  };
+
+  /** Same flow as saveKey, for the Vercel Blob token — Seedance 2.0's video
+   *  references are URL-only, so the clip is parked on the USER's own Blob
+   *  store for the job (BYOK philosophy: their store, their token). */
+  const saveBlobToken = async () => {
+    if (!blobInput.trim() || blobSaving) return;
+    setBlobSaving(true);
+    setBlobMsg("");
+    try {
+      const res = await fetch("/api/keys", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          envVar: "BLOB_READ_WRITE_TOKEN",
+          value: blobInput.trim(),
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setBlobMsg(body.error ?? "Could not save the token");
+      } else {
+        setBlobInput("");
+        setBlobMsg("Saved to .env.local — video references are ready.");
+        await refreshKeys();
+      }
+    } catch {
+      setBlobMsg("Network error — could not save the token.");
+    } finally {
+      setBlobSaving(false);
     }
   };
 
@@ -1680,9 +2010,12 @@ export default function Home() {
   const manifest = contextManifest(providerId, {
     char: selChar?.label,
     setting: selSetting?.label,
+    fashion: selFashion?.label,
     attachKind: attach?.kind ?? null,
     pins: ctxIds.length,
     text: Boolean(draft.trim()),
+    mixNote: attach?.kind === "video" ? refMixSummary(refMix) : undefined,
+    fullVideoRef: model.key === "seedance-2" && Boolean(attach?.videoBase64),
   });
 
   /* ── render ────────────────────────────────────── */
@@ -1830,15 +2163,44 @@ export default function Home() {
           {sessions.length === 0 && (
             <p className="hint">Past sessions appear here automatically.</p>
           )}
-          {sessions.map((s) => (
+          {[...sessions].sort(sessionOrder).map((s) => (
             <div
               key={s.id}
               className={`side-item ${s.id === sessionId ? "active" : ""}`}
-              onClick={() => openSession(s.id)}
+              onClick={() => {
+                if (renamingId !== s.id) openSession(s.id);
+              }}
             >
-              <div className="side-title">{s.title}</div>
+              {renamingId === s.id ? (
+                <input
+                  className="side-rename"
+                  value={renameDraft}
+                  autoFocus
+                  onChange={(e) => setRenameDraft(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    // isComposing: Enter is confirming an IME composition
+                    // (Korean names!), not submitting.
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing)
+                      commitRename();
+                    if (e.key === "Escape") setRenamingId(null);
+                  }}
+                  onBlur={commitRename}
+                  aria-label="Session name"
+                />
+              ) : (
+                <div
+                  className="side-title"
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    startRename(s);
+                  }}
+                >
+                  {s.title}
+                </div>
+              )}
               <div className="side-sub">
-                {new Date(s.updatedAt).toLocaleString([], {
+                {new Date(sessionCreatedAt(s)).toLocaleString([], {
                   month: "numeric",
                   day: "numeric",
                   hour: "2-digit",
@@ -1847,16 +2209,49 @@ export default function Home() {
                 · {s.turns.length} takes
               </div>
               <button
-                className="side-del"
+                className={`side-del side-pin ${s.pinned ? "on" : ""}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  deleteSession(s.id);
+                  togglePin(s.id);
                 }}
-                title="Delete session"
-                aria-label={`Delete session ${s.title}`}
+                title={s.pinned ? "Unpin" : "Pin to top"}
+                aria-label={`${s.pinned ? "Unpin" : "Pin"} session ${s.title}`}
               >
-                ✕
+                <PinGlyph />
               </button>
+              <button
+                className="side-del side-more"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuId((m) => (m === s.id ? null : s.id));
+                }}
+                title="More"
+                aria-label={`Session options for ${s.title}`}
+              >
+                ⋯
+              </button>
+              {menuId === s.id && (
+                <div className="side-menu" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    className="side-menu-item"
+                    onClick={() => {
+                      setMenuId(null);
+                      startRename(s);
+                    }}
+                  >
+                    ✎ Rename
+                  </button>
+                  <button
+                    className="side-menu-item danger"
+                    onClick={() => {
+                      setMenuId(null);
+                      deleteSession(s.id);
+                    }}
+                  >
+                    ✕ Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -2473,7 +2868,8 @@ export default function Home() {
               ctxIds.length > 0 ||
               urlCandidate ||
               selChar ||
-              selSetting) && (
+              selSetting ||
+              selFashion) && (
               <div className="chips-row">
                 {urlCandidate && (
                   <span className="sel-chip fade">
@@ -2555,6 +2951,27 @@ export default function Home() {
                     </button>
                   </span>
                 )}
+                {selFashion && (
+                  <span className="sel-chip fade">
+                    <img
+                      src={
+                        "image" in selFashion && selFashion.image
+                          ? selFashion.image
+                          : `/fashion/${selFashion.id}.jpg`
+                      }
+                      alt=""
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                    />
+                    ⑆ {selFashion.label}
+                    <button
+                      className="link-btn danger"
+                      onClick={() => setFashionId(null)}
+                      aria-label="Remove fashion"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
                 {attach && (
                   <span className="sel-chip fade">
                     <img src={attach.thumb} alt="attached reference" />
@@ -2563,6 +2980,30 @@ export default function Home() {
                         ? `Video · performance source (face from card)`
                         : `Video · ${attach.frames.length} frames`
                       : "Image reference"}
+                    {attach.kind === "video" && (
+                      <button
+                        className="link-btn chip-mix"
+                        onClick={() => setMixOpen(true)}
+                        title={`Reference mix — ${refMixSummary(refMix)}`}
+                        aria-label="Reference carry-over settings"
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          aria-hidden
+                        >
+                          <line x1="8" y1="3.5" x2="8" y2="20.5" />
+                          <line x1="16" y1="3.5" x2="16" y2="20.5" />
+                          <line x1="4.5" y1="9" x2="11.5" y2="9" />
+                          <line x1="12.5" y1="15" x2="19.5" y2="15" />
+                        </svg>
+                      </button>
+                    )}
                     <button
                       className="link-btn danger"
                       onClick={() => setAttach(null)}
@@ -2694,10 +3135,27 @@ export default function Home() {
                   <br />
                   {previewTurn.jobId?.split("/").pop() ?? ""}
                 </span>
+                <span className="timer-note">
+                  {typeof Notification !== "undefined" &&
+                  Notification.permission === "granted"
+                    ? "Switching tabs is fine — you'll get a notification when it lands. Just don't close this tab (it tracks the render)."
+                    : "Keep this tab open — it tracks the render."}
+                </span>
               </>
+            ) : previewTurn?.videoUrl &&
+              deadPreview === `${previewTurn.id}:${previewTurn.videoUrl}` ? (
+              <div className="frame-fault fade">
+                <span className="label">Video unavailable</span>
+                <p>
+                  This take&apos;s video is gone — either the provider&apos;s
+                  signed link expired before it was saved locally, or saved
+                  videos were cleared from this machine. New takes are saved
+                  into .zclip-data automatically.
+                </p>
+              </div>
             ) : previewTurn?.videoUrl ? (
               <video
-                key={previewTurn.id}
+                key={`${previewTurn.id}:${previewTurn.videoUrl}`}
                 className="fade"
                 src={withPw(previewTurn.videoUrl)}
                 autoPlay
@@ -2705,6 +3163,9 @@ export default function Home() {
                 loop
                 playsInline
                 controls
+                onError={() =>
+                  setDeadPreview(`${previewTurn.id}:${previewTurn.videoUrl}`)
+                }
               />
             ) : previewTurn?.status === "error" ? (
               <div className="frame-fault fade">
@@ -2728,7 +3189,9 @@ export default function Home() {
             )}
           </div>
 
-          {previewTurn?.status === "done" && previewTurn.videoUrl && (
+          {previewTurn?.status === "done" &&
+            previewTurn.videoUrl &&
+            deadPreview !== `${previewTurn.id}:${previewTurn.videoUrl}` && (
             <div className="result-actions fade">
               <button
                 className="btn-ghost"
@@ -2808,11 +3271,17 @@ export default function Home() {
               <div className="select-wrap bare">
                 <select
                   aria-label="Continuity"
-                  title="Carry a frame from the last take into the next one"
+                  title={
+                    model.key === "seedance-2"
+                      ? "Continuity: normally auto-attaches a frame from the last take so the next one continues the scene — but Seedance 2.0 rejects real-person image inputs, so it's skipped for this model. For continuity on 2.0, attach the last take from the Library as a video reference instead."
+                      : "Continuity: after a take finishes, a mid-video frame is captured and auto-attached to the next take as its image reference, so the scene and person carry over. A manual attachment always wins over it."
+                  }
                   value={continuity ? "on" : "off"}
                   onChange={(e) => setContinuity(e.target.value === "on")}
                 >
-                  <option value="on">CONT ON</option>
+                  <option value="on">
+                    {model.key === "seedance-2" ? "CONT N/A" : "CONT ON"}
+                  </option>
                   <option value="off">CONT OFF</option>
                 </select>
               </div>
@@ -2872,6 +3341,77 @@ export default function Home() {
               </div>
             )}
             {!keyMissing && keyMsg && <p className="key-msg fade">{keyMsg}</p>}
+
+            {/* Seedance 2.0 + video reference needs a public URL host — teach
+                the one extra credential inline, same UX as provider keys. */}
+            {model.key === "seedance-2" &&
+              attach?.kind === "video" &&
+              Boolean(attach.videoBase64) &&
+              keysLoaded &&
+              !keys.BLOB_READ_WRITE_TOKEN &&
+              !blobPanelHidden && (
+                <div className="stub-note key-popover fade">
+                  <button
+                    className="side-del key-popover-close"
+                    onClick={() => setBlobPanelHidden(true)}
+                    aria-label="Dismiss"
+                  >
+                    ✕
+                  </button>
+                  <span className="label">
+                    Seedance 2.0 · one more thing for video references
+                  </span>
+                  <p className="key-hint">
+                    ByteDance fetches your reference video by URL — it can&apos;t
+                    reach this machine. ZCLIP parks the clip on YOUR free Vercel
+                    Blob store just for the job, then deletes it.
+                  </p>
+                  {keysWritable ? (
+                    <>
+                      <div className="key-row">
+                        <input
+                          type="password"
+                          value={blobInput}
+                          onChange={(e) => setBlobInput(e.target.value)}
+                          placeholder="Paste BLOB_READ_WRITE_TOKEN"
+                          aria-label="BLOB_READ_WRITE_TOKEN"
+                          onKeyDown={(e) => e.key === "Enter" && saveBlobToken()}
+                        />
+                        <button
+                          className="btn-ghost"
+                          onClick={saveBlobToken}
+                          disabled={blobSaving || !blobInput.trim()}
+                        >
+                          {blobSaving ? "Saving…" : "Save"}
+                        </button>
+                      </div>
+                      <p className="key-hint">
+                        Free Vercel account → Storage → Create Blob store →
+                        copy the token ·{" "}
+                        <a
+                          href="https://vercel.com/docs/vercel-blob"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Guide ↗
+                        </a>
+                      </p>
+                    </>
+                  ) : (
+                    <p className="key-hint">
+                      Set <code>BLOB_READ_WRITE_TOKEN</code> in your environment ·{" "}
+                      <a
+                        href="https://vercel.com/docs/vercel-blob"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Guide ↗
+                      </a>
+                    </p>
+                  )}
+                  {blobMsg && <p className="key-msg">{blobMsg}</p>}
+                </div>
+              )}
           </div>
         </section>
       </main>
@@ -2913,6 +3453,58 @@ export default function Home() {
       )}
       {showHelp && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+      {mixOpen && (
+        <div className="confirm-backdrop" onClick={() => setMixOpen(false)}>
+          <div
+            className="confirm-card mix-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="label">Reference mix — what carries over?</span>
+            <p className="mix-lead">
+              The next take copies the checked parts of the attached reference
+              and is explicitly told to drop the rest. Your choices are saved
+              as the default for future references — reopen anytime from the
+              chip&apos;s mixer icon.
+            </p>
+            {REF_MIX_FIELDS.map((f) => (
+              <label key={f.key} className="confirm-check mix-opt">
+                <input
+                  type="checkbox"
+                  checked={refMix[f.key]}
+                  onChange={(e) =>
+                    saveRefMix({ ...refMix, [f.key]: e.target.checked })
+                  }
+                />
+                <span>
+                  {f.label}
+                  <em>{f.desc}</em>
+                </span>
+              </label>
+            ))}
+            <div className="confirm-actions">
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  saveRefMix({
+                    motion: true,
+                    camera: true,
+                    background: true,
+                    look: true,
+                    text: true,
+                    audio: true,
+                  });
+                  setMixOpen(false);
+                }}
+              >
+                Take everything
+              </button>
+              <button className="btn-primary" onClick={() => setMixOpen(false)}>
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

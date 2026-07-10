@@ -5,6 +5,57 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.3.0 — 2026-07-10
+
+### Added
+- **Clip vault — takes now survive their providers.** Every finished take's
+  video is saved into `.zclip-data/clips/` automatically (providers sign
+  their download links and purge files within a day or two — anything not
+  saved locally eventually becomes a dead player). Older takes whose links
+  already died get one recovery attempt: the provider is re-polled by job id
+  for a fresh signed URL. Unrecoverable takes show a clear "Video
+  unavailable" notice instead of a blank frame.
+- **Library "Clear All" now really clears.** It deletes every saved video
+  file (generated takes and GRAB references) after a warning dialog that
+  shows how much disk it frees and spells out what's lost: deleted takes
+  can't be played again or used as references, and the spend history resets.
+- **Reference Mix.** A video-reference chip now carries a mixer button —
+  checkboxes decide what the next take copies from the reference (motion &
+  timing, camera framing, background, wardrobe, on-screen text, speech).
+  Unchecked aspects are explicitly removed, not just omitted — burned-in
+  subtitles finally stay out of the output. Asks once on the first-ever
+  video reference; choices persist as your default.
+- **Seedance 2.0.** Reads the WHOLE reference clip — motion, pacing and
+  audio — and generates sound in its output. Video inputs are URL-only, so
+  the clip is parked on your own Vercel Blob store just for the job and
+  deleted after (in-UI onboarding for the `BLOB_READ_WRITE_TOKEN`). New 15s
+  duration preset to fit full scripts.
+- **Desktop notifications.** The first Generate click asks for permission;
+  after that, a take landing (or failing) while the tab is hidden fires a
+  notification. The render frame notes that switching tabs is fine but the
+  tab must stay open.
+- **Session management.** + New materializes a "New session" entry
+  immediately (never-used sessions vanish when you switch away); rename via
+  double-click or the row's ⋯ menu; pin sessions to the top; the list keeps
+  a stable newest-first order by creation time.
+- **Fashion chip.** Picking an outfit now shows a removable chip in the
+  composer (like Character/Background) and a manifest row explaining it's
+  composited onto the character.
+
+### Changed
+- Continuity (CONT) is skipped on Seedance 2.0 — it hard-rejects image
+  inputs that look like real people, which a continuity snapshot always is.
+  The control reads CONT N/A there, with guidance to attach the previous
+  take as a video reference instead.
+- Retrying a take that was sent with an attached reference now refuses with
+  an explanation (references aren't stored after sending; the retry would
+  silently bill for a take without it).
+
+### Fixed
+- Seedance no longer sends a first-frame image alongside a reference video
+  (the API rejects mixing them: "first/last frame content cannot be mixed
+  with reference media content").
+
 ## 0.2.1 — 2026-07-09
 
 ### Changed

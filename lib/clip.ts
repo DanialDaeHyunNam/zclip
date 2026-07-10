@@ -20,8 +20,17 @@ export interface Clip {
   durationSeconds: number;
   resolution: Resolution;
   videoUrl?: string;
+  /** The original provider URL, kept once videoUrl is swapped to the local
+   *  clip-vault copy (provenance; the local file is what actually plays). */
+  remoteUrl?: string;
   costUsd?: number;
 }
+
+/** Local, non-expiring video sources: the clip vault and GRAB files. Anything
+ *  else — absolute provider URLs and /api/video proxies of them — dies when
+ *  the provider's signed link expires (typically within a day or two). */
+export const isLocalVideoUrl = (url?: string) =>
+  Boolean(url && (url.startsWith("/api/clips") || url.startsWith("/api/grab")));
 
 /** Storage keys — the `hooklab.*` prefix predates the ZCLIP rename and is kept
  *  so existing browsers don't lose their data. */

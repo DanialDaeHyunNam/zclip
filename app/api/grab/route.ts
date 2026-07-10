@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
 import { createReadStream } from "node:fs";
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { checkPassword, unauthorized } from "@/lib/auth";
+import { dirUsage } from "@/lib/dir-usage";
 
 /**
  * GRAB — local-only reference-video fetcher. Three source kinds:
@@ -327,12 +328,26 @@ async function resolveArticleTweetId(articleUrl: string): Promise<string> {
   return m[1];
 }
 
+/** Delete every grabbed reference file — the Library's "Clear All" covers
+ *  GRABs too (they are the largest files on disk). */
+export async function DELETE(req: Request) {
+  if (!checkPassword(req)) return unauthorized();
+  const gate = devOnly();
+  if (gate) return gate;
+  const usage = await dirUsage(GRABS_DIR);
+  await rm(GRABS_DIR, { recursive: true, force: true });
+  return Response.json({ removed: usage.files, bytes: usage.bytes });
+}
+
 export async function GET(req: Request) {
   if (!checkPassword(req)) return unauthorized();
   const gate = devOnly();
   if (gate) return gate;
 
   const params = new URL(req.url).searchParams;
+  if (params.get("usage") === "1") {
+    return Response.json(await dirUsage(GRABS_DIR));
+  }
   const f = params.get("f") ?? "";
   if (!FILE_NAME.test(f)) {
     return Response.json({ error: "Bad file name" }, { status: 400 });
