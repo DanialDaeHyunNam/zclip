@@ -190,10 +190,15 @@ turns SPEC on and interviews the interrupted draft). Decline
 the permanent re-entry: key-less click reopens the modal, always.
 
 - Design + UX + versioning contract: `docs/VIDEO-PROMPT-SPEC.md`
-- Data mirror (SPEC_VERSION, sections/gates/self-checks/MODEL_PROFILES):
-  `lib/video-prompt-spec.ts` — SSOT for rules is the mono repo skill
-  `mono/.claude/skills/mkt-make-video-prompt/SKILL.md`; keep versions in sync.
+- **SSOT = `lib/video-prompt-spec.ts`** (SPEC_VERSION, sections/gates/
+  self-checks/MODEL_PROFILES). The mono repo's skill is RETIRED
+  (2026-07-12, owner call) — no cross-repo sync; rule changes happen here,
+  gated by a Spec Lab win, with a version bump + in-file CHANGELOG line.
   App plumbing (API shapes, runSelfChecks, profile helpers): `lib/spec-check.ts`.
+- References ride the interview: text + attachments ⇒ interview runs AND
+  the bundle (parked in `specRefsRef`, never persisted) lands on the final
+  generate; reload loses it ⇒ generate/skip refuse loudly. Empty text ⇒
+  classic flow untouched.
 - **Spec Lab** (BUILT, owner-machine only): `http://localhost:3000/lab` —
   live spec vs a `/lab/snapshots/*.json` candidate on one brief, both
   assemble+generate (2× cost shown up front), side-by-side, winner →

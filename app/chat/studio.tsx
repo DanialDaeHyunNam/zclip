@@ -115,6 +115,28 @@ interface Turn {
   specNote?: string;
   /** Provider-fit warnings from the MODEL_PROFILES validation. */
   specWarnings?: string[];
+  /** Labels of references riding this interview onto the final generate
+   *  (e.g. "Character: Nara", "video reference"). Display + a lost-bundle
+   *  guard — the actual bytes live in specRefsRef, NOT in storage. */
+  specRefs?: string[];
+}
+
+/** The reference bundle captured when a spec interview (or key pitch)
+ *  starts: everything the classic flow would have sent, parked in memory
+ *  until the interview's final generate. NOT persisted (localStorage
+ *  quota) — a reload loses it, and consumers must refuse loudly then. */
+interface SpecRefBundle {
+  flowId: string;
+  refImages: { base64: string; mimeType: string }[];
+  /** Text context (card prompts, pinned-take prompts…) for check/assemble. */
+  refContext: string;
+  rawPrimaryB64?: string;
+  drivingVideo?: { base64: string; mimeType: string };
+  imageThumb?: string;
+  usedRef: boolean;
+  usedContinuity: boolean;
+  ctxLabel?: string;
+  labels: string[];
 }
 
 /** Append-only archive entry — survives rewinds. */
@@ -397,8 +419,14 @@ export default function Home() {
   const [specMode, setSpecMode] = useState(false);
   const [specBusy, setSpecBusy] = useState<"check" | "assemble" | null>(null);
   /** Gemini-key onboarding modal. draft = the send it interrupted
-   *  ("" ⇒ opened from the SPEC button, nothing pending). */
-  const [specPitch, setSpecPitch] = useState<{ draft: string } | null>(null);
+   *  ("" ⇒ opened from the SPEC button, nothing pending); flowId claims
+   *  the parked reference bundle for that send. */
+  const [specPitch, setSpecPitch] = useState<{
+    draft: string;
+    flowId?: string;
+  } | null>(null);
+  /** References parked for the ACTIVE interview (one at a time). */
+  const specRefsRef = useRef<SpecRefBundle | null>(null);
   const [specDeclined, setSpecDeclined] = useState(false);
   const [pitchInput, setPitchInput] = useState("");
   const [pitchSaving, setPitchSaving] = useState(false);
@@ -1311,6 +1339,21 @@ export default function Home() {
    * gates (provider-aware) → ask ONE question card per unresolved gate →
    * assemble the 15-section prompt → preview card → generate VERBATIM. */
 
+  /** One-shot composer reset (same set the classic flow clears inline). */
+  const clearComposer = () => {
+    setDraft("");
+    setAttach(null);
+    setCtxIds([]);
+    setCharId(null);
+    setSettingId(null);
+    setFashionId(null);
+  };
+
+  /** The parked reference bundle, but only if it belongs to this card's
+   *  flow — a reload (or a newer send) invalidates it. */
+  const specBundleFor = (t: Turn): SpecRefBundle | null =>
+    specRefsRef.current?.flowId === t.specFlow ? specRefsRef.current : null;
+
   /** Answered gate cards of one interview flow, in thread order. */
   const flowAnswers = (flowId: string): SpecAnswer[] =>
     turns
@@ -1333,6 +1376,11 @@ export default function Home() {
     specLockRef.current = true;
     setSpecBusy("check");
     try {
+      // References parked for this flow feed BOTH modes: the checker can
+      // resolve gates from a card (no re-asking what an image answers),
+      // the assembler grounds SUBJECT/SCENE in what's actually attached.
+      const bundle =
+        specRefsRef.current?.flowId === flowId ? specRefsRef.current : null;
       const call = (mode: "check" | "assemble") =>
         fetch("/api/spec-check", {
           method: "POST",
@@ -1344,6 +1392,8 @@ export default function Home() {
             provider: providerId,
             targetSeconds: effectiveSeconds(providerId, duration, resolution),
             aspect,
+            context: bundle?.refContext || undefined,
+            images: bundle?.refImages.slice(0, 8),
           }),
         });
       const r = await call("check");
@@ -1374,6 +1424,7 @@ export default function Home() {
         specWarnings: (b.warnings as string[])?.length
           ? (b.warnings as string[])
           : undefined,
+        specRefs: bundle?.labels.length ? bundle.labels : undefined,
         // First card of a flow shows the draft as the user message.
         userText: answers.length ? "" : draftText,
       };
@@ -1430,10 +1481,21 @@ export default function Home() {
 
   /** Submit a finished prompt to /api/generate EXACTLY as written — the
    *  spec gate's whole point is that no refine pass runs on top (Gemini
-   *  rewriting a finished spec loses the double locks). */
-  const submitVerbatim = async (prompt: string, userText: string) => {
+   *  rewriting a finished spec loses the double locks). flowId consumes
+   *  that interview's parked reference bundle so images/cards/pins land
+   *  on the actual money request. */
+  const submitVerbatim = async (
+    prompt: string,
+    userText: string,
+    flowId?: string,
+  ) => {
     if (busyTurn || sendLockRef.current) return;
     sendLockRef.current = true;
+    const bundle =
+      flowId && specRefsRef.current?.flowId === flowId
+        ? specRefsRef.current
+        : null;
+    if (bundle) specRefsRef.current = null; // one-shot, like the classic flow
     const id = `t${Date.now()}`;
     const turn: Turn = {
       id,
@@ -1447,10 +1509,22 @@ export default function Home() {
       createdAt: Date.now(),
       status: "refining",
       costUsd: estCostUsd ?? undefined,
+      imageThumb: bundle?.imageThumb,
+      usedRef: bundle?.usedRef || undefined,
+      usedContinuity: bundle?.usedContinuity || undefined,
+      ctxLabel: bundle?.ctxLabel,
     };
     setTurns((ts) => [...ts, turn]);
     setSelectedId(id);
     try {
+      // Normalize the primary image at SUBMIT time — aspect may have
+      // changed during the interview.
+      const image = bundle?.rawPrimaryB64
+        ? {
+            base64: await normalizeRefB64(bundle.rawPrimaryB64, aspect),
+            mimeType: "image/jpeg",
+          }
+        : undefined;
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: pwHeaders({ "content-type": "application/json" }),
@@ -1461,6 +1535,11 @@ export default function Home() {
           aspectRatio: aspect,
           durationSeconds: duration,
           resolution,
+          image,
+          // Seedance 2.0 reads the WHOLE reference clip — same rule as
+          // the classic flow.
+          drivingVideo:
+            model.key === "seedance-2" ? bundle?.drivingVideo : undefined,
         }),
       });
       const body = await res.json();
@@ -1481,18 +1560,31 @@ export default function Home() {
     }
   };
 
+  /** Refuse loudly (retryTurn precedent) when a card promised references
+   *  but the parked bundle is gone — reload, or a newer send replaced it.
+   *  Billing a take WITHOUT what the user attached is never silent. */
+  const specRefsLost = (t: Turn): boolean => {
+    if (!t.specRefs?.length || specBundleFor(t)) return false;
+    setError(
+      "The references attached to this interview aren't available anymore (page reloaded, or a newer message replaced them) — re-attach them and send again.",
+    );
+    return true;
+  };
+
   /** The always-visible escape hatch: never trap the user in the
    *  interview — run the ORIGINAL draft as typed (still verbatim, still
-   *  behind the pre-spend confirm). */
+   *  behind the pre-spend confirm, references riding along). */
   const skipSpec = (t: Turn) => {
     const raw = t.specDraft?.trim();
-    if (!raw) return;
-    guardRun(() => void submitVerbatim(raw, raw));
+    if (!raw || specRefsLost(t)) return;
+    guardRun(() => void submitVerbatim(raw, raw, t.specFlow));
   };
 
   const specGenerate = (t: Turn) => {
-    if (!t.prompt) return;
-    guardRun(() => void submitVerbatim(t.prompt!, t.specDraft ?? "Spec take"));
+    if (!t.prompt || specRefsLost(t)) return;
+    guardRun(
+      () => void submitVerbatim(t.prompt!, t.specDraft ?? "Spec take", t.specFlow),
+    );
   };
 
   /** Gemini-key pitch modal — "Save & improve": store the key exactly like
@@ -1518,12 +1610,16 @@ export default function Home() {
       }
       setPitchInput("");
       await refreshKeys();
-      const pending = specPitch?.draft ?? "";
+      const pending = specPitch;
       setSpecPitch(null);
       setSpecMode(true); // the pitch IS the spec opt-in
-      if (pending) {
-        setDraft("");
-        await advanceSpec(`sf${Date.now()}`, pending, []);
+      if (pending?.draft) {
+        clearComposer();
+        await advanceSpec(
+          pending.flowId ?? `sf${Date.now()}`,
+          pending.draft,
+          [],
+        );
       }
     } catch {
       setPitchMsg("Network error — could not save the key.");
@@ -1535,13 +1631,15 @@ export default function Home() {
   /** "No thanks" — remember it, and run the interrupted send exactly as
    *  typed (still behind the pre-spend confirm; it's real money). */
   const pitchDecline = () => {
-    const pending = specPitch?.draft ?? "";
+    const pending = specPitch;
     setSpecPitch(null);
     setSpecDeclined(true);
     store.set(SPEC_DECLINED_KEY, "1");
-    if (pending) {
-      setDraft("");
-      guardRun(() => void submitVerbatim(pending, pending));
+    if (pending?.draft) {
+      clearComposer();
+      guardRun(
+        () => void submitVerbatim(pending.draft, pending.draft, pending.flowId),
+      );
     }
   };
 
@@ -1593,51 +1691,6 @@ export default function Home() {
     setError(null);
     sendLockRef.current = true;
     try {
-
-    // ── Gemini-key onboarding: BOTH conversational layers (refine and
-    // the spec interview) run on GEMINI_API_KEY. Text-only send without
-    // it → pitch the key once; declined ⇒ this and future sends go to
-    // the video model exactly as typed (previously this errored out). ──
-    if (
-      providerId !== "runway" &&
-      keysLoaded &&
-      !keys["GEMINI_API_KEY"] &&
-      text &&
-      !manual &&
-      !selChar &&
-      !selSetting &&
-      !ctxTurns.length &&
-      !starterText
-    ) {
-      if (!specDeclined) {
-        setSpecPitch({ draft: text }); // composer keeps the draft on Cancel
-        return;
-      }
-      setDraft("");
-      sendLockRef.current = false; // hand off to submitVerbatim's own lock
-      await submitVerbatim(text, text);
-      return;
-    }
-
-    // ── SPEC gate mode: interview instead of instant refine→generate.
-    // Text-first track — Act-Two (no prompt at all) is exempt. ──
-    if (specMode && providerId !== "runway") {
-      if (!text) {
-        setError(
-          "SPEC gate needs a typed description — it interviews you about whatever the spec still misses.",
-        );
-        return;
-      }
-      if (manual || selChar || selSetting || ctxTurns.length || starterText) {
-        setError(
-          "SPEC gate is text-first for now — detach references/cards, or toggle SPEC off for this take.",
-        );
-        return;
-      }
-      setDraft("");
-      await advanceSpec(`sf${Date.now()}`, text, []);
-      return;
-    }
 
     // ── Runway Act-Two: real performance transfer, no prompt / no refine.
     // Sends the driving video + the chosen face card straight to Runway;
@@ -1798,6 +1851,102 @@ export default function Home() {
           mimeType: "image/jpeg",
         }
       : undefined;
+
+    // ── Conversational-layer routing (spec interview / key onboarding).
+    // Sits AFTER the reference bundle is built on purpose: images, cards
+    // and pins ride through the interview and land on the FINAL generate
+    // request (bundle parked in specRefsRef — never in storage). Empty
+    // text falls through to the classic flow below, unchanged. ──
+    // (the Act-Two block above already returned — providerId is not runway)
+    if (text && (specMode || (keysLoaded && !keys["GEMINI_API_KEY"]))) {
+      const labels: string[] = [];
+      const ctxParts: string[] = [];
+      if (starterText) {
+        labels.push("starter base");
+        ctxParts.push(
+          `STARTER BASE PROMPT (user-visible, editable):\n${starterText.slice(0, 1200)}`,
+        );
+      }
+      if (selChar) {
+        labels.push(`Character: ${selChar.label}`);
+        ctxParts.push(
+          `CHARACTER CARD "${selChar.label}"${selFashion ? ` wearing ${selFashion.label}` : ""} — ground SUBJECT in this: ${((selChar as { prompt?: string }).prompt ?? "").slice(0, 600)}`,
+        );
+      }
+      if (selSetting) {
+        labels.push(`Setting: ${selSetting.label}`);
+        ctxParts.push(
+          `SETTING CARD "${selSetting.label}" — ground SCENE in this: ${((selSetting as { prompt?: string }).prompt ?? "").slice(0, 600)}`,
+        );
+      }
+      if (manual) {
+        labels.push(
+          manual.kind === "video" ? "video reference" : "image reference",
+        );
+        ctxParts.push(
+          manual.kind === "video"
+            ? `USER-ATTACHED VIDEO REFERENCE (${manual.frames.length} frames attached, in time order — the visual/motion reference).`
+            : "USER-ATTACHED IMAGE REFERENCE (attached — the visual reference for subject/scene).",
+        );
+      }
+      if (ctxTurns.length) {
+        labels.push(`pins ${ctxTurns.map((c) => `T${c.take}`).join(" ")}`);
+        ctxParts.push(
+          `PINNED CONTEXT TAKES:\n${ctxTurns
+            .map((c) => `Take ${c.take} prompt: ${c.turn.prompt!.slice(0, 800)}`)
+            .join("\n")}`,
+        );
+      }
+      if (lastSnap) {
+        labels.push("continuity frame");
+        ctxParts.push(
+          "CONTINUITY FRAME from the previous take is attached — carry the same subject and scene.",
+        );
+      }
+      const flowId = `sf${Date.now()}`;
+      specRefsRef.current = {
+        flowId,
+        refImages,
+        refContext: ctxParts.join("\n\n"),
+        rawPrimaryB64,
+        drivingVideo:
+          manual?.kind === "video" && manual.videoBase64
+            ? {
+                base64: manual.videoBase64,
+                mimeType: manual.videoMime ?? "video/mp4",
+              }
+            : undefined,
+        imageThumb: manual?.thumb ?? assetThumb,
+        usedRef: Boolean(manual),
+        usedContinuity: Boolean(
+          lastSnap && !manual && !assetImages.length && !ctxImages.length,
+        ),
+        ctxLabel: ctxTurns.length
+          ? ctxTurns.map((c) => `T${c.take}`).join(" ")
+          : undefined,
+        labels,
+      };
+
+      // No Gemini key → pitch it once; declined ⇒ verbatim as typed,
+      // references still ride along.
+      if (keysLoaded && !keys["GEMINI_API_KEY"]) {
+        if (!specDeclined) {
+          setSpecPitch({ draft: text, flowId }); // Cancel keeps the composer
+          return;
+        }
+        clearComposer();
+        sendLockRef.current = false; // hand off to submitVerbatim's lock
+        await submitVerbatim(text, text, flowId);
+        return;
+      }
+
+      // SPEC interview — references are one-shot like the classic flow.
+      clearComposer();
+      await advanceSpec(flowId, text, []);
+      return;
+    }
+    // A classic send makes any parked interview bundle stale.
+    specRefsRef.current = null;
 
     const id = `t${Date.now()}`;
     const createdAt = Date.now();
@@ -2368,12 +2517,18 @@ export default function Home() {
         selSetting,
     );
 
-  /** Composer submit. Starting a SPEC interview is free (text-only Gemini
-   *  calls), so it bypasses the pre-spend confirm — in spec mode the
-   *  confirm moves to the preview card's Generate / the skip hatch. */
+  /** Composer submit. Two paths skip the pre-spend confirm because no
+   *  money moves on THIS click: starting a SPEC interview (text-only
+   *  Gemini calls — the confirm lives on the preview card's Generate and
+   *  the skip hatch), and opening the key-pitch modal (its decline button
+   *  guards its own verbatim submit). Everything else confirms here. */
   const sendGuarded = () => {
-    if (specMode && providerId !== "runway") void send();
-    else guardRun(send);
+    if (providerId !== "runway") {
+      const hasGemini = keysLoaded && Boolean(keys["GEMINI_API_KEY"]);
+      if (specMode && hasGemini) return void send();
+      if (!hasGemini && !specDeclined && draft.trim()) return void send();
+    }
+    guardRun(send);
   };
 
   // What the selected model will do with each attached piece of context.
@@ -4011,6 +4166,11 @@ function SpecCard({
   return (
     <div className={`turn spec-card ${active || !open ? "" : "inert"}`}>
       {turn.userText && <div className="turn-user">{turn.userText}</div>}
+      {!!turn.specRefs?.length && (
+        <div className="spec-refs">
+          riding along → {turn.specRefs.join(" · ")}
+        </div>
+      )}
       {turn.specWarnings?.map((w) => (
         <div key={w} className="spec-warn">⚠ {w}</div>
       ))}

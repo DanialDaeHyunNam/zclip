@@ -505,6 +505,36 @@ All entries 2026-07-06 (single build session, owner: Dan).
   test would touch live state) — tsc + read-only render check only.
   First key-less user flow needs one real pass.
 
+## 29. References ride the spec interview; spec SSOT moves into ZCLIP
+
+- Owner corrected the text-first restriction: attachments are NOT a
+  separate mode. Text + images/cards/pins ⇒ the interview runs AND the
+  references land on the final generate (same priority rules as the
+  classic flow — the routing branch deliberately sits AFTER the classic
+  ref computation so charImg/dressWithFashion/lastSnap/seedance-2 rules
+  are reused, not re-implemented). Empty text ⇒ classic flow untouched.
+- Bundle lifetime is the hard part: reference bytes can't live in
+  localStorage (5MB) or the thread, so they park in `specRefsRef` keyed by
+  flowId. Consumed one-shot at generate/skip; a reload or a newer send
+  invalidates it and the cards' "riding along" labels turn into a LOUD
+  refusal (retryTurn precedent — never bill without what the user
+  attached). Primary image re-normalizes at submit time (aspect can
+  change mid-interview).
+- The checker/assembler SEE the references: card prompts + pinned-take
+  prompts go as a context block, frames as multimodal parts — verified
+  live: a character card + "one-take" draft returns missing:[] (no
+  redundant questions about who's on screen). Assembler grounds
+  SUBJECT/SCENE in the same context.
+- **SSOT moved**: the mono skill is retired (owner call — GUI iteration
+  beats skill-file editing). `lib/video-prompt-spec.ts` is now the single
+  source of truth; version bumps happen here, gated by Spec Lab wins;
+  the lab page's paste-line now targets this file's CHANGELOG block, not
+  mono. All mono-sync language stripped from docs/CLAUDE.md/lab.
+- sendGuarded's confirm matrix: interview start (free) and pitch-modal
+  open skip the pre-spend confirm; every path that actually submits money
+  (preview Generate, skip hatch, pitch decline, declined-fallback send)
+  still passes guardRun exactly once.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

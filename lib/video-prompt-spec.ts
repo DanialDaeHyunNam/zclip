@@ -1,18 +1,17 @@
 /**
- * ── VIDEO PROMPT SPEC (versioned mirror) ─────────────────────────────
- * Photoreal video-prompt discipline ported from the mono skill:
- *   SSOT  : mono/.claude/skills/mkt-make-video-prompt/SKILL.md
- *   Mirror: this file. Bump SPEC_VERSION when porting SSOT changes.
+ * ── VIDEO PROMPT SPEC (SSOT) ─────────────────────────────────────────
+ * Photoreal video-prompt discipline. THIS FILE IS THE SINGLE SOURCE OF
+ * TRUTH — originally ported from the mono repo's skill, but as of
+ * 2026-07-12 the owner manages the spec here only (the mono skill is
+ * retired; no cross-repo sync).
  *
- * Sync contract (both repos' Claude sessions follow this):
- * - mono SKILL.md is the source of truth for RULES; this file is the
- *   machine-usable mirror for the ZCLIP gate flow.
- * - Any rule change lands in mono first → port here → bump minor.
- *   Flow/breaking change → bump major. Record a line in CHANGELOG below.
- * - An improvement discovered HERE (real takes, user feedback) flows
- *   back to mono SKILL.md before or together with the bump — a change
- *   ships only when confirmed better than before (A/B take or owner
- *   verdict), never on plausibility alone.
+ * Change contract:
+ * - Rule change → edit here → bump SPEC_VERSION (minor; flow/breaking =
+ *   major) → add a CHANGELOG line below.
+ * - A change ships only when confirmed better than before — a Spec Lab
+ *   win (/lab, owner-only A/B arena) or an explicit owner verdict,
+ *   never on plausibility alone. Unverified ideas stay in MODEL_PROFILES
+ *   `notes` as experimental, not in GATES/SECTIONS.
  *
  * Wired into the product (2026-07-12): /api/spec-check + the studio's
  * SPEC gate cards consume SECTIONS/GATES/MODEL_PROFILES; the preview

@@ -1,8 +1,10 @@
 # Video Prompt Spec Gate — implementation brief
 
-> Handoff from the mono repo's `/mkt-make-video-prompt` skill (2026-07-12).
-> Data mirror: [`lib/video-prompt-spec.ts`](../lib/video-prompt-spec.ts) (SPEC_VERSION 1.0.0).
-> SSOT for the rules: `mono/.claude/skills/mkt-make-video-prompt/SKILL.md`.
+> Originally handed off from the mono repo's `/mkt-make-video-prompt`
+> skill (2026-07-12). The SAME day the owner retired the mono skill —
+> the spec lives HERE only now, managed through the GUI + Spec Lab.
+> SSOT: [`lib/video-prompt-spec.ts`](../lib/video-prompt-spec.ts)
+> (SPEC_VERSION 1.0.0). No cross-repo sync exists.
 
 ## Why
 
@@ -87,19 +89,41 @@ takes (same model/params, 2× cost shown up front) → side-by-side player →
 owner picks the winner.
 
 **What the pick does**: the verdict (winner version, brief, model, date)
-is recorded in a ledger inside `/lab` (file-based like `.zclip-data`, or
-localStorage), plus a line the owner pastes into the mono skill's
-changelog. A candidate only becomes the live `SPEC_VERSION` after winning
-here. Losing candidates stay in history — negative data for MODEL_NOTES.
+is recorded in `/lab/ledger.json`. A candidate only becomes the live
+`SPEC_VERSION` after winning here — the winning snapshot's changes get
+edited into `lib/video-prompt-spec.ts` with a version bump + CHANGELOG
+line. Losing candidates stay in history — negative data for
+MODEL_PROFILES notes.
 
 ## Versioning contract (keep this section honest)
 
-- `SPEC_VERSION` in `lib/video-prompt-spec.ts` mirrors the mono skill.
-- Rules change in mono first (or flow back to mono when discovered here),
-  then get ported + version-bumped here, with a CHANGELOG line.
+- `lib/video-prompt-spec.ts` is the SSOT — rules change there, with a
+  `SPEC_VERSION` bump (minor; flow/breaking = major) and a CHANGELOG line
+  in the file.
 - **Improvement gate**: a rule changes only when the change is confirmed
-  better than before — same-condition A/B takes or an explicit owner
-  verdict. Unverified ideas go into MODEL_NOTES / comments as
-  "experimental", not into GATES/SECTIONS.
-- Both repos' Claude sessions cross-check on update: mono's skill has a
-  "구현 미러" pointer to this file; this file points back to the skill.
+  better than before — a Spec Lab win or an explicit owner verdict.
+  Unverified ideas go into MODEL_PROFILES `notes` as "experimental", not
+  into GATES/SECTIONS.
+
+## References ride the interview (owner decision, 2026-07-12)
+
+Attachments are NOT a separate mode: text + any images/cards/pins →
+the spec interview runs AND the references land on the final
+`/api/generate` request (same priority rules as the classic flow).
+Empty text → classic flow, untouched. Mechanics: the bundle is parked in
+memory (`specRefsRef` — reference bytes never enter localStorage), its
+text context + frames feed check AND assemble (a character card resolves
+the 'characters' gate; the assembler grounds SUBJECT/SCENE in it), and
+the preview/gate cards show a "riding along" line. A reload loses the
+bundle → generate/skip REFUSE loudly (retryTurn precedent) instead of
+silently billing without the user's references.
+
+## Key onboarding (owner's 4-step UX, 2026-07-12)
+
+Text send without `GEMINI_API_KEY` → pitch modal (free key = guided
+interview → photoreal spec; saves to `.env.local` like the provider key
+panel, then interviews the interrupted draft — saving IS the spec
+opt-in). Decline → remembered (`hooklab.specDeclined`); that send and
+future key-less sends go to the video model exactly as typed. The SPEC
+button next to Send is the permanent re-entry — key-less click reopens
+the pitch, even for decliners.

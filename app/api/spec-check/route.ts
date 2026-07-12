@@ -96,6 +96,7 @@ interface GeminiBody {
   user: string;
   json: boolean;
   maxTokens: number;
+  imageParts?: Array<Record<string, unknown>>;
 }
 
 async function gemini(key: string, b: GeminiBody): Promise<Response> {
@@ -106,7 +107,9 @@ async function gemini(key: string, b: GeminiBody): Promise<Response> {
       headers: { "x-goog-api-key": key, "content-type": "application/json" },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: b.system }] },
-        contents: [{ role: "user", parts: [{ text: b.user }] }],
+        contents: [
+          { role: "user", parts: [{ text: b.user }, ...(b.imageParts ?? [])] },
+        ],
         generationConfig: {
           temperature: b.json ? 0.1 : 0.4,
           // Full token budget goes to the answer (same MAX_TOKENS-empty
@@ -136,9 +139,9 @@ export async function POST(req: Request) {
   }
 
   let mode: unknown, draft: unknown, answers: unknown, provider: unknown;
-  let targetSeconds: unknown, aspect: unknown;
+  let targetSeconds: unknown, aspect: unknown, context: unknown, images: unknown;
   try {
-    ({ mode, draft, answers, provider, targetSeconds, aspect } =
+    ({ mode, draft, answers, provider, targetSeconds, aspect, context, images } =
       await req.json());
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
@@ -184,19 +187,45 @@ export async function POST(req: Request) {
         })
         .join("\n")}`
     : "";
+  // Attached-reference context (card prompts, pinned-take prompts…) — lets
+  // the checker resolve gates an attachment already answers (a character
+  // card IS the 'characters' answer) and grounds the assembler.
+  const ctxBlock =
+    typeof context === "string" && context.trim()
+      ? `\n\nATTACHED REFERENCES (already provided by the user — treat gates they answer as RESOLVED; ground the prompt in them):\n${context.slice(0, 6000)}`
+      : "";
   // Spec prompts are 2–4k chars; drafts can be long too. NO 900-char clamp
   // on this track — only a sanity ceiling far above real use.
-  const user = `DRAFT (the user's request, verbatim):\n${draft.slice(0, 8000)}${answerBlock}\n\nTarget: ${secs}s, aspect ${ratio}.`;
+  const user = `DRAFT (the user's request, verbatim):\n${draft.slice(0, 8000)}${ctxBlock}${answerBlock}\n\nTarget: ${secs}s, aspect ${ratio}.`;
+
+  // Reference frames, same shape/caps as /api/refine — Gemini is
+  // multimodal; the video model itself never sees these here.
+  const imageParts: Array<Record<string, unknown>> = [];
+  if (Array.isArray(images)) {
+    for (const im of images.slice(0, 8)) {
+      if (
+        im &&
+        typeof im === "object" &&
+        typeof (im as Record<string, unknown>).base64 === "string" &&
+        typeof (im as Record<string, unknown>).mimeType === "string" &&
+        (im as { base64: string }).base64.length <= 4_000_000
+      ) {
+        const { base64, mimeType } = im as { base64: string; mimeType: string };
+        imageParts.push({ inline_data: { mime_type: mimeType, data: base64 } });
+      }
+    }
+  }
 
   const res = await gemini(
     key,
     mode === "check"
-      ? { system: checkSystem(prov), user, json: true, maxTokens: 1024 }
+      ? { system: checkSystem(prov), user, json: true, maxTokens: 1024, imageParts }
       : {
           system: assembleSystem(prov, secs, ratio),
           user,
           json: false,
           maxTokens: 4096,
+          imageParts,
         },
   );
   if (!res.ok) {
