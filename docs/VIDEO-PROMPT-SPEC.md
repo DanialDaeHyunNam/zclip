@@ -18,23 +18,30 @@ the product: when the user types a prompt, **whatever already satisfies the
 spec passes through; whatever is missing gets resolved by conversation
 before any money is spent.**
 
-## UX (target behavior)
+## UX (owner revision 2026-07-12: IN-COMPOSER stepper, not thread cards)
 
-1. User types anything in the studio chat.
-2. Before generation, a **spec check** runs (cheap Gemini call, same key as
-   refine): the draft is scored against `SECTIONS` + `GATES` from
-   `lib/video-prompt-spec.ts` → `{ satisfied[], missing[] }`.
-3. Missing **critical gates** render as an inline question card in the chat
-   (AskUserQuestion-style): the gate's `question` + 2–4 quick-reply chips
-   (`options`) + free-text. One card per turn, accumulate answers into the
-   draft. Non-critical gaps get sensible defaults, mentioned in one line.
-4. When critical gates pass → assemble the full 15-section prompt
-   (Gemini, spec as system prompt) → show it as a **preview card** with a
-   "generate" confirm + per-model cost estimate (reuse `estimateCostUsd`).
-5. Escape hatch always visible: **"skip checks, run as typed"** — never
-   trap the user in the interview.
-6. `SELF_CHECKS` run mechanically on the assembled prompt (string checks
-   where possible) and annotate the preview card.
+The interview lives in the INPUT AREA — the composer itself becomes an
+AskUserQuestion-style stepper; the thread only ever shows finished takes.
+
+1. User types anything and hits Send (SPEC on).
+2. The composer swaps to a stepper with a PROMINENT loading state
+   ("CHECKING YOUR DRAFT AGAINST THE PHOTOREAL SPEC" + animated dots) —
+   never a passive placeholder.
+3. Each unresolved critical gate renders in the stepper: question + why +
+   quick-reply chips (single-select, confirm with OK) or a textarea for
+   long-text gates (characters / cut board) + free-text override. One
+   question at a time; answers accumulate; ✕ abandons and returns the
+   draft to the input.
+4. All gates pass → assemble → the REVIEW step, still in the stepper:
+   clamped prompt box (max-height, ⤢ full-view modal), mechanical
+   `SELF_CHECKS` annotations, per-model cost, explicit **Generate**.
+5. Escape hatch on every step: **"skip checks, run as typed"**.
+6. After Generate, the take lands in the thread with its spec prompt
+   OPEN by default — max-height box + ⤢ full-view/copy modal (the
+   finished prompt is the deliverable, not a collapsed footnote).
+7. Nothing is written to the thread/store until Generate — the whole
+   interview is in-memory (it dies with a reload, by design, together
+   with the reference bundle).
 
 ## Implementation pointers (this repo)
 

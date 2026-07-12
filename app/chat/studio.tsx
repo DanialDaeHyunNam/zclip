@@ -119,6 +119,29 @@ interface Turn {
    *  (e.g. "Character: Nara", "video reference"). Display + a lost-bundle
    *  guard — the actual bytes live in specRefsRef, NOT in storage. */
   specRefs?: string[];
+  /** Take born from the spec stepper — its prompt renders open in the
+   *  thread (max-height box + full-view modal). */
+  fromSpec?: boolean;
+}
+
+/** The live spec interview — an in-COMPOSER stepper (owner UX call: the
+ *  input area itself becomes the question/review surface; the thread only
+ *  ever shows finished takes). Ephemeral like the ref bundle: a reload
+ *  drops the whole interview, nothing half-done survives. */
+interface SpecFlowState {
+  flowId: string;
+  /** The original free-typed draft this interview refines. */
+  draft: string;
+  /** Provider the current check ran against (model switch ⇒ re-check). */
+  provider: ProviderName;
+  answers: SpecAnswer[];
+  phase: "checking" | "asking" | "assembling" | "review";
+  /** Snapshot of the gate being asked (options pre-clamped per profile). */
+  gate?: { id: string; q: string; why: string; opts: string[] };
+  note?: string;
+  warnings?: string[];
+  /** Assembled 15-section prompt (phase "review"). */
+  prompt?: string;
 }
 
 /** The reference bundle captured when a spec interview (or key pitch)
@@ -418,6 +441,15 @@ export default function Home() {
    * like continuity). specBusy = a check/assemble call is in flight. */
   const [specMode, setSpecMode] = useState(false);
   const [specBusy, setSpecBusy] = useState<"check" | "assemble" | null>(null);
+  /** The in-composer interview stepper (null = normal composer). */
+  const [specFlow, setSpecFlow] = useState<SpecFlowState | null>(null);
+  /** Chip currently selected on the asking step (confirm with OK). */
+  const [specSel, setSpecSel] = useState<string | null>(null);
+  /** Full-prompt viewer modal (review step + thread spec takes). */
+  const [promptView, setPromptView] = useState<{
+    title: string;
+    text: string;
+  } | null>(null);
   /** Gemini-key onboarding modal. draft = the send it interrupted
    *  ("" ⇒ opened from the SPEC button, nothing pending); flowId claims
    *  the parked reference bundle for that send. */
@@ -1349,24 +1381,10 @@ export default function Home() {
     setFashionId(null);
   };
 
-  /** The parked reference bundle, but only if it belongs to this card's
-   *  flow — a reload (or a newer send) invalidates it. */
-  const specBundleFor = (t: Turn): SpecRefBundle | null =>
-    specRefsRef.current?.flowId === t.specFlow ? specRefsRef.current : null;
-
-  /** Answered gate cards of one interview flow, in thread order. */
-  const flowAnswers = (flowId: string): SpecAnswer[] =>
-    turns
-      .filter(
-        (t) =>
-          t.specFlow === flowId && t.kind === "gate" && t.gateId && t.gateAnswer,
-      )
-      .map((t) => ({ id: t.gateId!, answer: t.gateAnswer! }));
-
-  /** One spec step: which gates are still open? Append the next question
-   *  card — or, when all critical gates pass, assemble + append the
-   *  preview card. Text-only Gemini calls (~free); money moves only on
-   *  the preview card's explicit Generate. */
+  /** One spec step, driving the IN-COMPOSER stepper: which gates are
+   *  still open? Show the next question — or, when all critical gates
+   *  pass, assemble and show the review step. Text-only Gemini calls
+   *  (~free); money moves only on the review step's explicit Generate. */
   const advanceSpec = async (
     flowId: string,
     draftText: string,
@@ -1375,6 +1393,8 @@ export default function Home() {
     if (specLockRef.current) return;
     specLockRef.current = true;
     setSpecBusy("check");
+    const base = { flowId, draft: draftText, provider: providerId, answers };
+    setSpecFlow({ ...base, phase: "checking" });
     try {
       // References parked for this flow feed BOTH modes: the checker can
       // resolve gates from a card (no re-asking what an image answers),
@@ -1384,7 +1404,7 @@ export default function Home() {
       // Owner decision (DEVLOG #29 follow-up): performance transfer is a
       // refine-track feature — in SPEC mode an attached video's motion is
       // NOT beat-copied (except Seedance 2.0, which reads the clip
-      // itself). Don't port the transcription; just SAY it on the card.
+      // itself). Don't port the transcription; just SAY it in the stepper.
       const transferNote =
         bundle?.drivingVideo && model.key !== "seedance-2"
           ? "Video reference: the LOOK carries over, but on this model SPEC mode does not beat-copy its motion — put the timing you want in the cut board. (Seedance 2.0 reads the clip's motion directly; the classic non-SPEC flow transcribes it.)"
@@ -1404,93 +1424,98 @@ export default function Home() {
             images: bundle?.refImages.slice(0, 8),
           }),
         });
+      /** Failure ⇒ drop the interview, hand the draft back to the
+       *  composer (answers are cheap to redo; zombie steppers are not). */
+      const fail = (msg: string) => {
+        setError(msg);
+        setSpecFlow(null);
+        setDraft(draftText);
+      };
       const r = await call("check");
       const b = await r.json();
       if (r.status === 401) {
-        setError("Password rejected");
+        fail("Password rejected");
         setGateOpen(true);
         return;
       }
       if (!r.ok) {
-        setError(b.error ?? "Spec check failed");
+        fail(b.error ?? "Spec check failed");
         return;
       }
+      const note = (b.note as string) || undefined;
+      const warnings = [
+        ...(Array.isArray(b.warnings) ? (b.warnings as string[]) : []),
+        ...(transferNote ? [transferNote] : []),
+      ];
       const nextGate = ((b.missing ?? []) as string[])
         .map((gid) => gateForProvider(gid, providerId))
         .find(Boolean);
-      const common = {
-        provider: providerId,
-        modelLabel: model.short,
-        aspectRatio: aspect,
-        durationSeconds: duration,
-        resolution,
-        createdAt: Date.now(),
-        status: "done" as TurnStatus,
-        specFlow: flowId,
-        specDraft: draftText,
-        specNote: (b.note as string) || undefined,
-        specWarnings: (() => {
-          const w = [
-            ...(Array.isArray(b.warnings) ? (b.warnings as string[]) : []),
-            // every card of the flow — the money decision (preview) is
-            // exactly where "look ≠ motion" must be visible
-            ...(transferNote ? [transferNote] : []),
-          ];
-          return w.length ? w : undefined;
-        })(),
-        specRefs: bundle?.labels.length ? bundle.labels : undefined,
-        // First card of a flow shows the draft as the user message.
-        userText: answers.length ? "" : draftText,
-      };
       if (nextGate) {
-        setTurns((ts) => [
-          ...ts,
-          {
-            ...common,
-            id: `t${Date.now()}`,
-            kind: "gate",
-            gateId: nextGate.id,
-            gateQ: nextGate.question,
-            gateWhy: nextGate.why,
-            gateOpts: gateOptions(nextGate, providerId),
+        setSpecFlow({
+          ...base,
+          phase: "asking",
+          gate: {
+            id: nextGate.id,
+            q: nextGate.question,
+            why: nextGate.why,
+            opts: gateOptions(nextGate, providerId),
           },
-        ]);
+          note,
+          warnings,
+        });
         return;
       }
       setSpecBusy("assemble");
+      setSpecFlow({ ...base, phase: "assembling", note, warnings });
       const ar = await call("assemble");
       const ab = await ar.json();
       if (ar.status === 401) {
-        setError("Password rejected");
+        fail("Password rejected");
         setGateOpen(true);
         return;
       }
       if (!ar.ok) {
-        setError(ab.error ?? "Spec assembly failed");
+        fail(ab.error ?? "Spec assembly failed");
         return;
       }
-      setTurns((ts) => [
-        ...ts,
-        { ...common, id: `t${Date.now()}`, kind: "preview", prompt: ab.prompt },
-      ]);
+      setSpecFlow({
+        ...base,
+        phase: "review",
+        prompt: ab.prompt,
+        note,
+        warnings,
+      });
     } catch {
       setError("Network error — try again");
+      setSpecFlow(null);
+      setDraft(draftText);
     } finally {
       specLockRef.current = false;
       setSpecBusy(null);
     }
   };
 
-  const answerGate = (turnId: string, answer: string) => {
-    const t = turns.find((x) => x.id === turnId);
+  /** Confirm the current question (chip selection or free text). */
+  const answerSpec = (answer: string) => {
+    const f = specFlow;
     const a = answer.trim();
-    if (!t || t.kind !== "gate" || t.gateAnswer || !a || specLockRef.current)
+    if (!f || f.phase !== "asking" || !f.gate || !a || specLockRef.current)
       return;
-    patchTurn(turnId, { gateAnswer: a });
-    void advanceSpec(t.specFlow!, t.specDraft ?? "", [
-      ...flowAnswers(t.specFlow!).filter((x) => x.id !== t.gateId),
-      { id: t.gateId!, answer: a },
+    setSpecSel(null);
+    setDraft("");
+    void advanceSpec(f.flowId, f.draft, [
+      ...f.answers.filter((x) => x.id !== f.gate!.id),
+      { id: f.gate!.id, answer: a },
     ]);
+  };
+
+  /** ✕ — abandon the interview; the draft goes back into the composer. */
+  const specDiscard = () => {
+    if (!specFlow || specLockRef.current) return;
+    setDraft(specFlow.draft);
+    setSpecFlow(null);
+    setSpecSel(null);
+    specRefsRef.current = null;
   };
 
   /** Submit a finished prompt to /api/generate EXACTLY as written — the
@@ -1527,6 +1552,9 @@ export default function Home() {
       usedRef: bundle?.usedRef || undefined,
       usedContinuity: bundle?.usedContinuity || undefined,
       ctxLabel: bundle?.ctxLabel,
+      // Spec takes render their prompt OPEN in the thread (max-height box
+      // + full-view modal) — the finished spec IS the deliverable.
+      fromSpec: Boolean(flowId) || undefined,
     };
     setTurns((ts) => [...ts, turn]);
     setSelectedId(id);
@@ -1577,28 +1605,30 @@ export default function Home() {
   /** Refuse loudly (retryTurn precedent) when a card promised references
    *  but the parked bundle is gone — reload, or a newer send replaced it.
    *  Billing a take WITHOUT what the user attached is never silent. */
-  const specRefsLost = (t: Turn): boolean => {
-    if (!t.specRefs?.length || specBundleFor(t)) return false;
-    setError(
-      "The references attached to this interview aren't available anymore (page reloaded, or a newer message replaced them) — re-attach them and send again.",
-    );
-    return true;
-  };
-
   /** The always-visible escape hatch: never trap the user in the
    *  interview — run the ORIGINAL draft as typed (still verbatim, still
-   *  behind the pre-spend confirm, references riding along). */
-  const skipSpec = (t: Turn) => {
-    const raw = t.specDraft?.trim();
-    if (!raw || specRefsLost(t)) return;
-    guardRun(() => void submitVerbatim(raw, raw, t.specFlow));
+   *  behind the pre-spend confirm, references riding along). The stepper
+   *  and the ref bundle live and die together in memory, so no
+   *  lost-references guard is needed anymore. */
+  const skipSpec = () => {
+    const f = specFlow;
+    const raw = f?.draft.trim();
+    if (!f || !raw || specLockRef.current) return;
+    guardRun(() => {
+      setSpecFlow(null);
+      setSpecSel(null);
+      void submitVerbatim(raw, raw, f.flowId);
+    });
   };
 
-  const specGenerate = (t: Turn) => {
-    if (!t.prompt || specRefsLost(t)) return;
-    guardRun(
-      () => void submitVerbatim(t.prompt!, t.specDraft ?? "Spec take", t.specFlow),
-    );
+  const specGenerate = () => {
+    const f = specFlow;
+    if (!f?.prompt || specLockRef.current) return;
+    guardRun(() => {
+      setSpecFlow(null);
+      setSpecSel(null);
+      void submitVerbatim(f.prompt!, f.draft, f.flowId);
+    });
   };
 
   /** Gemini-key pitch modal — "Save & improve": store the key exactly like
@@ -1658,21 +1688,14 @@ export default function Home() {
   };
 
   /* Per-model adaptation (docs § Per-model adaptation): switching the
-   * model while an interview/preview is OPEN re-runs the spec check
-   * against the new provider's profile — the pending card is replaced,
-   * answered cards keep their answers. Keyed off the card's own stored
-   * provider, so a completed advanceSpec can't re-trigger it. */
+   * model while the stepper is open re-runs the spec check against the
+   * new provider's profile, keeping the answers. Keyed off the flow's
+   * stored provider, so a completed advanceSpec can't re-trigger it. */
   useEffect(() => {
-    if (!ready || specLockRef.current) return;
-    const last = turns[turns.length - 1];
-    if (!last?.kind || last.provider === providerId) return;
-    if (last.kind === "gate" && last.gateAnswer) return; // resolved card
-    setTurns((ts) => ts.slice(0, -1));
-    void advanceSpec(
-      last.specFlow!,
-      last.specDraft ?? "",
-      flowAnswers(last.specFlow!),
-    );
+    if (!ready || !specFlow || specLockRef.current) return;
+    if (specFlow.provider === providerId) return;
+    setSpecSel(null);
+    void advanceSpec(specFlow.flowId, specFlow.draft, specFlow.answers);
   }, [providerId, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = async () => {
@@ -2540,6 +2563,7 @@ export default function Home() {
   const canSend =
     !busyTurn &&
     !specBusy &&
+    !specFlow &&
     ready &&
     !keyMissing &&
     Boolean(
@@ -2713,6 +2737,34 @@ export default function Home() {
               Without a key your text goes to the video model as-is. Change
               your mind anytime — the SPEC button next to Send reopens this.
             </p>
+          </div>
+        </div>
+      )}
+      {/* full spec prompt viewer (review step + thread spec takes) */}
+      {promptView && (
+        <div className="confirm-backdrop" onClick={() => setPromptView(null)}>
+          <div
+            className="confirm-card prompt-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="label">{promptView.title}</span>
+            <p className="prompt-modal-body">{promptView.text}</p>
+            <div className="confirm-actions">
+              <button
+                className="btn-ghost"
+                onClick={() =>
+                  void navigator.clipboard?.writeText(promptView.text)
+                }
+              >
+                Copy
+              </button>
+              <button
+                className="btn-primary"
+                onClick={() => setPromptView(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -2981,17 +3033,9 @@ export default function Home() {
 
           <div className="thread" ref={threadRef}>
             {turns.map((t, i) => t.kind ? (
-              <SpecCard
-                key={t.id}
-                turn={t}
-                active={i === turns.length - 1 && !busyTurn}
-                busy={i === turns.length - 1 ? specBusy : null}
-                cost={fmtCost(estCostUsd ?? undefined)}
-                modelShort={model.short}
-                onAnswer={(a) => answerGate(t.id, a)}
-                onSkip={() => skipSpec(t)}
-                onGenerate={() => specGenerate(t)}
-              />
+              // legacy spec interview cards (pre-stepper sessions) are
+              // skipped — the interview lives in the composer now
+              null
             ) : (
               <div
                 key={t.id}
@@ -3002,7 +3046,33 @@ export default function Home() {
                   <img className="turn-img" src={t.imageThumb} alt="reference" />
                 )}
                 <div className="turn-user">{t.userText}</div>
-                {t.prompt && (
+                {t.prompt && t.fromSpec ? (
+                  /* spec takes: the finished prompt IS the deliverable —
+                     visible by default, clamped, expandable to a modal */
+                  <div
+                    className="spec-final"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="spec-final-head">
+                      <span>
+                        SPEC PROMPT · TAKE {takeNo(i)} · {t.prompt.length}{" "}
+                        CHARS
+                      </span>
+                      <button
+                        className="link-btn"
+                        onClick={() =>
+                          setPromptView({
+                            title: `Spec prompt · Take ${takeNo(i)}`,
+                            text: t.prompt!,
+                          })
+                        }
+                      >
+                        ⤢ Full view
+                      </button>
+                    </div>
+                    <p className="spec-final-body">{t.prompt}</p>
+                  </div>
+                ) : t.prompt ? (
                   <details
                     className="turn-prompt"
                     onClick={(e) => e.stopPropagation()}
@@ -3010,7 +3080,7 @@ export default function Home() {
                     <summary>Prompt · Take {takeNo(i)}</summary>
                     <p>{t.prompt}</p>
                   </details>
-                )}
+                ) : null}
                 <div className="turn-status">
                   <span className={`dot ${
                     t.status === "done" ? "done" : t.status === "error" ? "fault" : "live"
@@ -3500,7 +3570,7 @@ export default function Home() {
             }}
           >
             <div className="composer-body">
-            {(attach ||
+            {!specFlow && (attach ||
               ctxIds.length > 0 ||
               urlCandidate ||
               selChar ||
@@ -3651,7 +3721,7 @@ export default function Home() {
                 )}
               </div>
             )}
-            {manifest.length > 0 && (
+            {!specFlow && manifest.length > 0 && (
               <div className="ctx-manifest fade">
                 <span className="ctx-manifest-head">Into {model.short}</span>
                 {manifest.map((r, i) => (
@@ -3670,6 +3740,180 @@ export default function Home() {
             )}
             </div>
             <div className="composer-foot">
+            {specFlow ? (
+              /* ── the SPEC interview lives HERE, in the composer (owner
+                 UX call) — question → confirm → … → review → Generate,
+                 never in the thread. ✕ hands the draft back. ── */
+              <div className="spec-stepper fade">
+                <div className="spec-stepper-head">
+                  <span className="spec-head">
+                    SPEC INTERVIEW · {model.short}
+                    {specFlow.answers.length > 0 &&
+                      ` · ${specFlow.answers.length} ANSWERED`}
+                  </span>
+                  <span className="turn-spacer" />
+                  <button
+                    className="link-btn danger"
+                    onClick={specDiscard}
+                    title="Abandon the interview — your draft returns to the input"
+                  >
+                    ✕
+                  </button>
+                </div>
+                {specRefsRef.current?.flowId === specFlow.flowId &&
+                  specRefsRef.current.labels.length > 0 && (
+                    <div className="spec-refs">
+                      riding along → {specRefsRef.current.labels.join(" · ")}
+                    </div>
+                  )}
+                {specFlow.warnings?.map((w) => (
+                  <div key={w} className="spec-warn">
+                    ⚠ {w}
+                  </div>
+                ))}
+                {(specFlow.phase === "checking" ||
+                  specFlow.phase === "assembling") && (
+                  <div className="spec-busy big">
+                    <span className="dot live" />
+                    {specFlow.phase === "checking"
+                      ? "CHECKING YOUR DRAFT AGAINST THE PHOTOREAL SPEC"
+                      : "ASSEMBLING THE 15-SECTION SPEC PROMPT"}
+                    <span className="spec-dots" />
+                  </div>
+                )}
+                {specFlow.phase === "asking" && specFlow.gate && (
+                  <>
+                    <div className="spec-q">{specFlow.gate.q}</div>
+                    <div className="spec-why">{specFlow.gate.why}</div>
+                    {specFlow.gate.opts.length > 0 && (
+                      <div className="spec-chips">
+                        {specFlow.gate.opts.map((o) => (
+                          <button
+                            key={o}
+                            className={`spec-chip ${specSel === o ? "sel" : ""}`}
+                            onClick={() =>
+                              setSpecSel((cur) => (cur === o ? null : o))
+                            }
+                          >
+                            {o}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="spec-free">
+                      {specFlow.gate.opts.length ? (
+                        <input
+                          value={draft}
+                          onChange={(e) => {
+                            setDraft(e.target.value);
+                            if (e.target.value) setSpecSel(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" &&
+                              !e.nativeEvent.isComposing
+                            ) {
+                              e.preventDefault();
+                              answerSpec(draft.trim() || specSel || "");
+                            }
+                          }}
+                          placeholder="Or type your own answer…"
+                          aria-label="Custom answer"
+                        />
+                      ) : (
+                        <textarea
+                          rows={2}
+                          value={draft}
+                          onChange={(e) => setDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === "Enter" &&
+                              !e.shiftKey &&
+                              !e.nativeEvent.isComposing
+                            ) {
+                              e.preventDefault();
+                              answerSpec(draft);
+                            }
+                          }}
+                          placeholder="Type the answer… (Shift+Enter = newline)"
+                          aria-label="Answer"
+                        />
+                      )}
+                      <button
+                        className="btn-primary"
+                        disabled={!specSel && !draft.trim()}
+                        onClick={() =>
+                          answerSpec(draft.trim() || specSel || "")
+                        }
+                      >
+                        OK →
+                      </button>
+                    </div>
+                    {specFlow.note && (
+                      <div className="spec-why">defaults: {specFlow.note}</div>
+                    )}
+                    <button
+                      className="link-btn spec-skip"
+                      onClick={skipSpec}
+                      title="Escape hatch — send your original text exactly as typed, no spec"
+                    >
+                      skip checks, run as typed →
+                    </button>
+                  </>
+                )}
+                {specFlow.phase === "review" && specFlow.prompt && (
+                  <>
+                    <div className="spec-head">
+                      READY · v{SPEC_VERSION} · {specFlow.prompt.length} CHARS
+                    </div>
+                    {specFlow.note && (
+                      <div className="spec-why">defaults: {specFlow.note}</div>
+                    )}
+                    <div className="spec-final">
+                      <div className="spec-final-head">
+                        <span>ASSEMBLED SPEC PROMPT — SUBMITTED VERBATIM</span>
+                        <button
+                          className="link-btn"
+                          onClick={() =>
+                            setPromptView({
+                              title: "Assembled spec prompt",
+                              text: specFlow.prompt!,
+                            })
+                          }
+                        >
+                          ⤢ Full view
+                        </button>
+                      </div>
+                      <p className="spec-final-body">{specFlow.prompt}</p>
+                    </div>
+                    <ul className="spec-checks">
+                      {runSelfChecks(
+                        specFlow.prompt,
+                        effectiveSeconds(providerId, duration, resolution),
+                      ).map((c) => (
+                        <li key={c.label} className={c.pass ? "pass" : "fail"}>
+                          {c.pass ? "✓" : "!"} {c.label}
+                          {c.detail && (
+                            <span className="spec-detail"> — {c.detail}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="spec-actions">
+                      <button className="btn-primary" onClick={specGenerate}>
+                        Generate — {model.short}
+                        {fmtCost(estCostUsd ?? undefined)
+                          ? ` · ~${fmtCost(estCostUsd ?? undefined)}`
+                          : ""}
+                      </button>
+                      <button className="link-btn spec-skip" onClick={skipSpec}>
+                        run as typed instead
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
             <div className="chat-bar">
               <button
                 className="attach-btn"
@@ -3723,8 +3967,6 @@ export default function Home() {
                 placeholder={
                   busyTurn
                     ? "Rendering — wait for this take…"
-                    : specBusy
-                      ? "Spec gate is thinking…"
                     : providerId === "runway"
                       ? "Act-Two: attach a driving video (⤓ Grab or Library) + pick a face card, then send — no prompt needed"
                       : specMode
@@ -3764,7 +4006,8 @@ export default function Home() {
                 {starterReady && !draft.trim() ? "Start" : "Send"}
               </button>
             </div>
-            {ctxIds.length > 3 && (
+            )}
+            {!specFlow && ctxIds.length > 3 && (
               <p className="ctx-warn fade">
                 {ctxIds.length} takes pinned — blends this wide usually come
                 out muddy. 2–3 pinned takes keep each reference recognizable.
@@ -4169,171 +4412,5 @@ export default function Home() {
         </div>
       )}
     </>
-  );
-}
-
-/* ── Video Prompt Spec Gate cards ─────────────────────────────────────
- * One gate question (quick-reply chips + free text) or the assembled-spec
- * preview (prompt + mechanical self-checks + explicit Generate). Rendered
- * inside the thread; `active` = it is the last turn, so chips/buttons on
- * superseded cards go inert instead of mutating a finished flow. */
-function SpecCard({
-  turn,
-  active,
-  busy,
-  cost,
-  modelShort,
-  onAnswer,
-  onSkip,
-  onGenerate,
-}: {
-  turn: Turn;
-  active: boolean;
-  busy: "check" | "assemble" | null;
-  cost: string | null;
-  modelShort: string;
-  onAnswer: (answer: string) => void;
-  onSkip: () => void;
-  onGenerate: () => void;
-}) {
-  const [free, setFree] = useState("");
-  const checks =
-    turn.kind === "preview" && turn.prompt
-      ? runSelfChecks(turn.prompt, turn.durationSeconds)
-      : [];
-  const failed = checks.filter((c) => !c.pass).length;
-  const open = turn.kind === "gate" ? !turn.gateAnswer : true;
-  return (
-    <div className={`turn spec-card ${active || !open ? "" : "inert"}`}>
-      {turn.userText && <div className="turn-user">{turn.userText}</div>}
-      {!!turn.specRefs?.length && (
-        <div className="spec-refs">
-          riding along → {turn.specRefs.join(" · ")}
-        </div>
-      )}
-      {turn.specWarnings?.map((w) => (
-        <div key={w} className="spec-warn">⚠ {w}</div>
-      ))}
-      {turn.kind === "gate" ? (
-        <>
-          <div className="spec-head">
-            SPEC GATE · {turn.gateId?.replace(/-/g, " ").toUpperCase()}
-          </div>
-          <div className="spec-q">{turn.gateQ}</div>
-          {turn.gateWhy && <div className="spec-why">{turn.gateWhy}</div>}
-          {turn.gateAnswer ? (
-            <div className="spec-answer">→ {turn.gateAnswer}</div>
-          ) : active ? (
-            <>
-              {!!turn.gateOpts?.length && (
-                <div className="spec-chips">
-                  {turn.gateOpts.map((o) => (
-                    <button
-                      key={o}
-                      className="spec-chip"
-                      disabled={Boolean(busy)}
-                      onClick={() => onAnswer(o)}
-                    >
-                      {o}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="spec-free">
-                <input
-                  value={free}
-                  onChange={(e) => setFree(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      !e.nativeEvent.isComposing &&
-                      free.trim() &&
-                      !busy
-                    ) {
-                      onAnswer(free.trim());
-                      setFree("");
-                    }
-                  }}
-                  placeholder="Or type your own answer…"
-                  disabled={Boolean(busy)}
-                />
-                <button
-                  className="link-btn"
-                  disabled={!free.trim() || Boolean(busy)}
-                  onClick={() => {
-                    onAnswer(free.trim());
-                    setFree("");
-                  }}
-                >
-                  OK
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="spec-why">superseded — continue below</div>
-          )}
-          {turn.specNote && (
-            <div className="spec-why">defaults: {turn.specNote}</div>
-          )}
-        </>
-      ) : (
-        <>
-          <div className="spec-head">
-            SPEC PREVIEW · v{SPEC_VERSION} · {turn.prompt?.length ?? 0} CHARS
-          </div>
-          {turn.specNote && (
-            <div className="spec-why">defaults: {turn.specNote}</div>
-          )}
-          <details className="turn-prompt spec-prompt" open>
-            <summary>Assembled spec prompt (submitted verbatim)</summary>
-            <p>{turn.prompt}</p>
-          </details>
-          {checks.length > 0 && (
-            <ul className="spec-checks">
-              {checks.map((c) => (
-                <li key={c.label} className={c.pass ? "pass" : "fail"}>
-                  {c.pass ? "✓" : "!"} {c.label}
-                  {c.detail && <span className="spec-detail"> — {c.detail}</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-          {active && (
-            <div className="spec-actions">
-              <button
-                className="btn-primary"
-                disabled={Boolean(busy)}
-                onClick={onGenerate}
-              >
-                Generate — {modelShort}
-                {cost ? ` · ~${cost}` : ""}
-              </button>
-              {failed > 0 && (
-                <span className="spec-why">
-                  {failed} self-check{failed > 1 ? "s" : ""} unhappy — you can
-                  still generate
-                </span>
-              )}
-            </div>
-          )}
-        </>
-      )}
-      {active && open && (
-        <button
-          className="link-btn spec-skip"
-          disabled={Boolean(busy)}
-          onClick={onSkip}
-          title="Escape hatch — send your original text to the model exactly as typed, no spec"
-        >
-          skip checks, run as typed →
-        </button>
-      )}
-      {busy && (
-        <div className="spec-busy">
-          <span className="dot live" />{" "}
-          {busy === "check" ? "CHECKING SPEC…" : "ASSEMBLING SPEC PROMPT…"}
-        </div>
-      )}
-    </div>
   );
 }

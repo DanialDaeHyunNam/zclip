@@ -542,6 +542,33 @@ All entries 2026-07-06 (single build session, owner: Dan).
   switch-mid-interview edge still gets the ⚠ look≠motion card warning.
   SPEC-off tooltip now RECOMMENDS turning it on (short pitch).
 
+## 30. Spec interview moves INTO the composer (owner UX revision)
+
+- Owner rejected thread question-cards ("위에서 확인하는 거 싫음") and the
+  passive "Spec gate is thinking…" placeholder. Rework: the composer
+  itself becomes the stepper (SpecFlowState: checking → asking →
+  assembling → review) — question + chips/textarea + OK confirm, loud
+  loading lines with animated dots, review with clamped prompt +
+  self-checks + Generate, skip hatch on every step, ✕ returns the draft.
+  Thread shows ONLY finished takes; spec takes render their prompt open
+  (max-height box + ⤢ full-view/copy modal, `fromSpec` flag).
+- Big architectural win discovered: the stepper writes NOTHING to
+  turns/store until Generate — interview state and the ref bundle are
+  both in-memory and die together on reload (the lost-references refusal
+  guard became unnecessary and was removed). This also made the
+  interview HEADLESS-TESTABLE against the live dev server for the first
+  time (no risk to the owner's shared .zclip-data store): exercised
+  end-to-end — send → loading → "One-take or multi-cut?" chips → answer
+  → "1 ANSWERED" → next check — zero thread turns created.
+- Legacy `kind: "gate"/"preview"` turns from pre-stepper sessions are
+  skipped at render (fields kept on Turn for stored-data compat); all
+  !t.kind guards stay. SpecCard component deleted.
+- Ops scar: a python file-truncate keyed on a comment PREFIX hit the
+  same prefix in the Turn interface docs and chopped studio.tsx to 97
+  lines — recovered via git checkout + full re-apply. Lesson: anchor
+  destructive text ops on UNIQUE anchors (rfind + content asserts), or
+  just use the Edit tool.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

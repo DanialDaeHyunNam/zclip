@@ -5198,3 +5198,133 @@ button {
   color: var(--dim);
   margin-bottom: 8px;
 }
+
+/* ── SPEC in-composer stepper (the interview lives in the input area) ── */
+
+.spec-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px 6px;
+}
+
+.spec-stepper-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.spec-stepper-head .spec-head {
+  margin-bottom: 0;
+}
+
+.spec-stepper .spec-q {
+  font-size: 14px;
+}
+
+.spec-chip.sel {
+  border-color: rgba(111, 220, 255, 0.6);
+  background: rgba(111, 220, 255, 0.12);
+  color: var(--accent);
+}
+
+.spec-free textarea {
+  flex: 1;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  outline: none;
+  resize: none;
+  transition: border-color 0.3s ease;
+}
+
+.spec-free textarea:focus {
+  border-color: rgba(111, 220, 255, 0.4);
+}
+
+.spec-busy.big {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--fg);
+  padding: 18px 4px;
+}
+
+.spec-dots::after {
+  content: "";
+  display: inline-block;
+  width: 1.4em;
+  text-align: left;
+  animation: specDots 1.2s steps(4, end) infinite;
+}
+
+@keyframes specDots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+}
+
+/* finished / assembled spec prompt — clamped, expandable */
+.spec-final {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.015);
+  padding: 10px 12px;
+  margin: 6px 0 10px;
+}
+
+.spec-final-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.spec-final-body {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--dim);
+  white-space: pre-wrap;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+/* full-prompt viewer modal */
+.prompt-modal {
+  max-width: 720px;
+  width: calc(100vw - 48px);
+}
+
+.prompt-modal-body {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--fg);
+  white-space: pre-wrap;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.015);
+  padding: 14px 16px;
+  margin: 12px 0;
+}
+
+/* stepper buttons: btn-primary is width:100% by default — keep the
+   stepper's OK / Generate compact and inline */
+.spec-free .btn-primary,
+.spec-actions .btn-primary {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 12px 26px;
+  border-radius: var(--r-pill);
+}

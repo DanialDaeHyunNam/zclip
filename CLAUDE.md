@@ -171,16 +171,20 @@ re-bills — `retryTurn` refuses loudly when `usedRef` (visible-errors principle
 The owner's photoreal prompt discipline (15-section template + timecoded
 cut board, proven on Seedance 2.0 / Veo 3.1) lives in the studio as a
 pre-generation gate. SPEC toggle in the composer (session-only, off by
-default; text-first — references/cards rejected with a visible error):
-draft → `/api/spec-check` (SEPARATE track from refine, NO 900-char clamp;
-provider-aware via `MODEL_PROFILES`) → one gate question card per turn
-(quick-reply chips + free text + always-visible "skip checks, run as
-typed") → assembled 15-section prompt on a preview card (mechanical
-SELF_CHECKS annotations, cost, explicit Generate) → `/api/generate`
-VERBATIM — never through refine. Model switch re-checks an open interview
-against the new profile. Gate/preview cards are Turns with `kind` set:
-excluded from take numbering, history, base-prompt lookup and the output
-preview (grep `!t.kind` in studio.tsx when touching the thread).
+default): draft → `/api/spec-check` (SEPARATE track from refine, NO
+900-char clamp; provider-aware via `MODEL_PROFILES`) → an IN-COMPOSER
+stepper (`SpecFlowState`, DEVLOG #30 — the input area itself asks one
+question at a time: chips/textarea + OK confirm, loud loading lines,
+always-visible "skip checks, run as typed", ✕ returns the draft) → review
+step (clamped prompt + SELF_CHECKS + cost + explicit Generate) →
+`/api/generate` VERBATIM — never through refine. Model switch re-checks
+the open stepper against the new profile. The interview writes NOTHING to
+turns/store until Generate (in-memory; dies with reload alongside the ref
+bundle — which is exactly why it's safely headless-testable against a
+live dev server). Spec takes render their prompt OPEN in the thread
+(max-height box + ⤢ full-view/copy modal, `fromSpec`). Legacy `kind`
+turns from pre-stepper sessions are skipped at render — keep the
+`!t.kind` guards when touching the thread.
 
 Key onboarding (DEVLOG #28): text-only send without GEMINI_API_KEY →
 pitch modal (key saves to `.env.local` like the provider panel; saving
