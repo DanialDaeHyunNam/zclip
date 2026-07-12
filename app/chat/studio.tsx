@@ -1381,6 +1381,14 @@ export default function Home() {
       // the assembler grounds SUBJECT/SCENE in what's actually attached.
       const bundle =
         specRefsRef.current?.flowId === flowId ? specRefsRef.current : null;
+      // Owner decision (DEVLOG #29 follow-up): performance transfer is a
+      // refine-track feature — in SPEC mode an attached video's motion is
+      // NOT beat-copied (except Seedance 2.0, which reads the clip
+      // itself). Don't port the transcription; just SAY it on the card.
+      const transferNote =
+        bundle?.drivingVideo && model.key !== "seedance-2"
+          ? "Video reference: the LOOK carries over, but on this model SPEC mode does not beat-copy its motion — put the timing you want in the cut board. (Seedance 2.0 reads the clip's motion directly; the classic non-SPEC flow transcribes it.)"
+          : null;
       const call = (mode: "check" | "assemble") =>
         fetch("/api/spec-check", {
           method: "POST",
@@ -1421,9 +1429,15 @@ export default function Home() {
         specFlow: flowId,
         specDraft: draftText,
         specNote: (b.note as string) || undefined,
-        specWarnings: (b.warnings as string[])?.length
-          ? (b.warnings as string[])
-          : undefined,
+        specWarnings: (() => {
+          const w = [
+            ...(Array.isArray(b.warnings) ? (b.warnings as string[]) : []),
+            // every card of the flow — the money decision (preview) is
+            // exactly where "look ≠ motion" must be visible
+            ...(transferNote ? [transferNote] : []),
+          ];
+          return w.length ? w : undefined;
+        })(),
         specRefs: bundle?.labels.length ? bundle.labels : undefined,
         // First card of a flow shows the draft as the user message.
         userText: answers.length ? "" : draftText,
@@ -1857,8 +1871,28 @@ export default function Home() {
     // and pins ride through the interview and land on the FINAL generate
     // request (bundle parked in specRefsRef — never in storage). Empty
     // text falls through to the classic flow below, unchanged. ──
+    // Auto-off (owner call): a video reference on a model that can't read
+    // the clip itself belongs to the classic flow — its transfer
+    // transcription beat-copies the motion, which the SPEC cut board
+    // would drop. Seedance 2.0 keeps SPEC (the model reads motion itself).
+    const specVideoBypass =
+      specMode &&
+      keysLoaded &&
+      Boolean(keys["GEMINI_API_KEY"]) &&
+      manual?.kind === "video" &&
+      model.key !== "seedance-2";
+    if (specVideoBypass) {
+      setError(
+        "SPEC skipped for this take — the attached video runs through the classic flow so its motion gets beat-copied. (Seedance 2.0 keeps SPEC; it reads the clip itself.)",
+      );
+    }
+
     // (the Act-Two block above already returned — providerId is not runway)
-    if (text && (specMode || (keysLoaded && !keys["GEMINI_API_KEY"]))) {
+    if (
+      text &&
+      !specVideoBypass &&
+      (specMode || (keysLoaded && !keys["GEMINI_API_KEY"]))
+    ) {
       const labels: string[] = [];
       const ctxParts: string[] = [];
       if (starterText) {
@@ -2525,7 +2559,13 @@ export default function Home() {
   const sendGuarded = () => {
     if (providerId !== "runway") {
       const hasGemini = keysLoaded && Boolean(keys["GEMINI_API_KEY"]);
-      if (specMode && hasGemini) return void send();
+      // Video reference on a model that can't read the clip itself ⇒ the
+      // send auto-bypasses SPEC (classic transfer flow) — that's a money
+      // path, so it must NOT skip the confirm.
+      const videoBypass =
+        attach?.kind === "video" && model.key !== "seedance-2";
+      if (specMode && hasGemini && draft.trim() && !videoBypass)
+        return void send();
       if (!hasGemini && !specDeclined && draft.trim()) return void send();
     }
     guardRun(send);
@@ -3714,8 +3754,8 @@ export default function Home() {
                   keysLoaded && !keys["GEMINI_API_KEY"]
                     ? "Make clips look real — add a Gemini key to unlock the guided spec interview"
                     : specMode
-                      ? "SPEC gate ON — drafts are checked against the 15-section photoreal spec and assembled before money is spent (text-first, no refine pass). Click to turn off."
-                      : "Turn on the SPEC gate — interview-then-assemble instead of the quick refine loop"
+                      ? "SPEC on — a few quick questions build a detailed photoreal prompt before money is spent. Click to turn off."
+                      : "Recommended — SPEC asks a few quick questions and builds a far more detailed, realistic take."
                 }
               >
                 SPEC

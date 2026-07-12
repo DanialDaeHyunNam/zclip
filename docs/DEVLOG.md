@@ -534,6 +534,13 @@ All entries 2026-07-06 (single build session, owner: Dan).
   open skip the pre-spend confirm; every path that actually submits money
   (preview Generate, skip hatch, pitch decline, declined-fallback send)
   still passes guardRun exactly once.
+- Follow-up (owner): performance transfer stays a classic-flow feature —
+  a video reference on a non-clip-reading model AUTO-BYPASSES SPEC for
+  that send (soft note; Seedance 2.0 keeps SPEC). The bypass is a money
+  path so it does NOT skip the confirm (also fixed: empty-text SPEC sends
+  used to slip past guardRun into the classic flow unconfirmed). Model-
+  switch-mid-interview edge still gets the ⚠ look≠motion card warning.
+  SPEC-off tooltip now RECOMMENDS turning it on (short pitch).
 
 ## Verification ledger (what was actually exercised)
 

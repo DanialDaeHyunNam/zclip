@@ -118,6 +118,15 @@ the preview/gate cards show a "riding along" line. A reload loses the
 bundle → generate/skip REFUSE loudly (retryTurn precedent) instead of
 silently billing without the user's references.
 
+Performance-transfer routing (owner call): a video reference on a model
+that can't read the clip itself AUTO-BYPASSES SPEC for that send — the
+classic flow's transfer transcription beat-copies the motion, which the
+SPEC cut board would drop. A soft note says so; Seedance 2.0 keeps SPEC
+(the model reads motion directly). The bypass is a money path, so it
+does NOT skip the pre-spend confirm. Edge kept covered: switching a
+started interview onto a non-clip-reading model surfaces a ⚠ "look
+carries, motion is not beat-copied" warning on the cards instead.
+
 ## Key onboarding (owner's 4-step UX, 2026-07-12)
 
 Text send without `GEMINI_API_KEY` → pitch modal (free key = guided
