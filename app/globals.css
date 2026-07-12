@@ -5130,3 +5130,63 @@ button {
   color: var(--dim);
   margin-top: 8px;
 }
+
+/* ── Gemini-key pitch modal (spec interview onboarding) ─────────────── */
+
+.pitch-copy {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--dim);
+  margin: 10px 0 14px;
+}
+
+.pitch-copy b {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.pitch-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.pitch-row input {
+  flex: 1;
+  font-family: var(--font-mono), monospace;
+  font-size: 11.5px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.pitch-row input:focus {
+  border-color: rgba(111, 220, 255, 0.4);
+}
+
+.pitch-hint {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--faint);
+  margin: 6px 0;
+}
+
+.pitch-hint a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.pitch-hint code {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+}
+
+.pitch-msg {
+  font-size: 11px;
+  color: #ff5f56;
+  margin: 6px 0;
+}

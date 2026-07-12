@@ -182,6 +182,13 @@ against the new profile. Gate/preview cards are Turns with `kind` set:
 excluded from take numbering, history, base-prompt lookup and the output
 preview (grep `!t.kind` in studio.tsx when touching the thread).
 
+Key onboarding (DEVLOG #28): text-only send without GEMINI_API_KEY →
+pitch modal (key saves to `.env.local` like the provider panel; saving
+turns SPEC on and interviews the interrupted draft). Decline
+(`hooklab.specDeclined`) ⇒ key-less sends go out exactly as typed
+(verbatim fallback — they used to error in refine). The SPEC button is
+the permanent re-entry: key-less click reopens the modal, always.
+
 - Design + UX + versioning contract: `docs/VIDEO-PROMPT-SPEC.md`
 - Data mirror (SPEC_VERSION, sections/gates/self-checks/MODEL_PROFILES):
   `lib/video-prompt-spec.ts` — SSOT for rules is the mono repo skill

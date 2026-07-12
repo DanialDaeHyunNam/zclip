@@ -172,6 +172,9 @@ const PinGlyph = () => (
 
 const THREAD_KEY = "hooklab.thread";
 const ASSETS_KEY = "hooklab.customAssets";
+/** "1" = user declined the Gemini-key pitch — sends go out exactly as
+ *  typed (no refine, no spec interview) until they add a key. */
+const SPEC_DECLINED_KEY = "hooklab.specDeclined";
 // GALLERY_KEY / SESSIONS_KEY / SESSION_ID_KEY / PW_KEY are shared with the
 // archive & grab routes — imported from lib/clip.
 const POLL_MS = 3000;
@@ -393,6 +396,13 @@ export default function Home() {
    * like continuity). specBusy = a check/assemble call is in flight. */
   const [specMode, setSpecMode] = useState(false);
   const [specBusy, setSpecBusy] = useState<"check" | "assemble" | null>(null);
+  /** Gemini-key onboarding modal. draft = the send it interrupted
+   *  ("" ⇒ opened from the SPEC button, nothing pending). */
+  const [specPitch, setSpecPitch] = useState<{ draft: string } | null>(null);
+  const [specDeclined, setSpecDeclined] = useState(false);
+  const [pitchInput, setPitchInput] = useState("");
+  const [pitchSaving, setPitchSaving] = useState(false);
+  const [pitchMsg, setPitchMsg] = useState("");
   /** Synchronous re-entry lock for the spec flow (same reason as
    *  sendLockRef — chip double-clicks and the model-switch effect race
    *  React's async state commits). */
@@ -697,6 +707,12 @@ export default function Home() {
       store.set(GALLERY_KEY, JSON.stringify(clips));
     }
   }, [clips, hydrated]);
+
+  /* remembered decline of the Gemini-key pitch */
+  useEffect(() => {
+    if (!hydrated) return;
+    setSpecDeclined(store.get(SPEC_DECLINED_KEY) === "1");
+  }, [hydrated]);
 
   /* the one in-flight turn (single-flight session) */
   const busyTurn = turns.find(
@@ -1479,6 +1495,56 @@ export default function Home() {
     guardRun(() => void submitVerbatim(t.prompt!, t.specDraft ?? "Spec take"));
   };
 
+  /** Gemini-key pitch modal — "Save & improve": store the key exactly like
+   *  the provider key panel (.env.local via /api/keys), then run the spec
+   *  interview on the send the modal interrupted. */
+  const pitchSaveKey = async () => {
+    if (!pitchInput.trim() || pitchSaving) return;
+    setPitchSaving(true);
+    setPitchMsg("");
+    try {
+      const res = await fetch("/api/keys", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          envVar: "GEMINI_API_KEY",
+          value: pitchInput.trim(),
+        }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setPitchMsg(body.error ?? "Could not save the key");
+        return;
+      }
+      setPitchInput("");
+      await refreshKeys();
+      const pending = specPitch?.draft ?? "";
+      setSpecPitch(null);
+      setSpecMode(true); // the pitch IS the spec opt-in
+      if (pending) {
+        setDraft("");
+        await advanceSpec(`sf${Date.now()}`, pending, []);
+      }
+    } catch {
+      setPitchMsg("Network error — could not save the key.");
+    } finally {
+      setPitchSaving(false);
+    }
+  };
+
+  /** "No thanks" — remember it, and run the interrupted send exactly as
+   *  typed (still behind the pre-spend confirm; it's real money). */
+  const pitchDecline = () => {
+    const pending = specPitch?.draft ?? "";
+    setSpecPitch(null);
+    setSpecDeclined(true);
+    store.set(SPEC_DECLINED_KEY, "1");
+    if (pending) {
+      setDraft("");
+      guardRun(() => void submitVerbatim(pending, pending));
+    }
+  };
+
   /* Per-model adaptation (docs § Per-model adaptation): switching the
    * model while an interview/preview is OPEN re-runs the spec check
    * against the new provider's profile — the pending card is replaced,
@@ -1527,6 +1593,31 @@ export default function Home() {
     setError(null);
     sendLockRef.current = true;
     try {
+
+    // ── Gemini-key onboarding: BOTH conversational layers (refine and
+    // the spec interview) run on GEMINI_API_KEY. Text-only send without
+    // it → pitch the key once; declined ⇒ this and future sends go to
+    // the video model exactly as typed (previously this errored out). ──
+    if (
+      providerId !== "runway" &&
+      keysLoaded &&
+      !keys["GEMINI_API_KEY"] &&
+      text &&
+      !manual &&
+      !selChar &&
+      !selSetting &&
+      !ctxTurns.length &&
+      !starterText
+    ) {
+      if (!specDeclined) {
+        setSpecPitch({ draft: text }); // composer keeps the draft on Cancel
+        return;
+      }
+      setDraft("");
+      sendLockRef.current = false; // hand off to submitVerbatim's own lock
+      await submitVerbatim(text, text);
+      return;
+    }
 
     // ── SPEC gate mode: interview instead of instant refine→generate.
     // Text-first track — Act-Two (no prompt at all) is exempt. ──
@@ -2370,6 +2461,63 @@ export default function Home() {
                 Generate
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Gemini-key pitch — the spec interview's onboarding (UX: pitch on
+          first key-less send; decline = run as typed; the SPEC button
+          reopens this forever). Cancel via backdrop keeps the draft. */}
+      {specPitch && (
+        <div className="confirm-backdrop" onClick={() => setSpecPitch(null)}>
+          <div className="confirm-card" onClick={(e) => e.stopPropagation()}>
+            <span className="label">Make it look real — 1 free key</span>
+            <p className="pitch-copy">
+              Add a <b>Gemini API key</b> (free tier is enough — it only
+              powers the conversation, not the video) and ZCLIP will
+              interview you before any money is spent: a few optimized
+              questions, then your words become a full photoreal spec
+              prompt. Slightly more questions, far more believable clips.
+            </p>
+            <div className="pitch-row">
+              <input
+                value={pitchInput}
+                onChange={(e) => setPitchInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && pitchSaveKey()}
+                placeholder="Paste GEMINI_API_KEY"
+                aria-label="Gemini API key"
+              />
+              <button
+                className="btn-primary"
+                disabled={!pitchInput.trim() || pitchSaving}
+                onClick={() => void pitchSaveKey()}
+              >
+                {pitchSaving ? "Saving…" : "Save & improve"}
+              </button>
+            </div>
+            <p className="pitch-hint">
+              Get one free at{" "}
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noreferrer"
+              >
+                aistudio.google.com/apikey
+              </a>{" "}
+              — saved to your local <code>.env.local</code>, never leaves
+              your machine.
+            </p>
+            {pitchMsg && <p className="pitch-msg">{pitchMsg}</p>}
+            <div className="confirm-actions">
+              <button className="btn-ghost" onClick={pitchDecline}>
+                {specPitch.draft
+                  ? "No thanks — send exactly what I typed"
+                  : "Not now"}
+              </button>
+            </div>
+            <p className="pitch-hint">
+              Without a key your text goes to the video model as-is. Change
+              your mind anytime — the SPEC button next to Send reopens this.
+            </p>
           </div>
         </div>
       )}
@@ -3396,11 +3544,23 @@ export default function Home() {
               />
               <button
                 className={`spec-toggle ${specMode ? "on" : ""}`}
-                onClick={() => setSpecMode((v) => !v)}
+                onClick={() => {
+                  // No Gemini key ⇒ this button is the permanent "improve
+                  // it" entry point: open the same pitch modal, even for
+                  // users who declined it before.
+                  if (keysLoaded && !keys["GEMINI_API_KEY"]) {
+                    setPitchMsg("");
+                    setSpecPitch({ draft: "" });
+                    return;
+                  }
+                  setSpecMode((v) => !v);
+                }}
                 title={
-                  specMode
-                    ? "SPEC gate ON — drafts are checked against the 15-section photoreal spec and assembled before money is spent (text-first, no refine pass). Click to turn off."
-                    : "Turn on the SPEC gate — interview-then-assemble instead of the quick refine loop"
+                  keysLoaded && !keys["GEMINI_API_KEY"]
+                    ? "Make clips look real — add a Gemini key to unlock the guided spec interview"
+                    : specMode
+                      ? "SPEC gate ON — drafts are checked against the 15-section photoreal spec and assembled before money is spent (text-first, no refine pass). Click to turn off."
+                      : "Turn on the SPEC gate — interview-then-assemble instead of the quick refine loop"
                 }
               >
                 SPEC

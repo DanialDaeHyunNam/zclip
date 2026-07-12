@@ -480,6 +480,31 @@ All entries 2026-07-06 (single build session, owner: Dan).
   sending headless messages would write into their real thread (see the
   live-state incident rule). Read-only DOM/screenshot checks only.
 
+## 28. Gemini-key onboarding for the spec interview (owner's UX spec)
+
+- Owner's 4-step flow: video key in + send → if no GEMINI_API_KEY, a
+  pitch modal sells the interview ("a few optimized questions, far more
+  believable clips"), key saves to .env.local exactly like the provider
+  key panel, then the interrupted send runs the spec interview (opt-in is
+  implicit — saving the key turns SPEC mode on). Decline = honest
+  fallback: that send AND future sends go to the video model exactly as
+  typed (submitVerbatim — previously key-less sends just errored in
+  refine), remembered in `hooklab.specDeclined`. The SPEC button next to
+  Send is the permanent re-entry: with no key it reopens the same modal
+  forever, even for decliners.
+- Decision kept from the cost discussion: conversation layer stays on
+  Gemini Flash (same ONE key as refine; free tier covers it) — a second
+  provider key for a cheaper mini model would save <1% of a take's cost
+  and add onboarding friction. Assembly is the arm you'd upgrade (a bad
+  prompt wastes a $0.4–1.6 clip), and ONLY via a Spec Lab win.
+- In practice the modal fires for Sora/Grok/Seedance users: Veo's
+  provider key IS GEMINI_API_KEY, so key-less Veo is blocked earlier by
+  keyMissing. Cancel (backdrop) keeps the draft in the composer; decline
+  still passes through the pre-spend confirm (it's real money).
+- Modal untested live (owner's dev server has the key set; removing it to
+  test would touch live state) — tsc + read-only render check only.
+  First key-less user flow needs one real pass.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.
