@@ -17,6 +17,52 @@ import {
  * quality + speed meter, and key status. Not-yet-wired models show greyed out.
  */
 
+/** Street reputation per model — market chatter (arena leaderboards,
+ *  review roundups, Jul 2026) blended with ZCLIP field notes. Niches,
+ *  not a ranking: every entry is "best at X", none is "best". */
+const GUIDE: {
+  name: string;
+  co: string;
+  verdict: string;
+  detail: string;
+}[] = [
+  {
+    name: "Veo 3.1",
+    co: "Google",
+    verdict: "Cinematic-polish king",
+    detail:
+      "Best photorealism, camera control and complex-scene consistency (crowds, natural light, architecture); native synced audio. Premium price. Field note: follows cut boards + props well — watch for selfie-arm anatomy artifacts on the fast tier.",
+  },
+  {
+    name: "Sora 2",
+    co: "OpenAI",
+    verdict: "Physics king",
+    detail:
+      "Unmatched object weight, momentum and shot-to-shot coherence; storyboard-style narrative strength. Slowest of the pack (extra safety pass), watermark, base model tops out at 720×1280.",
+  },
+  {
+    name: "Grok Imagine",
+    co: "xAI",
+    verdict: "#1 image-to-video Arena (since May 2026)",
+    detail:
+      "Cheapest + fastest audio-complete clips from a strong still — exactly the card-based hook use case. 720p cap; faces soften under fast motion (slow reactions are safe); English prompts only. Field note: obeys spec structure, acting below bar for dialogue comedy.",
+  },
+  {
+    name: "Seedance 2.0",
+    co: "ByteDance",
+    verdict: "Control & motion king",
+    detail:
+      "Takes image/video/audio references (reads the WHOLE clip incl. sound), most fluid motion and character animation, fastest generation, cheap. The reference-driven workhorse — and the only one here that keeps SPEC mode with a video reference.",
+  },
+  {
+    name: "Act-Two",
+    co: "Runway",
+    verdict: "The only TRUE performance transfer",
+    detail:
+      "Drives your face card with a real clip's motion, frame-accurate — no prompt at all. Use when the choreography IS the point.",
+  },
+];
+
 function Meter({ n, label }: { n: number; label: string }) {
   return (
     <span className="mp-meter" title={`${label}: ${n}/3`} aria-label={`${label} ${n} of 3`}>
@@ -45,6 +91,7 @@ export function ModelPicker({
   const [open, setOpen] = useState(false);
   const [company, setCompany] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [guide, setGuide] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -112,7 +159,35 @@ export function ModelPicker({
               </button>
             ))}
           </div>
+          <div className="mp-guide-row">
+            <button
+              className={`mp-guide-btn ${guide ? "on" : ""}`}
+              onClick={() => setGuide((v) => !v)}
+              title="What the market says each model is best at (Jul 2026) + our field notes"
+            >
+              {guide ? "← Models" : "Guide ?"}
+            </button>
+          </div>
 
+          {guide ? (
+            <div className="mp-scroll mp-guide">
+              {GUIDE.map((g) => (
+                <div key={g.name} className="mp-guide-item">
+                  <span className="mp-name">
+                    {g.name}
+                    <span className="mp-co">{g.co}</span>
+                  </span>
+                  <span className="mp-guide-verdict">{g.verdict}</span>
+                  <span className="mp-guide-detail">{g.detail}</span>
+                </div>
+              ))}
+              <p className="mp-guide-foot">
+                Market chatter as of Jul 2026 (i2v arena leaderboards, review
+                roundups) + ZCLIP field notes. Niches, not rankings — pick by
+                the take, not the hype.
+              </p>
+            </div>
+          ) : (
           <div className="mp-scroll">
             {list.map((m) => (
               <button
@@ -141,8 +216,9 @@ export function ModelPicker({
             ))}
             {list.length === 0 && <p className="mp-empty">No models for {company}.</p>}
           </div>
+          )}
 
-          {company === null && hiddenCount > 0 && (
+          {!guide && company === null && hiddenCount > 0 && (
             <button className="mp-toggle" onClick={() => setShowAll((v) => !v)}>
               {showAll ? "Headline models only" : `All models (+${hiddenCount} variants)`}
             </button>
