@@ -14,8 +14,9 @@
  *   ships only when confirmed better than before (A/B take or owner
  *   verdict), never on plausibility alone.
  *
- * Not wired into the UI yet — see docs/VIDEO-PROMPT-SPEC.md for the
- * intended gate UX and API design.
+ * Wired into the product (2026-07-12): /api/spec-check + the studio's
+ * SPEC gate cards consume SECTIONS/GATES/MODEL_PROFILES; the preview
+ * card runs SELF_CHECKS via lib/spec-check.ts. Docs: docs/VIDEO-PROMPT-SPEC.md.
  */
 
 export const SPEC_VERSION = "1.0.0";

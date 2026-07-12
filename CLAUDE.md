@@ -166,21 +166,32 @@ Resolved (kept for history): Grok pricing filled ($0.08/s flat, docs.x.ai;
 retro-backfilled in DEVLOG #25). Retry-without-reference no longer silently
 re-bills — `retryTurn` refuses loudly when `usedRef` (visible-errors principle).
 
-## Video Prompt Spec Gate (handoff from mono, 2026-07-12 — not wired yet)
+## Video Prompt Spec Gate (handoff from mono 2026-07-12 — WIRED same day)
 
 The owner's photoreal prompt discipline (15-section template + timecoded
-cut board, proven on Seedance 2.0 / Veo 3.1) is being ported into the
-studio as a pre-generation gate: free-typed prompts get spec-checked,
-missing pieces resolved via inline question cards (quick-reply chips)
-BEFORE money is spent, then the assembled spec prompt goes to
-`/api/generate` verbatim (no refine pass on top).
+cut board, proven on Seedance 2.0 / Veo 3.1) lives in the studio as a
+pre-generation gate. SPEC toggle in the composer (session-only, off by
+default; text-first — references/cards rejected with a visible error):
+draft → `/api/spec-check` (SEPARATE track from refine, NO 900-char clamp;
+provider-aware via `MODEL_PROFILES`) → one gate question card per turn
+(quick-reply chips + free text + always-visible "skip checks, run as
+typed") → assembled 15-section prompt on a preview card (mechanical
+SELF_CHECKS annotations, cost, explicit Generate) → `/api/generate`
+VERBATIM — never through refine. Model switch re-checks an open interview
+against the new profile. Gate/preview cards are Turns with `kind` set:
+excluded from take numbering, history, base-prompt lookup and the output
+preview (grep `!t.kind` in studio.tsx when touching the thread).
 
 - Design + UX + versioning contract: `docs/VIDEO-PROMPT-SPEC.md`
-- Data mirror (SPEC_VERSION, sections/gates/self-checks/model notes):
+- Data mirror (SPEC_VERSION, sections/gates/self-checks/MODEL_PROFILES):
   `lib/video-prompt-spec.ts` — SSOT for rules is the mono repo skill
   `mono/.claude/skills/mkt-make-video-prompt/SKILL.md`; keep versions in sync.
-- **Spec Lab**: owner-only A/B arena — same brief under two spec versions,
-  side-by-side takes, owner picks winner; a version bump requires a win
-  there. ⚠️ The ENTIRE feature lives in gitignored `/app/lab` + `/lab`
-  (repo goes open source — no lab code may ship; no tracked file may
-  import from lab). See the doc.
+  App plumbing (API shapes, runSelfChecks, profile helpers): `lib/spec-check.ts`.
+- **Spec Lab** (BUILT, owner-machine only): `http://localhost:3000/lab` —
+  live spec vs a `/lab/snapshots/*.json` candidate on one brief, both
+  assemble+generate (2× cost shown up front), side-by-side, winner →
+  `/lab/ledger.json` + a paste-ready mono changelog line. ⚠️ The ENTIRE
+  feature lives in gitignored `/app/lab` + `/lab` (repo is open source —
+  no lab code may ship; imports one-way lab→lib; NO tracked file may
+  import from lab or a cloner's build breaks). `isCloud()` 404s it as a
+  second belt. See `/lab/README.md`.

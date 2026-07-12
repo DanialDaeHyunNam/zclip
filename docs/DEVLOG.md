@@ -441,6 +441,45 @@ All entries 2026-07-06 (single build session, owner: Dan).
   The gated cloud render is the same verified component + swapped hero —
   confirm on a Vercel preview or `ZCLIP_CLOUD=1 bun dev`.
 
+## 27. Video Prompt Spec Gate wired (mono handoff) + gitignored Spec Lab
+
+- Mono's photoreal discipline (15 sections, timecoded cut board) became a
+  pre-generation gate. `/api/spec-check` is a SEPARATE track from refine
+  (900-char clamp stays on refine only; spec prompts run 2–4k chars,
+  maxOutputTokens 4096). check → strict-JSON {missing, note, warnings}
+  validated server-side against real gate ids (a hallucinated id can't
+  wedge the interview); assemble → the 15-section prompt, submitted to
+  `/api/generate` VERBATIM (refine on top loses the double locks).
+- Per-model adaptation is structural: both modes read `MODEL_PROFILES`
+  (promptLanguage / maxSeconds / avoid → warnings; assembleHints appended
+  at assembly; extraGates merged into the critical list). Quick-reply
+  chips clamp to maxSeconds programmatically ("TikTok 15s" never shows on
+  Veo's 8s cap). Deterministic rules live in CODE, not the prompt — LLM
+  kept missing "one-take ⇒ cut-board resolved", so the route enforces it.
+- Gate cards are Turns with `kind: "gate" | "preview"` so rewind/sessions
+  work unchanged; every take-numbering site now filters `!t.kind`
+  (takeNo() helper). Cards snapshot question/options at ask time; one
+  card per turn; free text + chips; "skip checks, run as typed" always
+  visible; the pre-spend confirm moved from Send (interview is ~free) to
+  the preview card's Generate / the skip hatch. Model switch replaces an
+  open card and re-checks under the new profile (keyed off the card's
+  stored provider — no effect loops).
+- **Spec Lab** (owner-only A/B arena) — the repo is OSS, so the ENTIRE
+  feature sits in gitignored `/app/lab` (route `/lab`, its own assemble/
+  snapshots/verdict API routes) + `/lab` (snapshots, ledger.json,
+  README). Import direction lab→lib only; the lab assembler is a
+  deliberate COPY of the public one parameterized by posted spec JSON.
+  `isCloud()` 404s everything as a second belt. Verified: no tracked file
+  references lab (grep), `git check-ignore` passes both folders.
+- Verified with the owner's dev server live on :3000 (`bun x tsc
+  --noEmit`, NOT build): curl spec-check on vague/answered drafts (missing
+  shrinks, grok/veo profile warnings fire), assemble 2.4–3.3k-char
+  15-section outputs, lab snapshots/verdict/assemble live, /lab renders.
+  UI thread flow NOT exercised headlessly on purpose: the store is
+  file-backed (`.zclip-data`) and shared with the owner's session —
+  sending headless messages would write into their real thread (see the
+  live-state incident rule). Read-only DOM/screenshot checks only.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.
