@@ -48,6 +48,13 @@ import {
   refMixRules,
   refMixSummary,
 } from "@/lib/ref-mix";
+import { SPEC_VERSION } from "@/lib/video-prompt-spec";
+import {
+  type SpecAnswer,
+  gateForProvider,
+  gateOptions,
+  runSelfChecks,
+} from "@/lib/spec-check";
 
 /* ── types & storage ─────────────────────────────── */
 
@@ -86,6 +93,28 @@ interface Turn {
   usedRef?: boolean;
   /** Labels of takes the user pinned as context for this one, e.g. "T2 T4". */
   ctxLabel?: string;
+
+  /* ── Video Prompt Spec Gate cards (kind set ⇒ NOT a take: no video, no
+   *    cost, status stays "done", excluded from take numbering/history). ── */
+  /** "gate" = one unresolved-gate question card, "preview" = assembled-spec
+   *  confirm card. Undefined = a normal take (back-compat with stored data). */
+  kind?: "gate" | "preview";
+  /** Interview flow this card belongs to — one flow per typed draft. */
+  specFlow?: string;
+  /** The original free-typed draft, carried on every card of the flow. */
+  specDraft?: string;
+  gateId?: string;
+  /** Snapshot of the question at ask time (profile-aware — options may be
+   *  clamped per provider, so the live GATES lookup wouldn't be faithful). */
+  gateQ?: string;
+  gateWhy?: string;
+  gateOpts?: string[];
+  /** The user's answer — set ⇒ this card is resolved. */
+  gateAnswer?: string;
+  /** Checker's one-line note about non-critical defaults applied. */
+  specNote?: string;
+  /** Provider-fit warnings from the MODEL_PROFILES validation. */
+  specWarnings?: string[];
 }
 
 /** Append-only archive entry — survives rewinds. */
@@ -360,6 +389,14 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   /** Carry each take's snapshot into the next take automatically. */
   const [continuity, setContinuity] = useState(true);
+  /* Video Prompt Spec Gate: interview-before-money mode (session-only,
+   * like continuity). specBusy = a check/assemble call is in flight. */
+  const [specMode, setSpecMode] = useState(false);
+  const [specBusy, setSpecBusy] = useState<"check" | "assemble" | null>(null);
+  /** Synchronous re-entry lock for the spec flow (same reason as
+   *  sendLockRef — chip double-clicks and the model-switch effect race
+   *  React's async state commits). */
+  const specLockRef = useRef(false);
   const snapCapturing = useRef(new Set<string>());
   const vaultTried = useRef(new Set<string>());
   /** `${turnId}:${videoUrl}` of a preview <video> that failed to load — keyed
@@ -665,6 +702,10 @@ export default function Home() {
   const busyTurn = turns.find(
     (t) => t.status === "refining" || t.status === "pending",
   );
+  /** 1-based take number for the turn at index i — spec gate/preview cards
+   *  live in the thread but don't count as takes. */
+  const takeNo = (i: number) =>
+    turns.slice(0, i + 1).filter((t) => !t.kind).length;
   const pollTurn = busyTurn?.status === "pending" && busyTurn.jobId ? busyTurn : undefined;
 
   /* elapsed ticker — from the send click through render completion */
@@ -1249,6 +1290,213 @@ export default function Home() {
     }
   };
 
+  /* ── Video Prompt Spec Gate flow (docs/VIDEO-PROMPT-SPEC.md) ────────
+   * SPEC mode replaces refine→generate with: check the draft against the
+   * gates (provider-aware) → ask ONE question card per unresolved gate →
+   * assemble the 15-section prompt → preview card → generate VERBATIM. */
+
+  /** Answered gate cards of one interview flow, in thread order. */
+  const flowAnswers = (flowId: string): SpecAnswer[] =>
+    turns
+      .filter(
+        (t) =>
+          t.specFlow === flowId && t.kind === "gate" && t.gateId && t.gateAnswer,
+      )
+      .map((t) => ({ id: t.gateId!, answer: t.gateAnswer! }));
+
+  /** One spec step: which gates are still open? Append the next question
+   *  card — or, when all critical gates pass, assemble + append the
+   *  preview card. Text-only Gemini calls (~free); money moves only on
+   *  the preview card's explicit Generate. */
+  const advanceSpec = async (
+    flowId: string,
+    draftText: string,
+    answers: SpecAnswer[],
+  ) => {
+    if (specLockRef.current) return;
+    specLockRef.current = true;
+    setSpecBusy("check");
+    try {
+      const call = (mode: "check" | "assemble") =>
+        fetch("/api/spec-check", {
+          method: "POST",
+          headers: pwHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({
+            mode,
+            draft: draftText,
+            answers,
+            provider: providerId,
+            targetSeconds: effectiveSeconds(providerId, duration, resolution),
+            aspect,
+          }),
+        });
+      const r = await call("check");
+      const b = await r.json();
+      if (r.status === 401) {
+        setError("Password rejected");
+        setGateOpen(true);
+        return;
+      }
+      if (!r.ok) {
+        setError(b.error ?? "Spec check failed");
+        return;
+      }
+      const nextGate = ((b.missing ?? []) as string[])
+        .map((gid) => gateForProvider(gid, providerId))
+        .find(Boolean);
+      const common = {
+        provider: providerId,
+        modelLabel: model.short,
+        aspectRatio: aspect,
+        durationSeconds: duration,
+        resolution,
+        createdAt: Date.now(),
+        status: "done" as TurnStatus,
+        specFlow: flowId,
+        specDraft: draftText,
+        specNote: (b.note as string) || undefined,
+        specWarnings: (b.warnings as string[])?.length
+          ? (b.warnings as string[])
+          : undefined,
+        // First card of a flow shows the draft as the user message.
+        userText: answers.length ? "" : draftText,
+      };
+      if (nextGate) {
+        setTurns((ts) => [
+          ...ts,
+          {
+            ...common,
+            id: `t${Date.now()}`,
+            kind: "gate",
+            gateId: nextGate.id,
+            gateQ: nextGate.question,
+            gateWhy: nextGate.why,
+            gateOpts: gateOptions(nextGate, providerId),
+          },
+        ]);
+        return;
+      }
+      setSpecBusy("assemble");
+      const ar = await call("assemble");
+      const ab = await ar.json();
+      if (ar.status === 401) {
+        setError("Password rejected");
+        setGateOpen(true);
+        return;
+      }
+      if (!ar.ok) {
+        setError(ab.error ?? "Spec assembly failed");
+        return;
+      }
+      setTurns((ts) => [
+        ...ts,
+        { ...common, id: `t${Date.now()}`, kind: "preview", prompt: ab.prompt },
+      ]);
+    } catch {
+      setError("Network error — try again");
+    } finally {
+      specLockRef.current = false;
+      setSpecBusy(null);
+    }
+  };
+
+  const answerGate = (turnId: string, answer: string) => {
+    const t = turns.find((x) => x.id === turnId);
+    const a = answer.trim();
+    if (!t || t.kind !== "gate" || t.gateAnswer || !a || specLockRef.current)
+      return;
+    patchTurn(turnId, { gateAnswer: a });
+    void advanceSpec(t.specFlow!, t.specDraft ?? "", [
+      ...flowAnswers(t.specFlow!).filter((x) => x.id !== t.gateId),
+      { id: t.gateId!, answer: a },
+    ]);
+  };
+
+  /** Submit a finished prompt to /api/generate EXACTLY as written — the
+   *  spec gate's whole point is that no refine pass runs on top (Gemini
+   *  rewriting a finished spec loses the double locks). */
+  const submitVerbatim = async (prompt: string, userText: string) => {
+    if (busyTurn || sendLockRef.current) return;
+    sendLockRef.current = true;
+    const id = `t${Date.now()}`;
+    const turn: Turn = {
+      id,
+      userText,
+      prompt,
+      provider: providerId,
+      modelLabel: model.short,
+      aspectRatio: aspect,
+      durationSeconds: duration,
+      resolution,
+      createdAt: Date.now(),
+      status: "refining",
+      costUsd: estCostUsd ?? undefined,
+    };
+    setTurns((ts) => [...ts, turn]);
+    setSelectedId(id);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          prompt,
+          provider: providerId,
+          modelId: model.modelId,
+          aspectRatio: aspect,
+          durationSeconds: duration,
+          resolution,
+        }),
+      });
+      const body = await res.json();
+      if (res.status === 401) {
+        patchTurn(id, { status: "error", error: "Password rejected" });
+        setGateOpen(true);
+        return;
+      }
+      if (!res.ok) {
+        patchTurn(id, { status: "error", error: body.error ?? "Submit failed" });
+        return;
+      }
+      patchTurn(id, { status: "pending", jobId: body.jobId });
+    } catch {
+      patchTurn(id, { status: "error", error: "Network error — try again" });
+    } finally {
+      sendLockRef.current = false;
+    }
+  };
+
+  /** The always-visible escape hatch: never trap the user in the
+   *  interview — run the ORIGINAL draft as typed (still verbatim, still
+   *  behind the pre-spend confirm). */
+  const skipSpec = (t: Turn) => {
+    const raw = t.specDraft?.trim();
+    if (!raw) return;
+    guardRun(() => void submitVerbatim(raw, raw));
+  };
+
+  const specGenerate = (t: Turn) => {
+    if (!t.prompt) return;
+    guardRun(() => void submitVerbatim(t.prompt!, t.specDraft ?? "Spec take"));
+  };
+
+  /* Per-model adaptation (docs § Per-model adaptation): switching the
+   * model while an interview/preview is OPEN re-runs the spec check
+   * against the new provider's profile — the pending card is replaced,
+   * answered cards keep their answers. Keyed off the card's own stored
+   * provider, so a completed advanceSpec can't re-trigger it. */
+  useEffect(() => {
+    if (!ready || specLockRef.current) return;
+    const last = turns[turns.length - 1];
+    if (!last?.kind || last.provider === providerId) return;
+    if (last.kind === "gate" && last.gateAnswer) return; // resolved card
+    setTurns((ts) => ts.slice(0, -1));
+    void advanceSpec(
+      last.specFlow!,
+      last.specDraft ?? "",
+      flowAnswers(last.specFlow!),
+    );
+  }, [providerId, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const send = async () => {
     if (sendLockRef.current) return; // a submit is already in flight
     const text = draft.trim();
@@ -1264,7 +1512,7 @@ export default function Home() {
       .map((id) => ({ idx: turns.findIndex((t) => t.id === id) }))
       .filter(({ idx }) => idx >= 0 && turns[idx].prompt)
       .sort((a, b) => a.idx - b.idx)
-      .map(({ idx }) => ({ take: idx + 1, turn: turns[idx] }));
+      .map(({ idx }) => ({ take: takeNo(idx), turn: turns[idx] }));
     if (
       busyTurn ||
       (!text &&
@@ -1279,6 +1527,26 @@ export default function Home() {
     setError(null);
     sendLockRef.current = true;
     try {
+
+    // ── SPEC gate mode: interview instead of instant refine→generate.
+    // Text-first track — Act-Two (no prompt at all) is exempt. ──
+    if (specMode && providerId !== "runway") {
+      if (!text) {
+        setError(
+          "SPEC gate needs a typed description — it interviews you about whatever the spec still misses.",
+        );
+        return;
+      }
+      if (manual || selChar || selSetting || ctxTurns.length || starterText) {
+        setError(
+          "SPEC gate is text-first for now — detach references/cards, or toggle SPEC off for this take.",
+        );
+        return;
+      }
+      setDraft("");
+      await advanceSpec(`sf${Date.now()}`, text, []);
+      return;
+    }
 
     // ── Runway Act-Two: real performance transfer, no prompt / no refine.
     // Sends the driving video + the chosen face card straight to Runway;
@@ -1443,10 +1711,12 @@ export default function Home() {
     const id = `t${Date.now()}`;
     const createdAt = Date.now();
     const base = turns.length
-      ? [...turns].reverse().find((t) => t.prompt)?.prompt
+      ? [...turns].reverse().find((t) => !t.kind && t.prompt)?.prompt
       : starterText ?? undefined;
     // Earlier takes give the refiner context for "take 1's background" etc.
+    // (spec cards excluded — a preview card's prompt isn't a produced take)
     const history = turns
+      .filter((t) => !t.kind)
       .map((t, i) => ({ take: i + 1, request: t.userText, prompt: t.prompt ?? "" }))
       .filter((h) => h.prompt)
       .slice(-6);
@@ -1770,7 +2040,7 @@ export default function Home() {
     // Refuse loudly instead (visible-errors principle).
     if (turn.usedRef) {
       setError(
-        `Take ${idx + 1} was sent with an attached reference, which isn't kept after sending — a retry would re-run (and bill) without it. Re-attach the reference (Library → "use as reference") and send the message again instead.`,
+        `Take ${takeNo(idx)} was sent with an attached reference, which isn't kept after sending — a retry would re-run (and bill) without it. Re-attach the reference (Library → "use as reference") and send the message again instead.`,
       );
       return;
     }
@@ -1792,7 +2062,7 @@ export default function Home() {
     try {
       let prompt = turn.prompt;
       if (!prompt) {
-        const earlier = turns.slice(0, idx);
+        const earlier = turns.slice(0, idx).filter((t) => !t.kind);
         const base = [...earlier].reverse().find((t) => t.prompt)?.prompt;
         const history = earlier
           .map((t, i) => ({ take: i + 1, request: t.userText, prompt: t.prompt ?? "" }))
@@ -1914,10 +2184,10 @@ export default function Home() {
 
   /* derived: what the preview shows */
   const previewTurn =
-    turns.find((t) => t.id === selectedId) ??
+    turns.find((t) => t.id === selectedId && !t.kind) ??
     busyTurn ??
-    [...turns].reverse().find((t) => t.status === "done") ??
-    turns[turns.length - 1];
+    [...turns].reverse().find((t) => !t.kind && t.status === "done") ??
+    [...turns].reverse().find((t) => !t.kind);
   const previewBusy =
     previewTurn && (previewTurn.status === "refining" || previewTurn.status === "pending");
 
@@ -1995,6 +2265,7 @@ export default function Home() {
   const starterReady = turns.length === 0 && Boolean(starterDraft?.trim());
   const canSend =
     !busyTurn &&
+    !specBusy &&
     ready &&
     !keyMissing &&
     Boolean(
@@ -2005,6 +2276,14 @@ export default function Home() {
         selChar ||
         selSetting,
     );
+
+  /** Composer submit. Starting a SPEC interview is free (text-only Gemini
+   *  calls), so it bypasses the pre-spend confirm — in spec mode the
+   *  confirm moves to the preview card's Generate / the skip hatch. */
+  const sendGuarded = () => {
+    if (specMode && providerId !== "runway") void send();
+    else guardRun(send);
+  };
 
   // What the selected model will do with each attached piece of context.
   const manifest = contextManifest(providerId, {
@@ -2206,7 +2485,7 @@ export default function Home() {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}{" "}
-                · {s.turns.length} takes
+                · {s.turns.filter((t) => !t.kind).length} takes
               </div>
               <button
                 className={`side-del side-pin ${s.pinned ? "on" : ""}`}
@@ -2265,7 +2544,9 @@ export default function Home() {
             <span className="label">Session</span>
             <span className="session-spend">
               {turns.length > 0 && (
-                <span className="status-line">{turns.length} TAKES</span>
+                <span className="status-line">
+                  {turns.filter((t) => !t.kind).length} TAKES
+                </span>
               )}
               {clips.length > 0 && (
                 <>
@@ -2356,7 +2637,19 @@ export default function Home() {
           </div>
 
           <div className="thread" ref={threadRef}>
-            {turns.map((t, i) => (
+            {turns.map((t, i) => t.kind ? (
+              <SpecCard
+                key={t.id}
+                turn={t}
+                active={i === turns.length - 1 && !busyTurn}
+                busy={i === turns.length - 1 ? specBusy : null}
+                cost={fmtCost(estCostUsd ?? undefined)}
+                modelShort={model.short}
+                onAnswer={(a) => answerGate(t.id, a)}
+                onSkip={() => skipSpec(t)}
+                onGenerate={() => specGenerate(t)}
+              />
+            ) : (
               <div
                 key={t.id}
                 className={`turn ${previewTurn?.id === t.id ? "selected" : ""}`}
@@ -2371,7 +2664,7 @@ export default function Home() {
                     className="turn-prompt"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <summary>Prompt · Take {i + 1}</summary>
+                    <summary>Prompt · Take {takeNo(i)}</summary>
                     <p>{t.prompt}</p>
                   </details>
                 )}
@@ -2383,7 +2676,7 @@ export default function Home() {
                     {t.status === "refining" && "PREPARING…"}
                     {t.status === "pending" && `RENDERING ${busyTurn?.id === t.id ? fmtElapsed(elapsed) : ""}`}
                     {t.status === "done" &&
-                      `TAKE ${i + 1} · ${(t.modelLabel ?? PROVIDERS[t.provider].label).toUpperCase()}${fmtCost(t.costUsd) ? ` · ${fmtCost(t.costUsd)}` : ""}`}
+                      `TAKE ${takeNo(i)} · ${(t.modelLabel ?? PROVIDERS[t.provider].label).toUpperCase()}${fmtCost(t.costUsd) ? ` · ${fmtCost(t.costUsd)}` : ""}`}
                     {t.status === "error" && "FAILED"}
                   </span>
                   {t.usedContinuity && (
@@ -2898,11 +3191,11 @@ export default function Home() {
                   return (
                     <span key={id} className="sel-chip fade">
                       {img && <img src={img} alt="" />}
-                      Take {idx + 1}
+                      Take {takeNo(idx)}
                       <button
                         className="link-btn danger"
                         onClick={() => toggleCtx(id)}
-                        aria-label={`Unpin take ${idx + 1}`}
+                        aria-label={`Unpin take ${takeNo(idx)}`}
                       >
                         ✕
                       </button>
@@ -3068,7 +3361,7 @@ export default function Home() {
                     !e.nativeEvent.isComposing
                   ) {
                     e.preventDefault();
-                    if (canSend) guardRun(send);
+                    if (canSend) sendGuarded();
                   }
                 }}
                 onPaste={(e) => {
@@ -3087,8 +3380,12 @@ export default function Home() {
                 placeholder={
                   busyTurn
                     ? "Rendering — wait for this take…"
+                    : specBusy
+                      ? "Spec gate is thinking…"
                     : providerId === "runway"
                       ? "Act-Two: attach a driving video (⤓ Grab or Library) + pick a face card, then send — no prompt needed"
+                      : specMode
+                        ? "SPEC gate on — describe the clip; unresolved spec decisions get asked before any money is spent"
                       : starterReady
                         ? "Action for the take — empty = default quiet-surprise beat"
                         : turns.length === 0
@@ -3097,7 +3394,18 @@ export default function Home() {
                 }
                 disabled={Boolean(busyTurn)}
               />
-              <button className="btn-primary send-btn" onClick={() => guardRun(send)} disabled={!canSend}>
+              <button
+                className={`spec-toggle ${specMode ? "on" : ""}`}
+                onClick={() => setSpecMode((v) => !v)}
+                title={
+                  specMode
+                    ? "SPEC gate ON — drafts are checked against the 15-section photoreal spec and assembled before money is spent (text-first, no refine pass). Click to turn off."
+                    : "Turn on the SPEC gate — interview-then-assemble instead of the quick refine loop"
+                }
+              >
+                SPEC
+              </button>
+              <button className="btn-primary send-btn" onClick={sendGuarded} disabled={!canSend}>
                 {starterReady && !draft.trim() ? "Start" : "Send"}
               </button>
             </div>
@@ -3506,5 +3814,166 @@ export default function Home() {
         </div>
       )}
     </>
+  );
+}
+
+/* ── Video Prompt Spec Gate cards ─────────────────────────────────────
+ * One gate question (quick-reply chips + free text) or the assembled-spec
+ * preview (prompt + mechanical self-checks + explicit Generate). Rendered
+ * inside the thread; `active` = it is the last turn, so chips/buttons on
+ * superseded cards go inert instead of mutating a finished flow. */
+function SpecCard({
+  turn,
+  active,
+  busy,
+  cost,
+  modelShort,
+  onAnswer,
+  onSkip,
+  onGenerate,
+}: {
+  turn: Turn;
+  active: boolean;
+  busy: "check" | "assemble" | null;
+  cost: string | null;
+  modelShort: string;
+  onAnswer: (answer: string) => void;
+  onSkip: () => void;
+  onGenerate: () => void;
+}) {
+  const [free, setFree] = useState("");
+  const checks =
+    turn.kind === "preview" && turn.prompt
+      ? runSelfChecks(turn.prompt, turn.durationSeconds)
+      : [];
+  const failed = checks.filter((c) => !c.pass).length;
+  const open = turn.kind === "gate" ? !turn.gateAnswer : true;
+  return (
+    <div className={`turn spec-card ${active || !open ? "" : "inert"}`}>
+      {turn.userText && <div className="turn-user">{turn.userText}</div>}
+      {turn.specWarnings?.map((w) => (
+        <div key={w} className="spec-warn">⚠ {w}</div>
+      ))}
+      {turn.kind === "gate" ? (
+        <>
+          <div className="spec-head">
+            SPEC GATE · {turn.gateId?.replace(/-/g, " ").toUpperCase()}
+          </div>
+          <div className="spec-q">{turn.gateQ}</div>
+          {turn.gateWhy && <div className="spec-why">{turn.gateWhy}</div>}
+          {turn.gateAnswer ? (
+            <div className="spec-answer">→ {turn.gateAnswer}</div>
+          ) : active ? (
+            <>
+              {!!turn.gateOpts?.length && (
+                <div className="spec-chips">
+                  {turn.gateOpts.map((o) => (
+                    <button
+                      key={o}
+                      className="spec-chip"
+                      disabled={Boolean(busy)}
+                      onClick={() => onAnswer(o)}
+                    >
+                      {o}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="spec-free">
+                <input
+                  value={free}
+                  onChange={(e) => setFree(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === "Enter" &&
+                      !e.nativeEvent.isComposing &&
+                      free.trim() &&
+                      !busy
+                    ) {
+                      onAnswer(free.trim());
+                      setFree("");
+                    }
+                  }}
+                  placeholder="Or type your own answer…"
+                  disabled={Boolean(busy)}
+                />
+                <button
+                  className="link-btn"
+                  disabled={!free.trim() || Boolean(busy)}
+                  onClick={() => {
+                    onAnswer(free.trim());
+                    setFree("");
+                  }}
+                >
+                  OK
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="spec-why">superseded — continue below</div>
+          )}
+          {turn.specNote && (
+            <div className="spec-why">defaults: {turn.specNote}</div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="spec-head">
+            SPEC PREVIEW · v{SPEC_VERSION} · {turn.prompt?.length ?? 0} CHARS
+          </div>
+          {turn.specNote && (
+            <div className="spec-why">defaults: {turn.specNote}</div>
+          )}
+          <details className="turn-prompt spec-prompt" open>
+            <summary>Assembled spec prompt (submitted verbatim)</summary>
+            <p>{turn.prompt}</p>
+          </details>
+          {checks.length > 0 && (
+            <ul className="spec-checks">
+              {checks.map((c) => (
+                <li key={c.label} className={c.pass ? "pass" : "fail"}>
+                  {c.pass ? "✓" : "!"} {c.label}
+                  {c.detail && <span className="spec-detail"> — {c.detail}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {active && (
+            <div className="spec-actions">
+              <button
+                className="btn-primary"
+                disabled={Boolean(busy)}
+                onClick={onGenerate}
+              >
+                Generate — {modelShort}
+                {cost ? ` · ~${cost}` : ""}
+              </button>
+              {failed > 0 && (
+                <span className="spec-why">
+                  {failed} self-check{failed > 1 ? "s" : ""} unhappy — you can
+                  still generate
+                </span>
+              )}
+            </div>
+          )}
+        </>
+      )}
+      {active && open && (
+        <button
+          className="link-btn spec-skip"
+          disabled={Boolean(busy)}
+          onClick={onSkip}
+          title="Escape hatch — send your original text to the model exactly as typed, no spec"
+        >
+          skip checks, run as typed →
+        </button>
+      )}
+      {busy && (
+        <div className="spec-busy">
+          <span className="dot live" />{" "}
+          {busy === "check" ? "CHECKING SPEC…" : "ASSEMBLING SPEC PROMPT…"}
+        </div>
+      )}
+    </div>
   );
 }

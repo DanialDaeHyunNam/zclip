@@ -4935,3 +4935,198 @@ button {
   color: #001018;
   transform: scale(0.95);
 }
+
+/* ── Video Prompt Spec Gate (composer toggle + thread cards) ────────── */
+
+.spec-toggle {
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--dim);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--r-pill);
+  padding: 0 14px;
+  cursor: pointer;
+  transition:
+    color 0.3s ease,
+    border-color 0.3s ease,
+    background 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.spec-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  color: var(--fg);
+}
+
+.spec-toggle.on {
+  color: var(--accent);
+  border-color: rgba(111, 220, 255, 0.45);
+  background: rgba(111, 220, 255, 0.07);
+  box-shadow: 0 0 14px rgba(111, 220, 255, 0.12);
+}
+
+.spec-card {
+  cursor: default;
+  border-left-color: rgba(111, 220, 255, 0.35);
+}
+
+.spec-card.inert {
+  opacity: 0.55;
+}
+
+.spec-head {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.spec-q {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fg);
+  margin-bottom: 4px;
+}
+
+.spec-why {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--faint);
+  margin-bottom: 8px;
+}
+
+.spec-warn {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: #ffb020;
+  border: 1px solid rgba(255, 176, 32, 0.25);
+  background: rgba(255, 176, 32, 0.05);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  margin-bottom: 8px;
+}
+
+.spec-answer {
+  font-size: 12px;
+  color: var(--accent);
+  margin: 4px 0 8px;
+}
+
+.spec-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.spec-chip {
+  font-size: 11px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--r-pill);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease,
+    color 0.3s ease;
+}
+
+.spec-chip:hover:not(:disabled) {
+  border-color: rgba(111, 220, 255, 0.45);
+  background: rgba(111, 220, 255, 0.07);
+  color: var(--accent);
+}
+
+.spec-chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.spec-free {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.spec-free input {
+  flex: 1;
+  font-size: 12px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.spec-free input:focus {
+  border-color: rgba(111, 220, 255, 0.4);
+}
+
+.spec-prompt p {
+  white-space: pre-wrap;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.spec-checks {
+  list-style: none;
+  margin: 10px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spec-checks li {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
+.spec-checks li.fail {
+  color: #ffb020;
+}
+
+.spec-detail {
+  color: var(--faint);
+}
+
+.spec-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 10px 0 4px;
+}
+
+.spec-skip {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+.spec-skip:hover {
+  color: var(--dim);
+}
+
+.spec-busy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+  margin-top: 8px;
+}
