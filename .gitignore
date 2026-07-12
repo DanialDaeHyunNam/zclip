@@ -13,3 +13,7 @@ next-env.d.ts
 .vercel
 # local session store (filesystem persistence — dev only, per-machine data)
 .zclip-data/
+# owner-only Spec Lab (A/B spec-version arena) — never ships in the
+# open-source repo; the whole feature lives in these local-only folders
+/app/lab/
+/lab/

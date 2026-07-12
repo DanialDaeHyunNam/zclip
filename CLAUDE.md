@@ -153,10 +153,9 @@ Releasing. Preview locally: `NEXT_PUBLIC_APP_VERSION=0.0.1 bun dev`.
 
 ## Open items / cheap next steps
 
-- Seedance adapter unverified end-to-end (`costPerSecondUsd: null` → cost
-  shows "—" until a real run confirms endpoint/shape + pricing).
-- Retry does not re-send the reference image (only stored as thumb) —
-  `retryTurn` generate body omits `image`.
+- Seedance 1.0 provider pricing still `costPerSecondUsd: null` (cost "—");
+  Seedance 2.0 variant ships with ESTIMATED pricing ($0.10/$0.22 — "until a
+  metered run", config comment). Confirm both against a real billed run.
 - Session titles = first message truncated; could LLM-summarize.
 - Sora `input_reference` res-match: `normalizeRefB64` now cover-crops every
   reference to the selected 720×1280/1280×720 at send time (mitigated) —
@@ -164,4 +163,24 @@ Releasing. Preview locally: `NEXT_PUBLIC_APP_VERSION=0.0.1 bun dev`.
 - `next.config.ts` empty; no ESLint configured (intentional, minimal).
 
 Resolved (kept for history): Grok pricing filled ($0.08/s flat, docs.x.ai;
-retro-backfilled in DEVLOG #25).
+retro-backfilled in DEVLOG #25). Retry-without-reference no longer silently
+re-bills — `retryTurn` refuses loudly when `usedRef` (visible-errors principle).
+
+## Video Prompt Spec Gate (handoff from mono, 2026-07-12 — not wired yet)
+
+The owner's photoreal prompt discipline (15-section template + timecoded
+cut board, proven on Seedance 2.0 / Veo 3.1) is being ported into the
+studio as a pre-generation gate: free-typed prompts get spec-checked,
+missing pieces resolved via inline question cards (quick-reply chips)
+BEFORE money is spent, then the assembled spec prompt goes to
+`/api/generate` verbatim (no refine pass on top).
+
+- Design + UX + versioning contract: `docs/VIDEO-PROMPT-SPEC.md`
+- Data mirror (SPEC_VERSION, sections/gates/self-checks/model notes):
+  `lib/video-prompt-spec.ts` — SSOT for rules is the mono repo skill
+  `mono/.claude/skills/mkt-make-video-prompt/SKILL.md`; keep versions in sync.
+- **Spec Lab**: owner-only A/B arena — same brief under two spec versions,
+  side-by-side takes, owner picks winner; a version bump requires a win
+  there. ⚠️ The ENTIRE feature lives in gitignored `/app/lab` + `/lab`
+  (repo goes open source — no lab code may ship; no tracked file may
+  import from lab). See the doc.
