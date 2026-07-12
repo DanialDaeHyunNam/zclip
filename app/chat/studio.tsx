@@ -3914,26 +3914,9 @@ export default function Home() {
                 )}
               </div>
             ) : (
+            /* column layout: the input gets the FULL bar width; attach /
+               SPEC / Send live on their own action row below (8px gap) */
             <div className="chat-bar">
-              <button
-                className="attach-btn"
-                title="Attach a reference image — or drag & drop / paste one"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={Boolean(busyTurn)}
-              >
-                +
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*"
-                hidden
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) attachMediaFile(f);
-                  e.target.value = "";
-                }}
-              />
               <textarea
                 className="chat-input"
                 rows={2}
@@ -3979,6 +3962,27 @@ export default function Home() {
                 }
                 disabled={Boolean(busyTurn)}
               />
+              <div className="chat-bar-actions">
+              <button
+                className="attach-btn"
+                title="Attach a reference image — or drag & drop / paste one"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={Boolean(busyTurn)}
+              >
+                +
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) attachMediaFile(f);
+                  e.target.value = "";
+                }}
+              />
+              <span className="turn-spacer" />
               <button
                 className={`spec-toggle ${specMode ? "on" : ""}`}
                 onClick={() => {
@@ -4005,6 +4009,7 @@ export default function Home() {
               <button className="btn-primary send-btn" onClick={sendGuarded} disabled={!canSend}>
                 {starterReady && !draft.trim() ? "Start" : "Send"}
               </button>
+              </div>
             </div>
             )}
             {!specFlow && ctxIds.length > 3 && (
