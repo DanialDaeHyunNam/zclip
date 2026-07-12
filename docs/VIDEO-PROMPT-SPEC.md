@@ -45,9 +45,20 @@ before any money is spent.**
   works unchanged.
 - The assembled spec prompt goes to `/api/generate` verbatim — no refine
   pass on top (Gemini rewriting a finished spec loses the double locks).
-- Providers: prompt body always English; spoken lines may stay Korean.
-  See `MODEL_NOTES` for per-provider caveats (e.g. Grok needs English-only,
-  Seedance here is 1.0 Pro, not the verified 2.0).
+- **Per-model adaptation (structural, will grow over time)**: the gate flow
+  is provider-aware via `MODEL_PROFILES` in `lib/video-prompt-spec.ts` —
+  the spec check validates the draft against the SELECTED provider's
+  profile (`promptLanguage`, `maxSeconds`, `avoid` patterns), gate
+  questions adapt (duration options clamp to `maxSeconds`; a profile can
+  add `extraGates`), and prompt assembly appends that provider's
+  `assembleHints` to the system prompt (e.g. Grok: prose dialogue, no
+  script lines; Veo: front-load bans because its pipeline rewrites
+  prompts). Switching the model re-runs the spec check against the new
+  profile. New field-test learnings land as structured fields when the
+  machine should act on them, or in `notes` when informational.
+  The quality bar for assembled prompts is the two canonical references
+  (supercar vlog / RENA idol vlog) — an assembled prompt should read at
+  that level regardless of what the user originally typed.
 
 ## Spec Lab — owner-only A/B arena (the improvement gate, enforced in UI)
 

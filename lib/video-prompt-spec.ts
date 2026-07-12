@@ -123,11 +123,71 @@ export const SELF_CHECKS: string[] = [
   "Named character + 'no identity drift' clause present",
 ];
 
-/** Per-provider field notes. Date-stamped; update on every real test. */
-export const MODEL_NOTES: Record<string, string> = {
-  veo: "2026-07-12 — Veo 3.1 fast: followed cut structure + props well at 22cr/8s (Higgsfield). Watch for selfie-arm anatomy artifacts (double arm, 2026-07-11 take); reroll or raise quality tier. Pipeline force-rewrites prompts (enhance_prompt).",
-  sora: "untested with this spec — first candidate to calibrate in ZCLIP.",
-  grok: "2026-07-11 — structure obeys the spec (no storyboard once genre+bans set), but acting/voice quality below bar for dialogue comedy. English prompts only (Korean prompt failed).",
-  seedance: "ZCLIP has Seedance 1.0 Pro — UNVERIFIED. The reference-grade results (RENA reproduction) were Seedance 2.0 (Higgsfield, 135cr/15s/1080p). Do not assume parity.",
-  runway: "untested with this spec.",
+/**
+ * ── PER-MODEL PROFILES (structural, not just notes) ──────────────────
+ * The gate flow consumes these: the spec check validates against the
+ * SELECTED provider, gate questions adapt (extraGates / duration bounds),
+ * and prompt assembly appends assembleHints for that provider. Switching
+ * the model re-runs the check against the new profile.
+ * Keys match ProviderName in lib/config.ts. Field-test learnings go here
+ * (date-stamped in `notes`); structural learnings get their own field so
+ * the machine can act on them.
+ */
+export interface ModelProfile {
+  /** Prompt body language. Spoken lines may still be Korean either way. */
+  promptLanguage: "english-only" | "any";
+  /** Hard duration cap the purpose/cut-board gates must respect (sec). */
+  maxSeconds?: number;
+  /** Formats that break this provider — spec check must flag them. */
+  avoid?: string[];
+  /** Lines appended to the assembly system prompt for this provider. */
+  assembleHints?: string[];
+  /** Extra gate questions to ask ONLY for this provider. */
+  extraGates?: SpecGate[];
+  /** Free-text, date-stamped field-test log (human-readable history). */
+  notes: string;
+}
+
+export const MODEL_PROFILES: Record<string, ModelProfile> = {
+  veo: {
+    promptLanguage: "any",
+    maxSeconds: 8,
+    avoid: ["selfie compositions relying on visible extended arm (double-arm anatomy artifacts on fast/basic tiers)"],
+    assembleHints: [
+      "Keep the cut list explicit and short; Veo's pipeline may rewrite prompts (enhance_prompt), so front-load hard bans in the first lines.",
+    ],
+    notes:
+      "2026-07-12 — Veo 3.1 fast: followed cut structure + props well at 22cr/8s (Higgsfield). Selfie-arm anatomy artifact observed (double arm, 2026-07-11); reroll or raise quality tier.",
+  },
+  sora: {
+    promptLanguage: "any",
+    notes: "untested with this spec — first candidate to calibrate in ZCLIP.",
+  },
+  grok: {
+    promptLanguage: "english-only",
+    avoid: [
+      "screenplay-format dialogue lists (renders burned subtitles + storyboard panels)",
+      "dialogue-heavy comedy (acting/voice quality below bar, 2026-07-11)",
+    ],
+    assembleHints: [
+      "Prompt body strictly English (Korean-language prompts failed outright).",
+      "Fold dialogue into prose action descriptions rather than 'A:'/'B:' script lines.",
+    ],
+    notes:
+      "2026-07-11 — obeys structure once genre anchor + bans are set, but acting/voice below bar for dialogue comedy. Korean prompt body = hard fail.",
+  },
+  seedance: {
+    promptLanguage: "any",
+    notes:
+      "ZCLIP has Seedance 1.0 Pro — UNVERIFIED. Reference-grade results (RENA reproduction) were Seedance 2.0 (Higgsfield, 135cr/15s/1080p). Do not assume parity.",
+  },
+  runway: {
+    promptLanguage: "any",
+    notes: "untested with this spec.",
+  },
 };
+
+/** @deprecated kept briefly for docs references — use MODEL_PROFILES. */
+export const MODEL_NOTES: Record<string, string> = Object.fromEntries(
+  Object.entries(MODEL_PROFILES).map(([k, v]) => [k, v.notes]),
+);
