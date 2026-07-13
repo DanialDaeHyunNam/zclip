@@ -191,7 +191,7 @@ export const MODEL_PROFILES: Record<string, ModelProfile> = {
   seedance: {
     promptLanguage: "any",
     assembleHints: [
-      "Seedance 2.0 with an attached image reference: reference it INLINE as '@ image' where the subject first appears (e.g. 'a female idol @ image'), and let the IMAGE own identity — describe wardrobe/energy/vibe in text, never fight the image on face or hair (frame-verified: text hair description lost to the image).",
+      "Seedance 2.0 with an attached image reference: reference it INLINE as '@ image' where the subject first appears (e.g. 'a woman @ image'), and let the IMAGE own identity — describe wardrobe/energy/vibe in text, never fight the image on face or hair (frame-verified: text hair description lost to the image).",
       "Seedance 2.0 tolerates script-style dialogue lines inside cut descriptions ('NAME: \"line\"' + parenthetical voice direction, incl. off-screen) without rendering burned subtitles — keep the lines inside described cuts anyway.",
     ],
     notes:
