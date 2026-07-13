@@ -535,7 +535,7 @@ export function FlowPanel({
                 onChange={(e) =>
                   patchFlow(flow.id, { imgPrompt: e.target.value })
                 }
-                placeholder="Describe the person/look — e.g. 'Korean idol in her 20s, dewy glass skin, pink slip dress, dressing-room vanity light, photoreal 9:16 portrait'"
+                placeholder="Describe the person/look — e.g. 'woman in her 20s, dewy glass skin, pink slip dress, dressing-room vanity light, photoreal 9:16 portrait'"
               />
               <div className="flow-gen-actions">
                 <button
@@ -710,7 +710,7 @@ export function FlowPanel({
                 onChange={(e) =>
                   patchFlow(flow.id, { motionPrompt: e.target.value })
                 }
-                placeholder="Describe ONLY the motion — 'subtle breathing, slow blink, hair moving in a soft breeze, she tilts her head and smiles at the lens'"
+                placeholder="Describe ONLY the motion — 'subtle breathing, slow blink, hair moving in a soft breeze, a small head tilt and a smile at the lens'"
               />
               <div className="flow-gen-actions">
                 <button
