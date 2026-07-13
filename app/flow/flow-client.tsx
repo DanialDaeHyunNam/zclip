@@ -81,9 +81,9 @@ interface Flow {
   resolution: Resolution;
 }
 
-const newFlow = (): Flow => ({
+const newFlow = (n: number): Flow => ({
   id: `f${Date.now()}`,
-  title: `Flow ${new Date().toLocaleDateString()}`,
+  title: `Flow ${n}`,
   createdAt: Date.now(),
   imgPrompt: "",
   imgAttempts: [],
@@ -122,6 +122,8 @@ export function FlowStudio() {
   const [hydrated, setHydrated] = useState(false);
   const [busyImg, setBusyImg] = useState(false);
   const [armed, setArmed] = useState<"img" | "motion" | null>(null);
+  /** Two-click tab delete (browser confirm dialogs are banned). */
+  const [delArm, setDelArm] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedCard, setSavedCard] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -155,12 +157,12 @@ export function FlowStudio() {
           setFlows(list);
           setFlowId(list[list.length - 1].id);
         } else {
-          const f = newFlow();
+          const f = newFlow(1);
           setFlows([f]);
           setFlowId(f.id);
         }
       } catch {
-        const f = newFlow();
+        const f = newFlow(1);
         setFlows([f]);
         setFlowId(f.id);
       }
@@ -439,15 +441,55 @@ export function FlowStudio() {
               <button
                 key={f.id}
                 className={`spec-chip ${f.id === flowId ? "sel" : ""}`}
-                onClick={() => setFlowId(f.id)}
+                onClick={() => {
+                  setFlowId(f.id);
+                  setDelArm(null);
+                }}
               >
                 {f.title}
+                <span
+                  role="button"
+                  className={`flow-del ${delArm === f.id ? "armed" : ""}`}
+                  title={
+                    delArm === f.id
+                      ? "Click again to delete (finished takes stay in the Library)"
+                      : "Delete this flow"
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (delArm !== f.id) {
+                      setDelArm(f.id);
+                      return;
+                    }
+                    setDelArm(null);
+                    setFlows((fs) => {
+                      const rest = fs.filter((x) => x.id !== f.id);
+                      const next = rest.length ? rest : [newFlow(1)];
+                      if (flowId === f.id) setFlowId(next[next.length - 1].id);
+                      return next;
+                    });
+                  }}
+                >
+                  {delArm === f.id ? "✕?" : "✕"}
+                </span>
               </button>
             ))}
             <button
               className="spec-chip"
               onClick={() => {
-                const f = newFlow();
+                // an untouched flow is reused instead of stacking clones
+                const empty = flows.find(
+                  (f) =>
+                    !f.imgAttempts.length &&
+                    !f.motionAttempts.length &&
+                    !f.imgPrompt.trim() &&
+                    !f.motionPrompt.trim(),
+                );
+                if (empty) {
+                  setFlowId(empty.id);
+                  return;
+                }
+                const f = newFlow(flows.length + 1);
                 setFlows((fs) => [...fs, f]);
                 setFlowId(f.id);
               }}
@@ -582,9 +624,9 @@ export function FlowStudio() {
             </span>
           </div>
 
-          {confirmedImg ? (
-            <>
-              <div className="flow-params">
+          {/* model/params are ALWAYS visible & editable — pick the motion
+              engine before or after confirming the look */}
+          <div className="flow-params">
                 <label className="mono">
                   MODEL{" "}
                   <select
@@ -648,6 +690,8 @@ export function FlowStudio() {
                 </label>
               </div>
 
+          {confirmedImg ? (
+            <>
               <div className="flow-gen-row">
                 <textarea
                   rows={2}

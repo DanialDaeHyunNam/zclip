@@ -5603,3 +5603,19 @@ button {
   font-size: 12px;
   color: var(--faint);
 }
+
+/* flow tab delete (two-click, no browser dialogs) */
+.flow-del {
+  margin-left: 8px;
+  color: var(--faint);
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.flow-del:hover {
+  color: var(--dim);
+}
+
+.flow-del.armed {
+  color: #ff5f56;
+}
