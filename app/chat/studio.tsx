@@ -2565,6 +2565,11 @@ export default function Home() {
       providers,
       current: cur?.total ?? 0,
       currentUnpriced: cur?.unpriced ?? 0,
+      /** THIS session by provider — the popover shows only these
+       *  (the all-sessions view lives on /dashboard). */
+      currentParts: [...(cur?.parts.entries() ?? [])].sort(
+        (a, b) => b[1] - a[1],
+      ),
     };
   })();
   const starterReady = turns.length === 0 && Boolean(starterDraft?.trim());
@@ -3004,53 +3009,50 @@ export default function Home() {
                     Duration × published per-second price per finished take —
                     providers don&apos;t report billed totals.
                   </p>
+                  {/* THIS session only — all-sessions lives on /dashboard */}
                   <div className="spend-hero">
-                    ${spend.total.toFixed(2)}
-                    {spend.unpriced > 0 && (
-                      <span className="spend-unpriced"> +{spend.unpriced} unpriced</span>
-                    )}
-                    <span className="spend-unpriced"> all sessions</span>
-                  </div>
-                  <a className="link-btn" href="/dashboard">
-                    Full dashboard →
-                  </a>
-                  <div className="spend-legend">
-                    {spend.providers.map((p) => (
-                      <span key={p} className="spend-chip">
-                        <i style={{ background: PROVIDERS[p].chartColor }} />
-                        {PROVIDERS[p].label}
+                    ${spend.current.toFixed(2)}
+                    {spend.currentUnpriced > 0 && (
+                      <span className="spend-unpriced">
+                        {" "}
+                        +{spend.currentUnpriced} unpriced
                       </span>
-                    ))}
+                    )}
+                    <span className="spend-unpriced"> this session</span>
                   </div>
-                  <div className="spend-rows">
-                    {spend.rows.map((r) => (
-                      <div className="spend-row" key={r.label + r.latest}>
-                        <span className="spend-label" title={r.label}>
-                          {r.label}
-                        </span>
-                        <div className="spend-bar">
-                          {spend.providers.map((p) => {
-                            const v = r.parts.get(p);
-                            if (!v) return null;
-                            return (
-                              <i
-                                key={p}
-                                style={{
-                                  width: `${(v / spend.max) * 100}%`,
-                                  background: PROVIDERS[p].chartColor,
-                                }}
-                                title={`${PROVIDERS[p].label} · $${v.toFixed(2)}`}
-                              />
-                            );
-                          })}
+                  {spend.currentParts.length > 0 ? (
+                    <div className="spend-rows">
+                      {spend.currentParts.map(([p, v]) => (
+                        <div className="spend-row" key={p}>
+                          <span className="spend-label" title={PROVIDERS[p].label}>
+                            {PROVIDERS[p].label}
+                          </span>
+                          <div className="spend-bar">
+                            <i
+                              style={{
+                                width: `${(v / Math.max(...spend.currentParts.map(([, x]) => x), 0.01)) * 100}%`,
+                                background: PROVIDERS[p].chartColor,
+                              }}
+                              title={`${PROVIDERS[p].label} · $${v.toFixed(2)}`}
+                            />
+                          </div>
+                          <span className="spend-total">${v.toFixed(2)}</span>
                         </div>
-                        <span className="spend-total">
-                          ${r.total.toFixed(2)}
-                          {r.unpriced > 0 ? ` +${r.unpriced}?` : ""}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="archive-note">
+                      No spend in this session yet.
+                    </p>
+                  )}
+                  <button
+                    className="btn-ghost spend-all-btn"
+                    onClick={() => router.push("/dashboard")}
+                  >
+                    All sessions · ${spend.total.toFixed(2)}
+                    {spend.unpriced > 0 ? ` +${spend.unpriced}?` : ""} — full
+                    dashboard →
+                  </button>
                 </div>
               )}
             </span>

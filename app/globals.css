@@ -5678,3 +5678,12 @@ button {
   text-align: center;
   line-height: 2.1;
 }
+
+/* spend popover: bottom "all sessions" bridge to /dashboard */
+.spend-all-btn {
+  width: 100%;
+  margin-top: 12px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
