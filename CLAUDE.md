@@ -9,7 +9,8 @@ original conversation.
 
 ```
 bun install        # deps: next 16.2 / react 19.2 / typescript 6 only
-bun dev            # http://localhost:3000 (owner usually runs it on 3001)
+bun dev            # plain run = :3000 (Next default); the OWNER runs it
+                   # via the root Makefile on http://localhost:3333
 bun run build      # typecheck + prod build — run after EVERY change
 ```
 
@@ -17,7 +18,8 @@ No tests. Verification: while a dev server is RUNNING use
 `bun x tsc --noEmit` (running `next build` clobbers .next and KILLS the
 dev server — learned the hard way); full `bun run build` only when no
 dev server is up. Next dev holds a single-instance lock — the owner
-runs theirs on :3000; test against it with client-side checks only.
+runs theirs on :3333 (root Makefile, changed 2026-07-13 — the file-backed
+store survives port moves); test against it with client-side checks only.
 
 ## Architecture (all of it)
 
@@ -213,7 +215,7 @@ the permanent re-entry: key-less click reopens the modal, always.
   the bundle (parked in `specRefsRef`, never persisted) lands on the final
   generate; reload loses it ⇒ generate/skip refuse loudly. Empty text ⇒
   classic flow untouched.
-- **Spec Lab** (BUILT, owner-machine only): `http://localhost:3000/lab` —
+- **Spec Lab** (BUILT, owner-machine only): `http://localhost:3333/lab` —
   live spec vs a `/lab/snapshots/*.json` candidate on one brief, both
   assemble+generate (2× cost shown up front), side-by-side, winner →
   `/lab/ledger.json` + a paste-ready mono changelog line. ⚠️ The ENTIRE
