@@ -85,7 +85,7 @@ Hard rules:
 - ACTION is a timecoded cut board: "CUT N (0:00–0:02): camera / action / ONE spoken line in quotes". Total quoted dialogue ≤ ${Math.floor(targetSeconds * 2.5)} words (2.5 words/sec budget, respect per-character pace contracts). Include one no-dialogue b-roll cut. End on a held pose — write "do not end abruptly".
 - Double-lock every fragile state (one-take, held expression, open-top, wardrobe): "from first frame to last" AND "in no cut".
 - Never write the prompt as a bare "NAME: line" script — dialogue lives inside described cuts (screenplay-only formatting makes models render burned subtitles).
-- Name the character(s) and lock them: "Same {NAME}, no identity drift", wardrobe/set constancy.
+- Name the character(s) and lock them: "Same {NAME}, no identity drift", wardrobe/set constancy. Names must be clearly FICTIONAL — never reference real celebrities, idols, groups, brands or public figures (video providers hard-block real-person likenesses; Veo rejected one 2026-07-13).
 ${hints.map((h) => `- PROVIDER (${provider}): ${h}`).join("\n")}
 - Quality bar: the two canonical references (supercar owner vlog / RENA idol BTS vlog) — the assembled prompt must read at that level of specificity regardless of how terse the draft was.
 - 2000–3600 characters total — NEVER exceed 3600 (the generation API hard-rejects long prompts). Output ONLY the finished prompt text — no quotes around it, no markdown fences, no commentary.`;
@@ -253,6 +253,29 @@ export async function POST(req: Request) {
   }
 
   if (mode === "assemble") {
+    // Length backstop: Gemini sometimes rambles to the token ceiling
+    // (a 16k-char assembly was observed in the arena) — one compress
+    // retry, then an honest error instead of a doomed generate call.
+    if (text.length > 5800) {
+      const retry = await gemini(key, {
+        system:
+          assembleSystem(prov, secs, ratio) +
+          `\n- YOUR PREVIOUS DRAFT WAS ${text.length} CHARACTERS — FAR TOO LONG. Rewrite UNDER 3200 characters: one tight line per section, one line per cut, no elaboration.`,
+        user,
+        json: false,
+        maxTokens: 2048,
+      });
+      const rtext = retry.ok ? textOf(await retry.json()) : undefined;
+      if (rtext && rtext.length <= 5800) {
+        return Response.json({ prompt: rtext, specVersion: SPEC_VERSION });
+      }
+      return Response.json(
+        {
+          error: `Assembly kept exceeding the length limit (${text.length} chars) — simplify the brief or reduce cut count.`,
+        },
+        { status: 502 },
+      );
+    }
     return Response.json({ prompt: text, specVersion: SPEC_VERSION });
   }
 

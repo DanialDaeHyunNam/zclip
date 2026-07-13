@@ -18,8 +18,12 @@
  * card runs SELF_CHECKS via lib/spec-check.ts. Docs: docs/VIDEO-PROMPT-SPEC.md.
  */
 
-export const SPEC_VERSION = "1.0.1";
+export const SPEC_VERSION = "1.0.2";
 // CHANGELOG
+// 1.0.2 (2026-07-13) — arena field failures → veo avoid: real-celebrity
+//         likeness hard-block (Veo rejected an assembled idol name);
+//         assemblers gained a fictional-names rule + an over-length
+//         compress-retry backstop (a candidate induced a 16k-char ramble).
 // 1.0.1 (2026-07-13) — Seedance 2.0 profile enriched from the CHASE fan-
 //         meeting vlog reference (owner-supplied prompt + frame-verified
 //         output): @ image token, image-owns-identity, script-lines-safe.
@@ -157,7 +161,10 @@ export const MODEL_PROFILES: Record<string, ModelProfile> = {
   veo: {
     promptLanguage: "any",
     maxSeconds: 8,
-    avoid: ["selfie compositions relying on visible extended arm (double-arm anatomy artifacts on fast/basic tiers)"],
+    avoid: [
+      "selfie compositions relying on visible extended arm (double-arm anatomy artifacts on fast/basic tiers)",
+      "real celebrities/idols/public figures by name or likeness (content-policy HARD BLOCK — observed 2026-07-13; use clearly fictional names)",
+    ],
     assembleHints: [
       "Keep the cut list explicit and short; Veo's pipeline may rewrite prompts (enhance_prompt), so front-load hard bans in the first lines.",
     ],
