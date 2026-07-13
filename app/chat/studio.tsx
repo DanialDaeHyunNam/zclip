@@ -21,6 +21,7 @@ import * as store from "@/lib/store";
 import { VERSION, RELEASES_URL } from "@/lib/version";
 import { useHosted, useUpdateCheck } from "@/lib/use-version";
 import { UpdateGuide } from "./update-guide";
+import { FlowPanel, type FlowPreview } from "./flow-panel";
 import { HelpGuide } from "./help-guide";
 import { AboutModal } from "./about-modal";
 import { useRouter } from "next/navigation";
@@ -439,6 +440,10 @@ export default function Home() {
   const [continuity, setContinuity] = useState(true);
   /* Video Prompt Spec Gate: interview-before-money mode (session-only,
    * like continuity). specBusy = a check/assemble call is in flight. */
+  /** CHAT (conversational loop) vs FLOW (still → motion pipeline) —
+   *  one studio surface, two methods; the left frame is shared. */
+  const [method, setMethod] = useState<"chat" | "flow">("chat");
+  const [flowPreview, setFlowPreview] = useState<FlowPreview | null>(null);
   const [specMode, setSpecMode] = useState(false);
   const [specBusy, setSpecBusy] = useState<"check" | "assemble" | null>(null);
   /** The in-composer interview stepper (null = normal composer). */
@@ -2496,7 +2501,10 @@ export default function Home() {
         ? { text: "FAULT", dot: "fault" }
         : { text: "STANDBY", dot: "" };
 
-  const frameAspect = cssAspect(previewTurn?.aspectRatio ?? aspect);
+  const frameAspect =
+    method === "flow"
+      ? cssAspect(flowPreview?.aspect ?? "9:16")
+      : cssAspect(previewTurn?.aspectRatio ?? aspect);
 
   /* archive view: this session's takes below the chat (everything, grouped by
      session, lives on the /archive page now) */
@@ -2776,7 +2784,7 @@ export default function Home() {
           newSession(); // logo = a fresh start, like a new chat
         }}
         onDashboard={() => router.push("/dashboard")}
-        onFlow={() => router.push("/flow")}
+        onFlow={() => setMethod("flow")}
         onSessions={() => {
           setSideOpen((o) => !o);
         }}
@@ -2935,9 +2943,25 @@ export default function Home() {
       <div className={`shell ${sideOpen ? "with-side" : ""}`}>
       <main className="grid-main">
         {/* session thread */}
-        <section className="session-col">
+        <section className={`session-col ${method === "flow" ? "method-flow" : ""}`}>
           <div className="output-head session-head">
             <span className="label">Session</span>
+            <span className="method-toggle">
+              {(["chat", "flow"] as const).map((m) => (
+                <button
+                  key={m}
+                  className={`method-pill ${method === m ? "on" : ""}`}
+                  onClick={() => setMethod(m)}
+                  title={
+                    m === "chat"
+                      ? "Chat method — refine or SPEC-interview each take conversationally"
+                      : "Flow method — confirm a still, then iterate its motion (image → i2v pipeline)"
+                  }
+                >
+                  {m === "chat" ? "CHAT" : "⇶ FLOW"}
+                </button>
+              ))}
+            </span>
             <span className="session-spend">
               {turns.length > 0 && (
                 <span className="status-line">
@@ -3031,6 +3055,8 @@ export default function Home() {
               )}
             </span>
           </div>
+
+          {method === "flow" && <FlowPanel onPreview={setFlowPreview} />}
 
           <div className="thread" ref={threadRef}>
             {turns.map((t, i) => t.kind ? (
@@ -4035,7 +4061,33 @@ export default function Home() {
           </div>
 
           <div className="frame" style={{ aspectRatio: frameAspect }}>
-            {previewBusy ? (
+            {method === "flow" ? (
+              /* the flow method drives the SAME frame — stills and takes */
+              flowPreview ? (
+                flowPreview.kind === "video" ? (
+                  <video
+                    key={flowPreview.src}
+                    src={withPw(flowPreview.src)}
+                    controls
+                    playsInline
+                    autoPlay
+                    loop
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={flowPreview.src}
+                    alt={flowPreview.label}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                )
+              ) : (
+                <span className="label">
+                  Flow — generate a look and it previews here
+                </span>
+              )
+            ) : previewBusy ? (
               <>
                 <div className="scanline" />
                 <span className="label">Elapsed</span>
@@ -4101,7 +4153,8 @@ export default function Home() {
             )}
           </div>
 
-          {previewTurn?.status === "done" &&
+          {method === "chat" &&
+            previewTurn?.status === "done" &&
             previewTurn.videoUrl &&
             deadPreview !== `${previewTurn.id}:${previewTurn.videoUrl}` && (
             <div className="result-actions fade">
@@ -4115,8 +4168,12 @@ export default function Home() {
             </div>
           )}
 
-          {/* next-take settings — one compact strip */}
-          <div className="panel-controls">
+          {/* next-take settings — one compact strip (chat method only;
+              the flow panel carries its own params) */}
+          <div
+            className="panel-controls"
+            style={method === "flow" ? { display: "none" } : undefined}
+          >
             <div className="settings-strip">
               <ModelPicker
                 value={modelKey}

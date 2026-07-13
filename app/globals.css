@@ -5619,3 +5619,55 @@ button {
 .flow-del.armed {
   color: #ff5f56;
 }
+
+/* ── method toggle (CHAT ↔ FLOW share the studio + left frame) ─────── */
+
+.method-toggle {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 14px;
+}
+
+.method-pill {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--r-pill);
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: color 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+}
+
+.method-pill.on {
+  color: var(--accent);
+  border-color: rgba(111, 220, 255, 0.45);
+  background: rgba(111, 220, 255, 0.07);
+}
+
+/* flow mode hides the chat surfaces; FlowPanel takes the column */
+.method-flow .thread,
+.method-flow .composer {
+  display: none;
+}
+
+.flow-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0 40px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.flow-take-view {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+
+.flow-take {
+  cursor: pointer;
+}

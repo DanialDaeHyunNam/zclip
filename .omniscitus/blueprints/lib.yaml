@@ -1,15 +1,39 @@
 version: 1
-updated: 2026-07-08T07:06:22.394Z
+updated: 2026-07-13T02:39:25.377Z
 
 files:
   "lib/config.ts":
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T05:31:36.292Z
-    change_count: 10
+    last_modified: 2026-07-13T02:19:23.676Z
+    change_count: 18
     purpose: "The switchboard: PROVIDERS adapters + MODELS catalog (model≠adapter), pricing, duration rules (effectiveSeconds), cost estimates, key allowlist"
     change_log:
+      - date: 2026-07-13T02:19:23.676Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:19:14.426Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:19:12.167Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:18:59.822Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:18:52.231Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-10T05:09:32.666Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-10T02:52:36.608Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-10T02:52:33.801Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T05:31:36.292Z
         action: edit
         source: "claude:Danial Nam"
@@ -105,10 +129,25 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T05:17:41.580Z
-    change_count: 1
+    last_modified: 2026-07-10T04:30:50.666Z
+    change_count: 6
     purpose: "ByteDance Seedance adapter (unverified endpoint/model id from ModelArk docs)"
     change_log:
+      - date: 2026-07-10T04:30:50.666Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-10T02:53:08.449Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-10T02:52:59.630Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-10T02:52:56.915Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-10T02:52:51.715Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T05:17:41.580Z
         action: edit
         source: "claude:Danial Nam"
@@ -234,10 +273,146 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-08
-    last_modified: 2026-07-08T02:50:38.081Z
-    change_count: 1
+    last_modified: 2026-07-10T02:03:15.133Z
+    change_count: 2
     purpose: "Shared Clip type + hooklab.* storage keys + fmtCost/cssAspect helpers, used by the studio, the /archive page, and ClipCardView"
     change_log:
+      - date: 2026-07-10T02:03:15.133Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-08T02:50:38.081Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/video-upstream.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-10
+    last_modified: 2026-07-10T02:02:29.513Z
+    change_count: 1
+    purpose: "Resolves /api/video queries into upstream fetch target + auth headers — shared URL dialect for the playback proxy and the clip vault"
+    change_log:
+      - date: 2026-07-10T02:02:29.513Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/persist-clip.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-10
+    last_modified: 2026-07-10T02:03:26.811Z
+    change_count: 1
+    purpose: "Client helper that saves a finished take's video into the clip vault (/api/clips) so it outlives the provider's signed-URL expiry"
+    change_log:
+      - date: 2026-07-10T02:03:26.811Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/dir-usage.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-10
+    last_modified: 2026-07-10T02:22:45.274Z
+    change_count: 1
+    purpose: "Server-side .mp4 directory size counter — the number Clear All shows before deleting (used by /api/clips and /api/grab)"
+    change_log:
+      - date: 2026-07-10T02:22:45.274Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/ref-mix.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-10
+    last_modified: 2026-07-10T02:45:59.905Z
+    change_count: 2
+    purpose: "Reference Mix — per-aspect carry-over checkboxes (motion/camera/background/wardrobe/text/speech) for video references; sticky defaults + labeled hard rules for refine"
+    change_log:
+      - date: 2026-07-10T02:45:59.905Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-10T02:40:37.513Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/blob.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-10
+    last_modified: 2026-07-10T03:11:06.056Z
+    change_count: 2
+    purpose: "Vercel Blob parking for Seedance 2.0's URL-only video references (BYOK token, per-job upload)"
+    change_log:
+      - date: 2026-07-10T03:11:06.056Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-10T02:52:23.020Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/spec-check.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-12
+    last_modified: 2026-07-13T01:55:45.291Z
+    change_count: 5
+    purpose: "Spec gate app plumbing — /api/spec-check request/response shapes, mechanical SELF_CHECKS annotator, profile-aware gate/option helpers (options clamp to maxSeconds)"
+    change_log:
+      - date: 2026-07-13T01:55:45.291Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:06:49.297Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:06:45.520Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:06:35.676Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:02:24.522Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/video-prompt-spec.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-12
+    last_modified: 2026-07-13T02:39:25.377Z
+    change_count: 7
+    purpose: "SSOT of the photoreal video-prompt spec — SPEC_VERSION, 15 SECTIONS, GATES, SELF_CHECKS, MODEL_PROFILES; changes gated by Spec Lab wins (mono skill retired 2026-07-12)"
+    change_log:
+      - date: 2026-07-13T02:39:25.377Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:39:22.567Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:20:13.309Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T01:55:35.880Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T01:55:16.440Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:47:02.280Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:21:45.516Z
+        action: edit
+        source: "claude:Danial Nam"
+  "lib/auth.ts":
+    status: active
+    source: "claude"
+    created: 2026-07-06
+    last_modified: 2026-07-12T00:00:00.000Z
+    change_count: 0
+    purpose: "checkPassword / unauthorized helpers behind the optional APP_PASSWORD gate"
+    change_log:
+      []
+  "lib/providers/kling.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-13
+    last_modified: 2026-07-13T02:19:50.118Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-13T02:19:50.118Z
         action: write
         source: "claude:Danial Nam"

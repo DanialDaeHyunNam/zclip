@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-08T15:08:36.738Z
+updated: 2026-07-13T02:25:11.013Z
 
 files:
   "README.md":
@@ -38,9 +38,9 @@ files:
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-06T14:37:43.353Z
-    change_count: 1
-    purpose: "MIT License (Copyright 2026 Danial Nam)"
+    last_modified: 2026-07-12T00:00:00.000Z
+    change_count: 0
+    purpose: "MIT license — the repo ships open source"
     change_log:
       - date: 2026-07-06T14:37:43.353Z
         action: write
@@ -60,10 +60,34 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T13:57:38.742Z
-    change_count: 4
+    last_modified: 2026-07-13T02:25:11.013Z
+    change_count: 12
     purpose: "Agent handoff notes: architecture, commands, provider facts (incl. Act-Two), design system, verification patterns"
     change_log:
+      - date: 2026-07-13T02:25:11.013Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:25:06.108Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T11:02:54.433Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:47:57.092Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:40:12.402Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:21:32.819Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T04:51:04.317Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T04:50:58.295Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T13:57:38.742Z
         action: edit
         source: "claude:Danial Nam"
@@ -102,10 +126,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-08T15:08:27.690Z
-    change_count: 14
+    last_modified: 2026-07-10T12:37:31.735Z
+    change_count: 15
     purpose: "Deps (next/react/typescript only) + scripts; `version` is the release source of truth, inlined as NEXT_PUBLIC_APP_VERSION by next.config"
     change_log:
+      - date: 2026-07-10T12:37:31.735Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-08T15:08:27.690Z
         action: edit
         source: "claude:Danial Nam"
@@ -163,10 +190,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-08T15:08:36.738Z
-    change_count: 14
+    last_modified: 2026-07-10T12:37:43.247Z
+    change_count: 15
     purpose: "Per-release notes (Added/Changed/Fixed) surfaced via the version chip; every release bumps it (the update prompt depends on it)"
     change_log:
+      - date: 2026-07-10T12:37:43.247Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-08T15:08:36.738Z
         action: edit
         source: "claude:Danial Nam"
@@ -209,3 +239,21 @@ files:
       - date: 2026-07-07T13:56:37.848Z
         action: write
         source: "claude:Danial Nam"
+  "bun.lock":
+    status: active
+    source: "claude"
+    created: 2026-07-06
+    last_modified: 2026-07-12T00:00:00.000Z
+    change_count: 0
+    purpose: "Bun lockfile (deps: next 16.2 / react 19.2 / typescript 6 only)"
+    change_log:
+      []
+  "tsconfig.json":
+    status: active
+    source: "claude"
+    created: 2026-07-06
+    last_modified: 2026-07-12T00:00:00.000Z
+    change_count: 0
+    purpose: "TypeScript config — strict, @/* path alias"
+    change_log:
+      []

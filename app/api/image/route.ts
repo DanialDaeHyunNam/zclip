@@ -1,78 +1,131 @@
 import { checkPassword, unauthorized } from "@/lib/auth";
 
 /**
- * Still-image generation for the Flow method's step 1 (the "who/look"
- * step — step 2 animates the confirmed still via /api/generate).
- * Engine: xAI Grok Imagine image (same key + model the grok video
- * adapter's text mode uses internally; ~$0.05/image). The provider URL
- * expires, so the image is downloaded server-side and returned as
- * base64 — the client keeps it for confirm/iterate and hands it to any
- * i2v provider later.
+ * Still-image generation for the Flow method's stage 1 (the "who/look"
+ * step — stage 2 animates the confirmed still via /api/generate).
+ * Three engines, all riding keys the app already manages:
+ *   grok   — xAI grok-imagine-image-quality (~$0.05, verified pattern:
+ *            the grok video adapter uses the same call internally)
+ *   gpt    — OpenAI gpt-image-1 (~$0.06 portrait medium; returns b64)
+ *   gemini — Gemini 2.5 Flash Image (~$0.04; returns inline_data)
+ * Provider URLs expire, so everything is returned as base64 — the client
+ * keeps it for confirm/iterate and hands it to any i2v provider later.
  */
 
-const BASE = "https://api.x.ai/v1";
-const IMAGE_MODEL = "grok-imagine-image-quality";
 const MAX_B64 = 4_000_000; // matches /api/generate's reference-image cap
+
+type Img = { base64: string; mimeType: string };
+
+async function fromUrl(url: string): Promise<Img> {
+  const img = await fetch(url);
+  if (!img.ok) throw new Error(`Image download failed (HTTP ${img.status})`);
+  const mimeType = img.headers.get("content-type")?.split(";")[0] ?? "image/jpeg";
+  const base64 = Buffer.from(await img.arrayBuffer()).toString("base64");
+  return { base64, mimeType };
+}
+
+async function readErr(res: Response, label: string): Promise<string> {
+  try {
+    const b = await res.json();
+    return b?.error?.message ?? b?.error ?? `${label} error (HTTP ${res.status})`;
+  } catch {
+    return `${label} error (HTTP ${res.status})`;
+  }
+}
+
+async function grokImage(prompt: string): Promise<Img> {
+  const key = process.env.XAI_API_KEY;
+  if (!key) throw new Error("XAI_API_KEY is not set — add it in the key panel (Grok)");
+  const res = await fetch("https://api.x.ai/v1/images/generations", {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({ model: "grok-imagine-image-quality", prompt, n: 1 }),
+  });
+  if (!res.ok) throw new Error(await readErr(res, "xAI image"));
+  const url = (await res.json())?.data?.[0]?.url;
+  if (typeof url !== "string" || !url.startsWith("https://"))
+    throw new Error("xAI returned no image url");
+  return fromUrl(url);
+}
+
+async function gptImage(prompt: string, portrait: boolean): Promise<Img> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("OPENAI_API_KEY is not set — add it in the key panel (Sora)");
+  const res = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt,
+      n: 1,
+      size: portrait ? "1024x1536" : "1536x1024",
+      quality: "medium",
+    }),
+  });
+  if (!res.ok) throw new Error(await readErr(res, "OpenAI image"));
+  const b64 = (await res.json())?.data?.[0]?.b64_json;
+  if (typeof b64 !== "string" || !b64) throw new Error("OpenAI returned no image");
+  return { base64: b64, mimeType: "image/png" };
+}
+
+async function geminiImage(prompt: string): Promise<Img> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY is not set — add it in the key panel");
+  const res = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
+    {
+      method: "POST",
+      headers: { "x-goog-api-key": key, "content-type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    },
+  );
+  if (!res.ok) throw new Error(await readErr(res, "Gemini image"));
+  const parts = (await res.json())?.candidates?.[0]?.content?.parts ?? [];
+  for (const p of parts) {
+    const d = p?.inlineData ?? p?.inline_data;
+    if (d?.data) {
+      return {
+        base64: d.data,
+        mimeType: d.mimeType ?? d.mime_type ?? "image/png",
+      };
+    }
+  }
+  throw new Error("Gemini returned no image — try rephrasing");
+}
 
 export async function POST(req: Request) {
   if (!checkPassword(req)) return unauthorized();
-  const key = process.env.XAI_API_KEY;
-  if (!key) {
-    return Response.json(
-      { error: "XAI_API_KEY is not set — add it in the key panel (Grok)" },
-      { status: 500 },
-    );
-  }
 
-  let prompt: unknown;
+  let prompt: unknown, engine: unknown, aspect: unknown;
   try {
-    ({ prompt } = await req.json());
+    ({ prompt, engine, aspect } = await req.json());
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   if (typeof prompt !== "string" || !prompt.trim()) {
     return Response.json({ error: "Prompt is empty" }, { status: 400 });
   }
+  const p = prompt.slice(0, 4000);
+  const portrait = aspect !== "16:9";
 
-  const res = await fetch(`${BASE}/images/generations`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${key}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ model: IMAGE_MODEL, prompt: prompt.slice(0, 4000), n: 1 }),
-  });
-  if (!res.ok) {
-    let msg = `xAI image error (HTTP ${res.status})`;
-    try {
-      const b = await res.json();
-      msg = b?.error?.message ?? b?.error ?? msg;
-    } catch {
-      /* non-JSON error body */
+  try {
+    const img =
+      engine === "gpt"
+        ? await gptImage(p, portrait)
+        : engine === "gemini"
+          ? await geminiImage(p)
+          : await grokImage(p);
+    if (img.base64.length > MAX_B64) {
+      return Response.json(
+        { error: "Generated image unexpectedly large — try again" },
+        { status: 502 },
+      );
     }
-    return Response.json({ error: msg }, { status: 502 });
-  }
-  const body = await res.json();
-  const url = body?.data?.[0]?.url;
-  if (typeof url !== "string" || !url.startsWith("https://")) {
-    return Response.json({ error: "xAI returned no image url" }, { status: 502 });
-  }
-
-  // Fetch the (expiring) provider URL now; hand back durable bytes.
-  const img = await fetch(url);
-  if (!img.ok) {
+    return Response.json(img);
+  } catch (e) {
     return Response.json(
-      { error: `Image download failed (HTTP ${img.status})` },
+      { error: e instanceof Error ? e.message : "Image generation failed" },
       { status: 502 },
     );
   }
-  const mimeType = img.headers.get("content-type")?.split(";")[0] ?? "image/jpeg";
-  const b64 = Buffer.from(await img.arrayBuffer()).toString("base64");
-  if (b64.length > MAX_B64) {
-    return Response.json(
-      { error: "Generated image unexpectedly large — try again" },
-      { status: 502 },
-    );
-  }
-  return Response.json({ base64: b64, mimeType });
 }

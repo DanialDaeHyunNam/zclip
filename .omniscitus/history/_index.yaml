@@ -31,3 +31,19 @@ units:
     last_updated: 2026-07-09
     session_count: 1
     title: "ZCLIP Seedance Provider Verification"
+  - id: video-prompt-spec-gate
+    file: web/2026-07-12-video-prompt-spec-gate.md
+    domain: web
+    status: open
+    created: 2026-07-12
+    last_updated: 2026-07-12
+    session_count: 3
+    title: "Video Prompt Spec Gate"
+weekly_summaries:
+  - week: "2026-W27"
+    file: "_weekly/2026-W27.md"
+    start: "2026-06-29"
+    end: "2026-07-05"
+    unit_count: 0
+    domains: []
+    generated_at: "2026-07-12"

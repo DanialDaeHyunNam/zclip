@@ -122,3 +122,54 @@ files:
   - path: public/starters/rooftop.jpg
     source: claude
     purpose: "Baked starter card photo"
+  - path: public/demo/take-4.mp4
+    source: claude
+    purpose: "Real ZCLIP-generated demo take for the landing reel"
+  - path: public/fashion/m-blazer.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/m-bomber.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/m-denim.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/m-flannel.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/m-hoodie.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/m-knit.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/m-oxford.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/m-tee.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/w-blazer.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/w-crop.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/w-denim.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/w-hoodie.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/w-knit.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/w-slip.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/w-tee.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"
+  - path: public/fashion/w-trench.jpg
+    source: claude
+    purpose: "Fashion card outfit photo (composited onto characters via /api/dress)"

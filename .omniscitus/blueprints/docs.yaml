@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-07T13:57:15.404Z
+updated: 2026-07-13T02:25:28.344Z
 
 files:
   "docs/ARCHITECTURE.md":
@@ -20,10 +20,54 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T08:09:02.882Z
-    change_count: 1
+    last_modified: 2026-07-13T02:25:28.344Z
+    change_count: 8
     purpose: "Chronological build log (#1–26) with evidence for every decision and pivot"
     change_log:
+      - date: 2026-07-13T02:25:28.344Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T01:56:25.536Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T11:00:15.268Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T06:00:06.085Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:48:47.213Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:40:03.262Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:22:07.172Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T08:09:02.882Z
+        action: edit
+        source: "claude:Danial Nam"
+  "docs/VIDEO-PROMPT-SPEC.md":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-12
+    last_modified: 2026-07-12T11:00:15.166Z
+    change_count: 5
+    purpose: "Video Prompt Spec Gate design brief — gate UX, /api/spec-check contract, per-model adaptation, references-ride rules, Spec Lab isolation, versioning (SSOT = lib/video-prompt-spec.ts)"
+    change_log:
+      - date: 2026-07-12T11:00:15.166Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:59:55.982Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:58:31.217Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:47:43.383Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-12T05:47:28.606Z
         action: edit
         source: "claude:Danial Nam"

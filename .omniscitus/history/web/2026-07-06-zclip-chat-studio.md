@@ -232,12 +232,15 @@ input and let the summary scroll beneath it.
       not yet built; composer drag/drop is the current path
 - [ ] ⤓ vs ▦ now sit adjacent in the rail (both open /archive) — consider
       collapsing into one entry point
-- [ ] Verify Runway Act-Two end-to-end (needs a Runway key; adapter built to spec)
+- [x] Verify Runway Act-Two end-to-end (2026-07-07: live Act-Two session produced
+      the 4 real takes now powering the landing demo reel — see [[zclip-landing-demo]])
 - [ ] Verify the /api/dress outfit compositing quality on real cards
 - [ ] Optional: LivePortrait adapter as a cheaper Act-Two alternative (user asked)
 - [ ] Optional: wire Sora 2 Pro / Veo 3.1 pricing accuracy (currently estimates)
 - [ ] Verify Seedance adapter end-to-end (endpoint/model id unconfirmed)
-- [ ] Set APP_PASSWORD before any public Vercel deploy
+- [x] Set APP_PASSWORD before any public Vercel deploy (obsoleted by the local-first
+      deploy model — cloud `/chat` renders the install guide, no public studio exists;
+      only needed if a hosted studio is ever unlocked via `ZCLIP_CLOUD=0`)
 - [ ] GRAB job files in `.grabs/` are never garbage-collected (fine for local dev)
 
 ## Notes

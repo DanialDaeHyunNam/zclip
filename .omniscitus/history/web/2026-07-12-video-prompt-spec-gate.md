@@ -1,0 +1,141 @@
+# Video Prompt Spec Gate
+
+**Participants**: Danial Nam, claude
+
+## Summary
+The owner's photoreal prompt discipline (15-section template + timecoded cut
+board) productized as a pre-generation gate: spec-check interview → assembled
+spec prompt → verbatim generate. Includes the gitignored Spec Lab A/B arena,
+Gemini-key onboarding UX, and reference pass-through.
+
+## Context
+- **Background**: Free-typed prompts fail in known ways (burned subtitles,
+  storyboard panels, 2× speech). The discipline proven in the mono repo's
+  `/mkt-make-video-prompt` skill (supercar/RENA references on Seedance 2.0 /
+  Veo 3.1) moved into ZCLIP, where the owner iterates fastest.
+- **Requirements**: separate track from refine (NO 900-char clamp; spec prompts
+  run 2–4k chars); one question card per turn (chips + free text); "skip
+  checks, run as typed" always visible; assembled prompt → /api/generate
+  VERBATIM (no refine on top); per-model adaptation via MODEL_PROFILES;
+  Spec Lab entirely in gitignored /app/lab + /lab (repo is OSS — zero lab code
+  ships, imports one-way lab→lib).
+- **Decisions**: conversation layer stays on Gemini Flash (same ONE key as
+  refine — a cheaper second-provider mini model saves <1% of a take and adds
+  key friction; assembly is the arm to UPGRADE, only via a Spec Lab win).
+  Deterministic rules live in code, not prompts (one-take ⇒ cut-board
+  resolved; chips clamp to maxSeconds; hallucinated gate ids filtered).
+  SSOT moved INTO ZCLIP same day — mono skill retired (owner call, GUI wins);
+  lib/video-prompt-spec.ts is the single source of truth, bumps gated by Spec
+  Lab wins. References ride the interview (attachments are not a separate
+  mode); bundle parks in memory (specRefsRef), reload ⇒ loud refusal, never
+  silent billing without refs. Performance transfer stays classic-flow: video
+  ref on a non-clip-reading model auto-bypasses SPEC (Seedance 2.0 keeps it).
+  Key onboarding: pitch modal on key-less text send; decline = as-typed
+  verbatim fallback (remembered); SPEC button is the permanent re-entry.
+  Interview UI = IN-COMPOSER stepper, never thread cards (owner: "위에서
+  확인하는 거 싫음") — the interview persists nothing until Generate, and
+  the finished spec prompt renders open in the thread (clamped + modal).
+- **Constraints**: UI thread flow can't be tested headlessly — the store is
+  file-backed (.zclip-data) and shared with the owner's live session (live-
+  state incident rule: read-only checks only). Money paths (/api/generate)
+  never auto-triggered; pitch modal untested live (owner's key is set).
+  Seedance-2 model switch mid-interview keeps the ⚠ look≠motion warning as
+  the transfer-bypass fallback.
+
+## Timeline
+
+### 2026-07-12
+**Focus**: Full P0+P1 build — handoff commit → /api/spec-check → gate cards →
+verbatim generate → Spec Lab → key onboarding → refs-ride → SSOT move.
+- Committed mono handoff (docs/VIDEO-PROMPT-SPEC.md, lib/video-prompt-spec.ts
+  1.0.0, .gitignore lab folders) then the structured MODEL_PROFILES update.
+- /api/spec-check: check → strict-JSON {missing, note, warnings} validated
+  server-side; assemble → 15-section prompt (maxOutputTokens 4096); both
+  provider-aware (promptLanguage/maxSeconds/avoid/assembleHints/extraGates)
+  and multimodal (card prompts as context, frames as parts).
+- Studio: SPEC composer toggle; gate/preview cards as Turns with `kind`
+  (rewind/sessions unchanged; all take-numbering sites filter !t.kind via
+  takeNo()); model switch replaces an open card and re-checks under the new
+  profile; self-checks annotate the preview mechanically (lib/spec-check.ts).
+- Spec Lab at /lab: live vs snapshot on one brief, 2× cost shown up front,
+  side-by-side, winner → /lab/ledger.json + paste-ready CHANGELOG line.
+  Verified isolation: zero tracked-file references (grep), git check-ignore,
+  isCloud() 404 belt.
+- Key onboarding modal (owner's 4-step UX) + as-typed fallback for decliners;
+  sendGuarded confirm matrix fixed (every money path confirms exactly once —
+  including a pre-existing empty-text bypass hole).
+- Live verification (text-only, free): missing shrinks with answers; grok/veo
+  profile warnings fire; card context ⇒ missing:[] (no re-asking what an
+  attachment answers); assemble 2.4–3.3k chars; /lab routes + page render.
+
+**Learned**: deterministic rules belong in code — Gemini kept missing the
+"one-take ⇒ cut-board resolved" rule at temp 0.1 until the route enforced it.
+Reference bytes can't survive the thread (5MB quota), so park-in-memory +
+loud-refusal-on-loss (retryTurn precedent) beats silently regenerating.
+
+### 2026-07-12 (cont. — in-composer stepper + model guide)
+**Focus**: Owner UX revision — the interview moves from thread cards into
+the composer itself; plus a market-reputation Guide in the model picker.
+- Stepper (`SpecFlowState`: checking → asking → assembling → review) lives
+  in the composer: one question at a time (chips single-select + OK
+  confirm, textarea for long-text gates), loud animated loading lines
+  (replaces the passive "thinking…" placeholder), review step with clamped
+  prompt + self-checks + cost + Generate, skip hatch everywhere, ✕ returns
+  the draft. Thread question cards deleted (legacy `kind` turns skipped at
+  render); spec takes show their prompt OPEN (max-height + ⤢ full-view/
+  copy modal, `fromSpec`). Commit c1bf70b.
+- Architectural win: the interview writes NOTHING to turns/store until
+  Generate — in-memory, dies with reload alongside the ref bundle (lost-
+  refs guard removed) — which made it headless-testable against the live
+  dev server for the first time (exercised: send → loading → chip answer
+  → "1 ANSWERED" → re-check; zero thread turns, zero spend).
+- Model picker "GUIDE ?" (right-aligned under the company chips): per-
+  model street rep (Jul 2026 web sweep — Veo cinematic polish, Sora
+  physics, Grok #1 i2v arena w/ fast-motion face-softening caveat,
+  Seedance control/motion, Act-Two true transfer) blended with ZCLIP
+  field notes; dated footnote. Commit 1dddd6b.
+- Incident: a python truncation keyed on a comment PREFIX chopped
+  studio.tsx to 97 lines (same prefix in two comments) — recovered via
+  git checkout + full re-apply. Rule going forward: unique anchors +
+  content asserts, or the Edit tool.
+
+**Learned**: moving ephemeral flows OUT of persisted state (turns → in-
+memory stepper) deleted a whole class of edge cases (rewind exceptions,
+lost-bundle refusal) AND unlocked safe live testing — persistence scope is
+a design lever, not a given.
+
+### 2026-07-12 (cont. 2 — composer layout)
+**Focus**: Chat bar row → column (owner: long Korean drafts were getting
+squeezed between attach/SPEC/Send).
+- Full-width textarea on top; `.chat-bar-actions` row below — attach (+)
+  left, SPEC + Send right-aligned; 8px vertical gap. Minimal diff: JSX
+  moved attach+file-input into the action row, CSS just
+  `flex-direction: column` + one flex row. Stepper/dnd/paste untouched.
+  Commit cb027fe. Verified with a live screenshot (Korean long draft
+  spans the full bar width).
+- Stepper carded (owner: "하나의 내용이란 게 보이도록") — accent-tinted
+  border + subtle bg + soft lift so the interview reads as one contained
+  unit instead of floating text. Commit e527cfd, screenshot-verified.
+
+**Learned**: none
+
+## Pending
+- [ ] First real-money spec take (Sora is MODEL_NOTES' calibration candidate);
+      confirm references actually ride /api/generate end-to-end
+- [ ] Key-less onboarding flow one real pass (pitch modal untested live)
+- [ ] Release: version bump + CHANGELOG + tag + deploy (feature sits on main
+      unreleased)
+- [x] Transfer-in-SPEC question — resolved by AUTO-BYPASS (video ref on a
+      non-clip-reading model skips SPEC into the classic transfer flow;
+      Seedance 2.0 keeps SPEC); porting transcription into assemble stays
+      a future option only if the bypass proves annoying
+- [ ] Eyeball the stepper's REVIEW step visually in a real session
+      (logic verified via curl; the final screen itself wasn't reached in
+      headless runs — browse daemon kept dying)
+- [ ] Refresh the model-picker GUIDE + MODEL_PROFILES notes as real
+      billed tests land (guide is dated Jul 2026 market chatter)
+
+## Notes
+Docs trail: DEVLOG #27–#29, docs/VIDEO-PROMPT-SPEC.md (kept current),
+CLAUDE.md spec section. Commits 2a87f73 → 0bdca45 on main. Spec Lab data in
+gitignored /lab (README there explains snapshot format + workflow).
