@@ -73,8 +73,11 @@ export async function POST(req: Request) {
   if (!isTransfer && !prompt.trim()) {
     return Response.json({ error: "Prompt is empty" }, { status: 400 });
   }
-  if (prompt.length > 4000) {
-    return Response.json({ error: "Prompt too long (4000 char max)" }, { status: 400 });
+  // Spec-gate prompts legitimately run 2–4k chars; 6000 keeps a sanity
+  // ceiling without rejecting a slightly-long assembled spec (the
+  // assembler targets ≤3600, but Gemini overshoots sometimes).
+  if (prompt.length > 6000) {
+    return Response.json({ error: "Prompt too long (6000 char max)" }, { status: 400 });
   }
   const info = PROVIDERS[resolved.name];
   if (!info.implemented) {

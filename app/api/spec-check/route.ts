@@ -88,7 +88,7 @@ Hard rules:
 - Name the character(s) and lock them: "Same {NAME}, no identity drift", wardrobe/set constancy.
 ${hints.map((h) => `- PROVIDER (${provider}): ${h}`).join("\n")}
 - Quality bar: the two canonical references (supercar owner vlog / RENA idol BTS vlog) — the assembled prompt must read at that level of specificity regardless of how terse the draft was.
-- 2000–4000 characters total. Output ONLY the finished prompt text — no quotes around it, no markdown fences, no commentary.`;
+- 2000–3600 characters total — NEVER exceed 3600 (the generation API hard-rejects long prompts). Output ONLY the finished prompt text — no quotes around it, no markdown fences, no commentary.`;
 };
 
 interface GeminiBody {
