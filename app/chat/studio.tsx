@@ -779,6 +779,27 @@ export default function Home() {
     setSpecDeclined(store.get(SPEC_DECLINED_KEY) === "1");
   }, [hydrated]);
 
+  /** Sessions that used the FLOW method — ⇶ badge in the sidebar.
+   *  Refreshed when the sidebar opens or the method toggles. */
+  const [flowSessionIds, setFlowSessionIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      const flows = JSON.parse(store.get("hooklab.flows") ?? "[]") as {
+        sessionId?: string;
+      }[];
+      setFlowSessionIds(
+        new Set(
+          flows.map((f) => f.sessionId).filter((x): x is string => Boolean(x)),
+        ),
+      );
+    } catch {
+      /* unreadable flows — no badges */
+    }
+  }, [hydrated, method, sideOpen]);
+
   /* the one in-flight turn (single-flight session) */
   const busyTurn = turns.find(
     (t) => t.status === "refining" || t.status === "pending",
@@ -2895,6 +2916,15 @@ export default function Home() {
                   minute: "2-digit",
                 })}{" "}
                 · {s.turns.filter((t) => !t.kind).length} takes
+                {flowSessionIds.has(s.id) && (
+                  <span
+                    className="side-flow-badge"
+                    title="The Flow method was used in this session"
+                  >
+                    {" "}
+                    · ⇶ flow
+                  </span>
+                )}
               </div>
               <button
                 className={`side-del side-pin ${s.pinned ? "on" : ""}`}
@@ -3058,7 +3088,9 @@ export default function Home() {
             </span>
           </div>
 
-          {method === "flow" && <FlowPanel onPreview={setFlowPreview} />}
+          {method === "flow" && (
+            <FlowPanel onPreview={setFlowPreview} sessionId={sessionId} />
+          )}
 
           <div className="thread" ref={threadRef}>
             {turns.map((t, i) => t.kind ? (

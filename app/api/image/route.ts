@@ -68,21 +68,30 @@ async function gptImage(prompt: string, portrait: boolean): Promise<Img> {
   return { base64: b64, mimeType: "image/png" };
 }
 
-async function geminiImage(prompt: string): Promise<Img> {
+async function geminiImage(prompt: string, ref?: Img): Promise<Img> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set — add it in the key panel");
+  // With a reference image this becomes an EDIT: same subject, apply the
+  // described change (Gemini 2.5 Flash Image is natively multimodal).
+  const parts: Record<string, unknown>[] = [{ text: prompt }];
+  if (ref) {
+    parts.push({ inline_data: { mime_type: ref.mimeType, data: ref.base64 } });
+  }
   const res = await fetch(
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent",
     {
       method: "POST",
       headers: { "x-goog-api-key": key, "content-type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+      body: JSON.stringify({ contents: [{ parts }] }),
     },
   );
   if (!res.ok) throw new Error(await readErr(res, "Gemini image"));
-  const parts = (await res.json())?.candidates?.[0]?.content?.parts ?? [];
-  for (const p of parts) {
-    const d = p?.inlineData ?? p?.inline_data;
+  const outParts: Array<Record<string, unknown>> =
+    (await res.json())?.candidates?.[0]?.content?.parts ?? [];
+  for (const p of outParts) {
+    const d = (p?.inlineData ?? p?.inline_data) as
+      | { data?: string; mimeType?: string; mime_type?: string }
+      | undefined;
     if (d?.data) {
       return {
         base64: d.data,
@@ -96,9 +105,9 @@ async function geminiImage(prompt: string): Promise<Img> {
 export async function POST(req: Request) {
   if (!checkPassword(req)) return unauthorized();
 
-  let prompt: unknown, engine: unknown, aspect: unknown;
+  let prompt: unknown, engine: unknown, aspect: unknown, image: unknown;
   try {
-    ({ prompt, engine, aspect } = await req.json());
+    ({ prompt, engine, aspect, image } = await req.json());
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -107,10 +116,25 @@ export async function POST(req: Request) {
   }
   const p = prompt.slice(0, 4000);
   const portrait = aspect !== "16:9";
+  // Optional reference still ⇒ EDIT mode. Gemini is the only wired engine
+  // with native image editing, so a reference forces the gemini path.
+  let ref: Img | undefined;
+  if (image && typeof image === "object") {
+    const { base64, mimeType } = image as Record<string, unknown>;
+    if (
+      typeof base64 === "string" &&
+      typeof mimeType === "string" &&
+      base64.length <= MAX_B64 &&
+      /^image\//.test(mimeType)
+    ) {
+      ref = { base64, mimeType };
+    }
+  }
 
   try {
-    const img =
-      engine === "gpt"
+    const img = ref
+      ? await geminiImage(p, ref)
+      : engine === "gpt"
         ? await gptImage(p, portrait)
         : engine === "gemini"
           ? await geminiImage(p)

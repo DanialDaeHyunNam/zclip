@@ -104,6 +104,10 @@ interface Flow {
   id: string;
   title: string;
   createdAt: number;
+  /** Chat session this flow belongs to — a flow is a METHOD used inside
+   *  a session, not a parallel world. Legacy flows (undefined) show in
+   *  every session. */
+  sessionId?: string;
   imgEngine?: string;
   imgPrompt: string;
   imgAttempts: FlowImageAttempt[];
@@ -116,10 +120,11 @@ interface Flow {
   resolution: Resolution;
 }
 
-const newFlow = (n: number): Flow => ({
+const newFlow = (n: number, sessionId?: string): Flow => ({
   id: `f${Date.now()}`,
   title: `Flow ${n}`,
   createdAt: Date.now(),
+  sessionId,
   imgEngine: "grok",
   imgPrompt: "",
   imgAttempts: [],
@@ -153,9 +158,13 @@ const splitDataUrl = (d: string): { base64: string; mimeType: string } => {
 
 export function FlowPanel({
   onPreview,
+  sessionId,
 }: {
   /** Surface an image/video in the studio's shared left frame. */
   onPreview: (p: FlowPreview | null) => void;
+  /** Current chat session — flows are scoped to it (legacy flows without
+   *  a sessionId stay visible everywhere). */
+  sessionId: string | null;
 }) {
   const [flows, setFlows] = useState<Flow[]>([]);
   const [flowId, setFlowId] = useState<string | null>(null);
@@ -165,9 +174,30 @@ export function FlowPanel({
   const [delAsk, setDelAsk] = useState<Flow | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savedCard, setSavedCard] = useState(false);
+  /** A previous attempt picked as EDIT context ("same look, change only
+   *  the outfit") — one-shot, consumed by the next Generate. */
+  const [editFrom, setEditFrom] = useState<FlowImageAttempt | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const flow = flows.find((f) => f.id === flowId) ?? null;
+  /* flows scoped to the current session (legacy flows show everywhere) */
+  const visibleFlows = flows.filter(
+    (f) => !f.sessionId || !sessionId || f.sessionId === sessionId,
+  );
+  const flow = visibleFlows.find((f) => f.id === flowId) ?? null;
+
+  /* keep the selection inside the current session's flows */
+  useEffect(() => {
+    if (flow || !hydrated) return;
+    const last = visibleFlows[visibleFlows.length - 1];
+    if (last) {
+      setFlowId(last.id);
+    } else {
+      const f = newFlow(1, sessionId ?? undefined);
+      setFlows((fs) => [...fs, f]);
+      setFlowId(f.id);
+    }
+    setEditFrom(null);
+  }, [sessionId, flow, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
   const motionModel = resolveModel(flow?.motionModelKey ?? "kling");
   const imgEngine =
     IMG_ENGINES.find((e) => e.key === (flow?.imgEngine ?? "grok")) ??
@@ -262,6 +292,9 @@ export function FlowPanel({
           prompt: flow.imgPrompt,
           engine: imgEngine.key,
           aspect: flow.aspect,
+          // EDIT mode: the picked attempt rides as reference (server
+          // routes edits through Gemini image regardless of engine)
+          image: editFrom ? splitDataUrl(editFrom.image) : undefined,
         }),
       });
       const b = await r.json();
@@ -278,6 +311,7 @@ export function FlowPanel({
       patchFlow(flow.id, (f) => ({
         imgAttempts: [...f.imgAttempts, attempt],
       }));
+      setEditFrom(null); // one-shot, like chat attachments
       onPreview({
         kind: "image",
         src: attempt.image,
@@ -480,7 +514,7 @@ export function FlowPanel({
   return (
     <div className="flow-panel fade">
       <div className="flow-tabs">
-        {flows.map((f) => (
+        {visibleFlows.map((f) => (
           <button
             key={f.id}
             className={`spec-chip ${f.id === flowId ? "sel" : ""}`}
@@ -504,7 +538,7 @@ export function FlowPanel({
           className="spec-chip"
           onClick={() => {
             // an untouched flow is reused instead of stacking clones
-            const empty = flows.find(
+            const empty = visibleFlows.find(
               (f) =>
                 !f.imgAttempts.length &&
                 !f.motionAttempts.length &&
@@ -515,7 +549,7 @@ export function FlowPanel({
               setFlowId(empty.id);
               return;
             }
-            const f = newFlow(flows.length + 1);
+            const f = newFlow(visibleFlows.length + 1, sessionId ?? undefined);
             setFlows((fs) => [...fs, f]);
             setFlowId(f.id);
           }}
@@ -539,8 +573,24 @@ export function FlowPanel({
           </span>
         </div>
 
-        {!confirmedImg && (
+        {(!confirmedImg || editFrom) && (
           <>
+            {editFrom && (
+              <div className="chips-row" style={{ marginBottom: 8 }}>
+                <span className="sel-chip fade">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={editFrom.image} alt="" />
+                  editing this look — describe ONLY the change
+                  <button
+                    className="link-btn danger"
+                    onClick={() => setEditFrom(null)}
+                    aria-label="Cancel edit context"
+                  >
+                    ✕
+                  </button>
+                </span>
+              </div>
+            )}
             <div className="flow-params">
               <label className="mono">
                 IMAGE MODEL{" "}
@@ -565,7 +615,11 @@ export function FlowPanel({
                 onChange={(e) =>
                   patchFlow(flow.id, { imgPrompt: e.target.value })
                 }
-                placeholder="Describe the person/look — e.g. 'woman in her 20s, dewy glass skin, pink slip dress, dressing-room vanity light, photoreal 9:16 portrait'"
+                placeholder={
+                  editFrom
+                    ? "Describe ONLY the change — e.g. 'same person, same room, change the top to an oversized red hoodie'"
+                    : "Describe the person/look — e.g. 'woman in her 20s, dewy glass skin, pink slip dress, dressing-room vanity light, photoreal 9:16 portrait'"
+                }
               />
               <div className="flow-gen-actions">
                 <button
@@ -578,8 +632,10 @@ export function FlowPanel({
                   {busyImg
                     ? "Generating…"
                     : armed === "img"
-                      ? `Confirm · ~$${imgEngine.cost.toFixed(2)}`
-                      : "Generate look"}
+                      ? `Confirm · ~$${editFrom ? "0.04" : imgEngine.cost.toFixed(2)}`
+                      : editFrom
+                        ? "Edit look · Gemini"
+                        : "Generate look"}
                 </button>
                 <button
                   className="link-btn"
@@ -646,6 +702,18 @@ export function FlowPanel({
                 {flow.confirmedImgId === a.id && (
                   <span className="flow-thumb-tag">CONFIRMED</span>
                 )}
+                <span
+                  role="button"
+                  className="flow-thumb-edit"
+                  title="Edit from this look — same person, describe only the change (outfit, background…)"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditFrom(a);
+                    patchFlow(flow.id, { imgPrompt: "" });
+                  }}
+                >
+                  ✎
+                </span>
               </button>
             ))}
           </div>
@@ -856,9 +924,14 @@ export function FlowPanel({
                   setDelAsk(null);
                   setFlows((fs) => {
                     const rest = fs.filter((x) => x.id !== id);
-                    const next = rest.length ? rest : [newFlow(1)];
-                    if (flowId === id) setFlowId(next[next.length - 1].id);
-                    return next;
+                    if (flowId === id) {
+                      const vis = rest.filter(
+                        (x) =>
+                          !x.sessionId || !sessionId || x.sessionId === sessionId,
+                      );
+                      setFlowId(vis[vis.length - 1]?.id ?? null);
+                    }
+                    return rest;
                   });
                   onPreview(null);
                 }}
