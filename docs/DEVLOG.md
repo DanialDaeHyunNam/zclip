@@ -591,6 +591,31 @@ All entries 2026-07-06 (single build session, owner: Dan).
 - lib/spec-check.ts: ending-hold self-check now accepts 'camera
   lingers …' as a hold variant.
 
+## 32. FLOW method (still → motion pipeline) + Kling provider
+
+- Owner spotted the viral still→motion pipelines (image model → Kling
+  motion → publish at scale) and wanted a pipeline METHOD next to the
+  chat method. `/flow`: Stage 1 STILL — generate via new `/api/image`
+  (Grok image, ~$0.05, expiring provider URL downloaded server-side →
+  base64) or upload; attempts grid; CONFIRM gate locks the look.
+  Stage 2 MOTION — i2v on the confirmed still via the normal
+  `/api/generate` (model select, Kling ★ recommended); iterate motion
+  endlessly, the still never re-rolls. Two-step inline money confirm on
+  both stages (browser dialogs are banned; guardRun lives in the studio).
+- Interop by design: finished motion takes vault + append to the SHARED
+  gallery (sessionId = flow id → Library + spend chart just work);
+  confirmed stills save as custom Character cards (hooklab.customAssets)
+  for the chat studio; rail ⇶ links both ways. Flow state in
+  `hooklab.flows` (file-backed store, dataURLs are fine there).
+- Kling provider added (6th): adapter UNVERIFIED (public docs
+  2026-07-13) — api-singapore JWT AK:SK per request (KLING_API_KEY =
+  "AK:SK"), i2v/t2v endpoints, jobId carries the endpoint for polling,
+  5/10s duration grid (effectiveSeconds snaps), ~$0.024–0.032/s
+  estimates. GUIDE entry: "Volume king — cheapest fluid motion";
+  MODEL_PROFILES.kling with motion-first assembleHint.
+- NOT exercised with money: /api/image (real $0.05/shot) and the Kling
+  adapter end-to-end. Render/interaction verified read-only.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

@@ -5,6 +5,7 @@ import { sora } from "./sora";
 import { grok } from "./grok";
 import { seedance } from "./seedance";
 import { runway } from "./runway";
+import { kling } from "./kling";
 
 const registry: Record<ProviderName, VideoProvider> = {
   veo,
@@ -12,6 +13,7 @@ const registry: Record<ProviderName, VideoProvider> = {
   grok,
   seedance,
   runway,
+  kling,
 };
 
 /** Resolve a client-supplied provider name to its adapter, or null if the

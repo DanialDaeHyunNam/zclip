@@ -194,6 +194,15 @@ export const MODEL_PROFILES: Record<string, ModelProfile> = {
     promptLanguage: "any",
     notes: "untested with this spec.",
   },
+  kling: {
+    promptLanguage: "any",
+    maxSeconds: 10,
+    assembleHints: [
+      "Kling is a motion-first i2v model: when an image is attached, spend the prompt on MOTION (what moves, how fast, physics) — the still already owns look/identity.",
+    ],
+    notes:
+      "2026-07-13 — adapter UNVERIFIED (built from public API docs; JWT AK:SK auth, durations 5/10s). Market rep: most fluid natural motion per dollar (~$0.24-0.32/10s), the 'make it move' step in viral still→motion pipelines. Untested with this spec.",
+  },
 };
 
 /** @deprecated kept briefly for docs references — use MODEL_PROFILES. */

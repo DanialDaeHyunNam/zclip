@@ -61,6 +61,13 @@ const GUIDE: {
     detail:
       "Drives your face card with a real clip's motion, frame-accurate — no prompt at all. Use when the choreography IS the point.",
   },
+  {
+    name: "Kling 3.0",
+    co: "Kuaishou",
+    verdict: "Volume king — cheapest fluid motion",
+    detail:
+      "The market's default 'make it move' step: most natural motion per dollar (~$0.30 per 10s clip), the animation half of the viral still→motion pipelines (AI-influencer reels: image model makes the face, Kling makes it breathe). 5/10s grid, needs its own API plan. Our adapter is UNVERIFIED until a first billed run.",
+  },
 ];
 
 function Meter({ n, label }: { n: number; label: string }) {

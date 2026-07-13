@@ -5408,3 +5408,198 @@ button {
   align-items: center;
   gap: 8px;
 }
+
+/* ── Flow method (/flow — still → motion pipeline) ─────────────────── */
+
+.flow-root {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+  margin-left: max(auto, 0px);
+}
+
+.flow-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.flow-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.flow-sub {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--dim);
+  margin: 8px 0 24px;
+}
+
+.flow-stage {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, 0.015);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  transition: border-color 0.3s ease, opacity 0.3s ease;
+}
+
+.flow-stage.locked {
+  border-color: rgba(111, 220, 255, 0.3);
+}
+
+.flow-stage.disabled {
+  opacity: 0.5;
+}
+
+.flow-stage-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.flow-engine {
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: var(--faint);
+}
+
+.flow-gen-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.flow-gen-row textarea {
+  width: 100%;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.3s ease;
+}
+
+.flow-gen-row textarea:focus {
+  border-color: rgba(111, 220, 255, 0.4);
+}
+
+.flow-gen-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.flow-btn {
+  width: auto !important;
+  padding: 12px 26px !important;
+  border-radius: var(--r-pill);
+}
+
+.flow-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.flow-thumb {
+  position: relative;
+  width: 132px;
+  aspect-ratio: 9 / 16;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  transition: border-color 0.3s ease;
+}
+
+.flow-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.flow-thumb.sel {
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(111, 220, 255, 0.18);
+}
+
+.flow-thumb-tag {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  font-family: var(--font-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.16em;
+  color: #000;
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 3px 0;
+  text-align: center;
+}
+
+.flow-confirm-row {
+  display: flex;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.flow-params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.flow-params label {
+  font-size: 10px;
+  color: var(--dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.flow-params input {
+  width: 52px;
+}
+
+.flow-takes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.flow-take {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+}
+
+.flow-take-prompt {
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--faint);
+  margin-top: 8px;
+}
+
+.flow-locked-hint {
+  font-size: 12px;
+  color: var(--faint);
+}

@@ -6,7 +6,13 @@
  * and redeploy.
  */
 
-export type ProviderName = "veo" | "sora" | "grok" | "seedance" | "runway";
+export type ProviderName =
+  | "veo"
+  | "sora"
+  | "grok"
+  | "seedance"
+  | "runway"
+  | "kling";
 export type AspectRatio = "9:16" | "16:9";
 export type Resolution = "720p" | "1080p";
 
@@ -149,6 +155,27 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     transferOnly: true,
     note: "TRANSFER-ONLY: needs a driving video (the motion) + a character card (the face). No text prompt. Needs a Runway key (Standard plan+).",
   },
+  kling: {
+    label: "Kling 3.0",
+    modelId: "kling-v3",
+    implemented: true,
+    envVar: "KLING_API_KEY", // "ACCESS_KEY:SECRET_KEY" — adapter builds the JWT
+    docsUrl: "https://kling.ai/document-api/apiReference/model/imageToVideo",
+    keyUrl: "https://kling.ai/dev",
+    adapterFile: "lib/providers/kling.ts",
+    // ~6cr/s 720p, ~8cr/s 1080p at ≈$0.004/credit (2026-07 API pricing) —
+    // estimates until a real billed run confirms.
+    costPerSecondUsd: { "720p": 0.024, "1080p": 0.032 },
+    chartColor: "#9DB13F", // added 2026-07-13 — re-validate the palette set
+    short: "Kling 3.0",
+    company: "Kuaishou",
+    tagline: "Fluid natural motion i2v — the market's 'make it move' step",
+    bestFor: "Animating a confirmed still (Flow step 2)",
+    tier: "recommended",
+    quality: 3,
+    speed: 2,
+    note: "UNVERIFIED — adapter built from Kling API docs 2026-07-13; verify on first real run. Key format ACCESS_KEY:SECRET_KEY (needs the separate API plan, not the consumer sub). Durations snap to 5/10s.",
+  },
 };
 
 export const DEFAULT_PROVIDER: ProviderName = "veo";
@@ -265,6 +292,8 @@ export const MODELS: ModelEntry[] = [
   defaultModel("grok"),
   // Runway
   defaultModel("runway"),
+  // Kuaishou
+  defaultModel("kling"),
   // ByteDance
   defaultModel("seedance"),
   variant({
@@ -311,6 +340,7 @@ export const KEY_ENV_VARS = [
   "XAI_API_KEY",
   "ARK_API_KEY",
   "RUNWAYML_API_SECRET",
+  "KLING_API_KEY",
   // Vercel Blob RW token — hosts Seedance 2.0 reference videos (URL-only input)
   "BLOB_READ_WRITE_TOKEN",
 ] as const;
@@ -339,6 +369,7 @@ export function effectiveSeconds(
     return r <= 5 ? 4 : r <= 7 ? 6 : 8;
   }
   if (provider === "sora") return 8;
+  if (provider === "kling") return r <= 7 ? 5 : 10; // API grid: 5s or 10s
   // Act-Two's output length = the driving video's length; the caller passes
   // the reference clip's duration through as `requested`.
   return r;

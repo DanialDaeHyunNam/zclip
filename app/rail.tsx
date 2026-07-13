@@ -7,7 +7,7 @@
  * reads on mount. Same markup, same CSS, so it feels like one surface.
  */
 
-export type RailPanel = "sessions" | "archive" | "grab" | "dashboard";
+export type RailPanel = "sessions" | "archive" | "grab" | "dashboard" | "flow";
 
 export function Rail({
   active = null,
@@ -16,6 +16,7 @@ export function Rail({
   onSessions,
   onArchive,
   onGrab,
+  onFlow,
   onAbout,
   version,
   hasUpdate = false,
@@ -30,6 +31,8 @@ export function Rail({
   onSessions: () => void;
   onArchive: () => void;
   onGrab: () => void;
+  /** Opens the Flow method (still → motion pipeline). Omit to hide. */
+  onFlow?: () => void;
   /** Opens an in-app About dialog. When omitted, About is a plain link to `/`. */
   onAbout?: () => void;
   /** Build version (e.g. "0.1.0"); omit to hide the chip. */
@@ -83,6 +86,17 @@ export function Rail({
             <line x1="12" y1="20" x2="12" y2="8" />
             <line x1="18" y1="20" x2="18" y2="4" />
           </svg>
+        </button>
+      )}
+      {/* 2.5 — Flow method (still → motion pipeline) */}
+      {onFlow && (
+        <button
+          className={`rail-btn ${active === "flow" ? "on" : ""}`}
+          onClick={onFlow}
+          title="Flow — confirm a still, then iterate its motion (image → i2v pipeline)"
+          aria-label="Flow method"
+        >
+          ⇶
         </button>
       )}
       {/* 3 — Library */}

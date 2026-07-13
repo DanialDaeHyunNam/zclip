@@ -51,6 +51,15 @@ runs theirs on :3000; test against it with client-side checks only.
   chat thread (turns) / rewind / sessions sidebar / preview / params /
   key panel / spend chart / archive. State shapes documented inline
   (`Turn`, `Clip`, `StoredSession`).
+- `app/flow` — the FLOW method (vs the chat method): still → motion
+  pipeline. Stage 1 generates/uploads a look (`/api/image`, Grok image,
+  ~$0.05) with a CONFIRM gate; stage 2 animates the confirmed still via
+  the normal `/api/generate` i2v (Kling recommended) and can iterate
+  motion forever without re-rolling the still. Interop both ways:
+  finished takes → shared gallery/clip vault (Library), confirmed stills
+  → custom Character cards. State in `hooklab.flows`. Rail ⇶ icon.
+- `app/api/image` — still generation for Flow stage 1 (xAI Grok image,
+  downloads the expiring provider URL server-side, returns base64).
 - `app/page.tsx` — server shell (metadata + `isCloud()`) → `app/landing-client.tsx`
   (the bilingual EN/KO landing). Studio CTA → `/install` on cloud, `/chat` local.
 - `app/run-local-guide.tsx` — macOS/Windows local-install guide (EN/KO),
@@ -113,6 +122,7 @@ do NOT store full images/videos in localStorage (5MB quota).
 | Grok (`grok-imagine-video-1.5`) | verified docs, untested with key | NO text-to-video mode — adapter does text→image (`grok-imagine-image-quality`)→video, 2 billed steps. User image skips step 1 (data URL accepted — unverified). No aspect param; prompt text controls aspect. Poll status: done/failed/expired, url at `video.url`. |
 | Runway Act-Two (`act_two`) | docs verified 2026-07-07, untested with key | THE real performance transfer. `POST /v1/character_performance` (`X-Runway-Version: 2024-11-06`) → poll `/v1/tasks/{id}`. Body: `character`={type:image,uri} (the face card), `reference`={type:video,uri} (driving clip), `ratio` 720:1280, `bodyControl`, `expressionIntensity` 1–5. Inputs are data: URIs (16MB cap → trim with GRAB). Output on CloudFront → proxied via `/api/video?remote=`. No text prompt. 5 credits/s = $0.05/s. Needs Standard plan+. |
 | Seedance (`seedance-1-0-pro-250528`) | UNVERIFIED — docs were JS-rendered | Endpoint/shape from training knowledge, marked in adapter. Verify on first real run. |
+| Kling (`kling-v3`) | UNVERIFIED — built from public API docs 2026-07-13 | `api-singapore.klingai.com/v1/videos/{image2video,text2video}` → poll same path + task id (jobId = `endpoint:taskId`). Auth = per-request HS256 JWT from `KLING_API_KEY`="AK:SK" (no static bearer; API plan is separate from the consumer sub). Durations "5"/"10" strings. Result = public time-limited CDN URL (vault promptly). ~$0.024/s 720p, $0.032/s 1080p (credit-price estimates). |
 
 ## Design system (do not drift)
 
