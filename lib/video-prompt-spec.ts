@@ -186,7 +186,7 @@ export const MODEL_PROFILES: Record<string, ModelProfile> = {
       "Fold dialogue into prose action descriptions rather than 'A:'/'B:' script lines.",
     ],
     notes:
-      "2026-07-11 — obeys structure once genre anchor + bans are set, but acting/voice below bar for dialogue comedy. Korean prompt body = hard fail.",
+      "2026-07-11 — obeys structure once genre anchor + bans are set, but acting/voice below bar for dialogue comedy. Korean prompt body = hard fail. 2026-07-13 (experimental, arena) — at 4s, run-to-run variance exceeds spec-structure deltas: short takes can't discriminate structural spec changes (1.0.2 vs storyboard candidate read as a tie; owner verdict). Use ≥8s multi-cut briefs when judging structure.",
   },
   seedance: {
     promptLanguage: "any",

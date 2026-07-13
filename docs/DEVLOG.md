@@ -616,6 +616,17 @@ All entries 2026-07-06 (single build session, owner: Dan).
 - NOT exercised with money: /api/image (real $0.05/shot) and the Kling
   adapter end-to-end. Render/interaction verified read-only.
 
+## 33. First real arena verdicts — null result, methodology learned
+
+- Owner ran spec A/Bs on Grok (owner principle: win on the cheapest
+  judge first). Verdict: live 1.0.2 vs 1.1.0-storyboard on a 4s unboxing
+  brief = effectively a tie ("그게그거"); run-to-run variance dominates.
+  Improvement gate NOT passed → storyboard candidate stays parked (its
+  ideas live on as Seedance-profile experimental notes from the CHASE
+  intake). Methodology distilled to the grok profile: short takes can't
+  discriminate structural spec changes — judge structure on ≥8s
+  multi-cut briefs. Null results are data; recorded in /lab journal.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.
