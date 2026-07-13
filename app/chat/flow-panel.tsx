@@ -40,6 +40,35 @@ export interface FlowPreview {
   label: string;
 }
 
+/** 🎲 starter drafts — editing a full draft beats a blank box. Varied
+ *  vibes, neutral casting; users overwrite freely. */
+const LOOK_PRESETS = [
+  "woman in her 20s, dewy glass skin, pink slip dress, pearl drop earrings, dressing-room vanity light, photoreal 9:16 portrait",
+  "man in his late 20s, textured short hair, charcoal knit tee, soft window light in a minimal studio apartment, photoreal 9:16 portrait",
+  "woman in her early 30s, natural freckles, oversized cream hoodie, warm bedroom lamp glow with fairy-light bokeh, photoreal 9:16 portrait",
+  "athletic man in his 20s, post-workout glow, black training top, bright gym mirror light, photoreal 9:16 portrait",
+  "woman in her 20s, sleek low bun, tailored beige blazer over white tee, clean office daylight, photoreal 9:16 portrait",
+  "woman in her mid-20s, beach waves hair, white linen shirt, golden-hour backlight on a rooftop, photoreal 9:16 portrait",
+  "man in his 30s, round glasses, denim shirt, cozy cafe window seat with blurred espresso bar, photoreal 9:16 portrait",
+  "woman in her 20s, glossy dark hair, red satin top, neon street light at night with shallow depth of field, photoreal 9:16 portrait",
+];
+
+const MOTION_PRESETS = [
+  "subtle breathing, a slow blink, hair moving in a soft breeze, a small head tilt and a gentle smile at the lens",
+  "mid-scroll on a phone, eyes snap wide, hand rises to cover the mouth, holds the surprised look with tiny micro-movements",
+  "talking to the camera with bright energy, natural hand gestures, a quick laugh, never posed-frozen",
+  "a slow confident smile building into a wink, chin tilts down slightly, eyes stay locked on the lens",
+  "glances off-frame, notices the camera, breaks into a genuine laugh and leans in closer",
+  "light bouncy sway to an unheard beat, shoulders loose, one playful finger-point at the lens",
+  "lifts a coffee cup, takes a sip, exhales contentedly, eyes soften into a relaxed smile",
+  "adjusts hair behind one ear, straightens posture, gives a small wave and mouths 'hi' to the lens",
+];
+
+const randomFrom = (list: string[], not?: string): string => {
+  const pool = list.filter((p) => p !== not);
+  return pool[Math.floor(Math.random() * pool.length)] ?? list[0];
+};
+
 const IMG_ENGINES = [
   { key: "grok", label: "Grok Imagine image", cost: 0.05 },
   { key: "gpt", label: "GPT Image (OpenAI)", cost: 0.06 },
@@ -553,6 +582,17 @@ export function FlowPanel({
                 </button>
                 <button
                   className="link-btn"
+                  onClick={() =>
+                    patchFlow(flow.id, {
+                      imgPrompt: randomFrom(LOOK_PRESETS, flow.imgPrompt),
+                    })
+                  }
+                  title="Fill with a random starter draft — edit from there"
+                >
+                  🎲 Random
+                </button>
+                <button
+                  className="link-btn"
                   onClick={() => fileRef.current?.click()}
                 >
                   ⤒ Upload
@@ -725,6 +765,20 @@ export function FlowPanel({
                   {armed === "motion"
                     ? `Confirm · ${motionModel.short} · ${fmtCost(motionCost ?? undefined) ?? "$?"}`
                     : "Animate"}
+                </button>
+                <button
+                  className="link-btn"
+                  onClick={() =>
+                    patchFlow(flow.id, {
+                      motionPrompt: randomFrom(
+                        MOTION_PRESETS,
+                        flow.motionPrompt,
+                      ),
+                    })
+                  }
+                  title="Fill with a random motion draft — edit from there"
+                >
+                  🎲 Random
                 </button>
               </div>
             </div>
