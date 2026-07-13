@@ -3223,17 +3223,18 @@ export default function Home() {
                 >
                   ◫ Background{selSetting ? ` · ${selSetting.label}` : ""}
                 </button>
-                {turns.length === 0 && (
-                  <button
-                    className={`pill-btn ${pickerOpen === "fashion" ? "on" : ""}`}
-                    onClick={() =>
-                      setPickerOpen((p) => (p === "fashion" ? null : "fashion"))
-                    }
-                    title="Dress the character in this outfit — works with any model"
-                  >
-                    ⑆ Fashion{selFashion ? ` · ${selFashion.label}` : ""}
-                  </button>
-                )}
+                {/* fashion works mid-thread too (dresses the picked
+                    Character card at send time) — was hidden behind a
+                    stale turns.length===0 gate until 2026-07-13 */}
+                <button
+                  className={`pill-btn ${pickerOpen === "fashion" ? "on" : ""}`}
+                  onClick={() =>
+                    setPickerOpen((p) => (p === "fashion" ? null : "fashion"))
+                  }
+                  title="Dress the character in this outfit — pick a Character card with it; works with any model"
+                >
+                  ⑆ Fashion{selFashion ? ` · ${selFashion.label}` : ""}
+                </button>
                 <button
                   className={`pill-btn ${pickerOpen === "library" ? "on" : ""}`}
                   onClick={() =>
