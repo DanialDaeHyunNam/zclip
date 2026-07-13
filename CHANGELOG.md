@@ -5,6 +5,60 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.4.0 — 2026-07-13
+
+### Added
+- **SPEC mode — an interview before money moves.** Toggle SPEC next to
+  Send and your draft is checked against a 15-section photoreal spec:
+  the composer itself asks a few quick questions (genre, cut board,
+  characters — quick-reply chips + free text), assembles a
+  production-grade prompt, previews it with mechanical self-checks and
+  the cost, and only generates on your explicit confirm. The assembled
+  prompt is submitted verbatim — no rewrite pass on top. "Skip checks,
+  run as typed" is always one click away. Attached images/cards/pins
+  ride through the interview onto the final request. Spec takes show
+  their full prompt in the thread (expand/copy modal).
+- **Gemini-key onboarding.** No Gemini key? Your first text send opens a
+  small pitch: add a free key for the guided interview, or decline and
+  ZCLIP sends exactly what you typed (no more dead-end error). The SPEC
+  button reopens the offer anytime.
+- **FLOW method — lock a look, iterate motion.** A still→motion pipeline
+  living next to the chat (CHAT | FLOW toggle in the session header):
+  generate or upload a look (Grok / GPT / Gemini image engines), confirm
+  it once, then iterate i2v motion endlessly — the still never re-rolls.
+  ✎ edit a look in place ("same person, change the outfit" — Gemini image
+  editing), 🎲 random starter drafts for looks and motions, per-flow
+  model/aspect/duration, and every finished take lands in the shared
+  Library. Confirmed stills save as Character cards (auto-numbered, never
+  overwritten) for the chat method. Flows belong to their session — the
+  sidebar marks sessions that used FLOW.
+- **Kling 3.0 provider** (`kling-v3`, adapter unverified until a first
+  real run): the market's most natural motion per dollar for i2v.
+  Key format `ACCESS_KEY:SECRET_KEY` (Kling's separate API plan).
+- **Model Guide.** The model picker grew a right-aligned "Guide ?" —
+  a per-model street-reputation cheat sheet (what each model is actually
+  best at, with field-note caveats), dated Jul 2026.
+- **Library: per-clip permanent delete.** Every card's Remove now opens a
+  confirmation that spells out what's lost, then deletes the saved file
+  from disk AND the Library entry together.
+
+### Changed
+- Chat bar is a column now: full-width input on top, attach/SPEC/Send on
+  an action row below — long drafts stop getting squeezed.
+- The spend popover shows THIS session only, with an all-sessions button
+  into the full dashboard.
+- Fashion picker shows mid-thread too (it always worked there).
+- Card action rows wrap instead of clipping (Remove was pushed offscreen).
+- Prompt length cap raised to 6000 chars for assembled spec prompts;
+  assemblers target ≤3600 with an auto-compress retry.
+- Assembled prompts must use clearly fictional names — video providers
+  hard-block real-person likenesses (Veo rejected one; now guarded).
+
+### Fixed
+- Errored provider jobs no longer spin as RENDERING forever in
+  long-poll loops.
+- Frame empty-state copy no longer touches the frame edges.
+
 ## 0.3.0 — 2026-07-10
 
 ### Added

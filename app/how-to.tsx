@@ -35,6 +35,16 @@ export const HOWTO: Record<Lang, HowStep[]> = {
       title: "Keep the motion, swap the person",
       body: "Point **Runway Act-Two** at a reference clip to re-perform its motion on your character. **Exact replication is intentionally limited** — it references the motion and expression but **never clones anyone's identity**: your character stays the star. It re-performs the feeling, not the exact person.",
     },
+    {
+      icon: "◈",
+      title: "SPEC — interview before money",
+      body: "Toggle **SPEC** next to Send and your draft gets checked against a **photoreal spec**: a few quick questions (genre, cut board, characters), then a full production-grade prompt is assembled and shown **before anything is billed**. Skip anytime with “run as typed”.",
+    },
+    {
+      icon: "⇶",
+      title: "FLOW — lock a look, iterate motion",
+      body: "Switch the session to **FLOW** for the still→motion pipeline: generate or upload a **look**, confirm it once, then **iterate the motion forever** — the still never re-rolls. **✎ edit a look** (“same person, change the outfit”), and save any confirmed still as a **Character card** for the chat method.",
+    },
   ],
   ko: [
     {
@@ -56,6 +66,16 @@ export const HOWTO: Record<Lang, HowStep[]> = {
       icon: "⑆",
       title: "모션은 그대로, 사람만 교체",
       body: "**Runway Act-Two**로 참조 클립의 동작을 당신 캐릭터에 다시 연기시킵니다. **정확한 복제는 의도적으로 제한**돼 있어요 — 동작·표정은 참고하되 **누구의 신원도 복제하지 않습니다**(당신 캐릭터가 주인공). “그 사람”이 아니라 “그 느낌의 연기”를 재현합니다.",
+    },
+    {
+      icon: "◈",
+      title: "SPEC — 돈 쓰기 전에 인터뷰",
+      body: "Send 옆 **SPEC**을 켜면 드래프트를 **포토리얼 스펙**으로 검사합니다: 몇 가지 빠른 질문(장르·컷보드·인물) 후 프로덕션급 프롬프트가 조립되어 **과금 전에** 보여져요. 언제든 “run as typed”로 건너뛸 수 있습니다.",
+    },
+    {
+      icon: "⇶",
+      title: "FLOW — 룩 고정, 모션 반복",
+      body: "세션을 **FLOW**로 전환하면 스틸→모션 파이프라인: **룩**을 생성/업로드해 한 번 확정하면, **모션만 무한 반복**합니다 — 스틸은 다시 뽑히지 않아요. **✎ 룩 수정**(“같은 사람, 옷만 변경”)도 되고, 확정 스틸은 **캐릭터 카드**로 저장해 채팅 방식에서 쓸 수 있습니다.",
     },
   ],
 };
