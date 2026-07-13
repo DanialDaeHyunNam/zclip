@@ -118,6 +118,17 @@ export async function DELETE(req: Request) {
   if (!checkPassword(req)) return unauthorized();
   const gate = devOnly();
   if (gate) return gate;
+  // ?jobId= — permanently delete ONE vaulted take (same name mapping as
+  // POST). No param keeps the original clear-all behavior.
+  const jobId = new URL(req.url).searchParams.get("jobId");
+  if (jobId) {
+    const name = `clip-${jobId.replace(/[^\w.-]+/g, "_")}.mp4`;
+    if (!FILE_NAME.test(name)) {
+      return Response.json({ error: "Bad job id" }, { status: 400 });
+    }
+    await rm(path.join(CLIPS_DIR, name), { force: true });
+    return Response.json({ removed: 1 });
+  }
   const usage = await dirUsage(CLIPS_DIR);
   await rm(CLIPS_DIR, { recursive: true, force: true });
   return Response.json({ removed: usage.files, bytes: usage.bytes });

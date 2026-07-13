@@ -10,6 +10,7 @@ import {
   SESSION_ID_KEY,
   PW_KEY,
   PENDING_REF_KEY,
+  isLocalVideoUrl,
 } from "@/lib/clip";
 import { useHosted } from "@/lib/use-version";
 import { Rail } from "../rail";
@@ -115,8 +116,43 @@ export default function ArchivePage() {
     a.remove();
   };
 
-  const removeClip = (jobId: string) =>
-    persist(clips.filter((c) => c.jobId !== jobId));
+  /* per-clip PERMANENT delete — confirm modal first, then the vaulted
+   * file on disk (clips or grabs) AND the gallery entry go together. */
+  const [delAsk, setDelAsk] = useState<Clip | null>(null);
+  const [delBusy, setDelBusy] = useState(false);
+  const [delErr, setDelErr] = useState<string | null>(null);
+
+  const removeClip = (jobId: string) => {
+    const c = clips.find((x) => x.jobId === jobId);
+    if (c) {
+      setDelErr(null);
+      setDelAsk(c);
+    }
+  };
+
+  const deleteForever = async () => {
+    if (!delAsk || delBusy) return;
+    setDelBusy(true);
+    setDelErr(null);
+    try {
+      if (!hosted && isLocalVideoUrl(delAsk.videoUrl)) {
+        const url = delAsk.videoUrl!.startsWith("/api/grab")
+          ? `/api/grab?f=${encodeURIComponent(new URLSearchParams(delAsk.videoUrl!.split("?")[1] ?? "").get("f") ?? "")}`
+          : `/api/clips?jobId=${encodeURIComponent(delAsk.jobId)}`;
+        const r = await fetch(url, { method: "DELETE", headers: pwHeaders() });
+        if (!r.ok) {
+          const b = await r.json().catch(() => ({}));
+          throw new Error(b.error ?? "Couldn't delete the saved file");
+        }
+      }
+      persist(clips.filter((c) => c.jobId !== delAsk.jobId));
+      setDelAsk(null);
+    } catch (e) {
+      setDelErr(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDelBusy(false);
+    }
+  };
 
   const fmtBytes = (b: number) =>
     b >= 1e9
@@ -439,6 +475,66 @@ export default function ArchivePage() {
           </div>
         ))}
       </div>
+
+      {/* per-clip delete — permanence spelled out, file + entry together */}
+      {delAsk && (
+        <div
+          className="rlg-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Delete this video"
+          onClick={() => !delBusy && setDelAsk(null)}
+        >
+          <div className="rlg-modal-card about-card" onClick={(e) => e.stopPropagation()}>
+            <div className="rlg-modal-head">
+              <span className="label">Delete this video — permanently</span>
+              <button
+                type="button"
+                className="rlg-modal-close"
+                onClick={() => setDelAsk(null)}
+                aria-label="Close"
+                disabled={delBusy}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="rlg-modal-body">
+              <p className="archive-note">
+                <b>“{(delAsk.note ?? delAsk.prompt).slice(0, 80)}”</b>
+                {" — "}
+                {delAsk.provider === "grab" ? "grabbed reference" : `take · ${delAsk.variantLabel}`}
+              </p>
+              <p className="archive-note">
+                The saved file is deleted from this machine and the entry
+                leaves the Library <b>permanently</b> — it can&apos;t be played
+                again or used as a reference (providers purge their own
+                copies within days, so nothing can be re-downloaded).
+                {delAsk.costUsd != null
+                  ? " The dashboard's spend history loses this take."
+                  : ""}{" "}
+                Download it first if you want a copy.
+              </p>
+              {delErr && <div className="error-box">{delErr}</div>}
+              <div className="rlg-cta-row">
+                <button
+                  className="btn-ghost"
+                  onClick={() => setDelAsk(null)}
+                  disabled={delBusy}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn-ghost btn-danger"
+                  onClick={deleteForever}
+                  disabled={delBusy}
+                >
+                  {delBusy ? "DELETING…" : "Delete permanently"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Clear All — spells out exactly what is lost before anything deletes */}
       {clearOpen && (

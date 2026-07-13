@@ -334,6 +334,15 @@ export async function DELETE(req: Request) {
   if (!checkPassword(req)) return unauthorized();
   const gate = devOnly();
   if (gate) return gate;
+  // ?f= — permanently delete ONE grabbed reference; no param = clear all.
+  const f = new URL(req.url).searchParams.get("f");
+  if (f) {
+    if (!FILE_NAME.test(f)) {
+      return Response.json({ error: "Bad file name" }, { status: 400 });
+    }
+    await rm(path.join(GRABS_DIR, f), { force: true });
+    return Response.json({ removed: 1 });
+  }
   const usage = await dirUsage(GRABS_DIR);
   await rm(GRABS_DIR, { recursive: true, force: true });
   return Response.json({ removed: usage.files, bytes: usage.bytes });
