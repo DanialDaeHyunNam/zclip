@@ -2240,7 +2240,8 @@ button {
 
 .card-actions {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap; /* three actions on a narrow card — wrap, never clip */
+  gap: 6px 14px;
 }
 
 /* ── full archive overlay ───────────────────────── */
