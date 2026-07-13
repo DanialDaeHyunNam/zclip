@@ -5671,3 +5671,10 @@ button {
 .flow-take {
   cursor: pointer;
 }
+
+/* empty-state copy inside the frame — breathe, don't touch the borders */
+.frame-empty {
+  padding: 0 15%;
+  text-align: center;
+  line-height: 2.1;
+}

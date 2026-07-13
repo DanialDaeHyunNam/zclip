@@ -4083,8 +4083,10 @@ export default function Home() {
                   />
                 )
               ) : (
-                <span className="label">
-                  Flow — generate a look and it previews here
+                <span className="label frame-empty">
+                  Flow — generate a look
+                  <br />
+                  and it previews here
                 </span>
               )
             ) : previewBusy ? (
