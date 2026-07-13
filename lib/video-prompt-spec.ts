@@ -18,8 +18,13 @@
  * card runs SELF_CHECKS via lib/spec-check.ts. Docs: docs/VIDEO-PROMPT-SPEC.md.
  */
 
-export const SPEC_VERSION = "1.0.0";
+export const SPEC_VERSION = "1.0.1";
 // CHANGELOG
+// 1.0.1 (2026-07-13) — Seedance 2.0 profile enriched from the CHASE fan-
+//         meeting vlog reference (owner-supplied prompt + frame-verified
+//         output): @ image token, image-owns-identity, script-lines-safe.
+//         PROFILE-ONLY — GATES/SECTIONS untouched (structural candidates
+//         went to /lab/snapshots for A/B per the improvement gate).
 // 1.0.0 (2026-07-12) — initial port from mono SKILL.md (supercar 15-section
 //         template + RENA multi-cut grammar + model cheatsheet).
 
@@ -178,8 +183,12 @@ export const MODEL_PROFILES: Record<string, ModelProfile> = {
   },
   seedance: {
     promptLanguage: "any",
+    assembleHints: [
+      "Seedance 2.0 with an attached image reference: reference it INLINE as '@ image' where the subject first appears (e.g. 'a female idol @ image'), and let the IMAGE own identity — describe wardrobe/energy/vibe in text, never fight the image on face or hair (frame-verified: text hair description lost to the image).",
+      "Seedance 2.0 tolerates script-style dialogue lines inside cut descriptions ('NAME: \"line\"' + parenthetical voice direction, incl. off-screen) without rendering burned subtitles — keep the lines inside described cuts anyway.",
+    ],
     notes:
-      "ZCLIP has Seedance 1.0 Pro — UNVERIFIED. Reference-grade results (RENA reproduction) were Seedance 2.0 (Higgsfield, 135cr/15s/1080p). Do not assume parity.",
+      "ZCLIP has Seedance 1.0 Pro — UNVERIFIED; reference-grade results are Seedance 2.0 (RENA repro; CHASE fan-meeting vlog 2026-07-13, 15s/1080p/24fps, frame-verified). EXPERIMENTAL from the CHASE reference, pending Spec Lab A/B (candidate snapshot 1.1.0-storyboard): narrative logline → beat-rhythm arrow line → Characters → Storyboard structure WITHOUT labeled 15-section blocks or negative bans hit reference grade on 2.0; per-cut '(Cut N · ~2 sec · shot type)' headers instead of absolute timecodes; camera-relative spatial blocking ('on camera left… behind… on the right') made a whip pan hit its exact targets and locked prop continuity (mid-video hairpin persisted); 'camera lingers half a beat' works as the ending hold; bubbly-vlog pacing survived ~2.9 words/sec (over the 2.5 budget). None of this is proven on Veo/Grok — Grok verifiedly NEEDS the bans.",
   },
   runway: {
     promptLanguage: "any",

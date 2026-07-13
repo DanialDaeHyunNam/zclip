@@ -114,10 +114,11 @@ export function runSelfChecks(
         : undefined,
   });
 
-  // 4 — ending hold.
+  // 4 — ending hold. "Camera lingers …" is a valid hold variant (CHASE
+  // reference: subject exits, camera stays on the vanity half a beat).
   results.push({
     label: SELF_CHECKS[3],
-    pass: /do not end abruptly|hold(s|ing)? (the |this |her |his |final )?(pose|frame|position|expression)/.test(p),
+    pass: /do not end abruptly|hold(s|ing)? (the |this |her |his |final )?(pose|frame|position|expression)|linger(s|ing)?\b/.test(p),
   });
 
   // 5 — NOT a bare screenplay: fail when most non-empty lines are

@@ -569,6 +569,28 @@ All entries 2026-07-06 (single build session, owner: Dan).
   destructive text ops on UNIQUE anchors (rfind + content asserts), or
   just use the Edit tool.
 
+## 31. CHASE reference intake — spec 1.0.1 + first real Spec Lab candidate
+
+- Owner supplied a second reference-grade Seedance 2.0 artifact (CHASE
+  fan-meeting dressing-room vlog, 15s/1080p/24fps) WITH its prompt.
+  Frame-verified (16-frame ffmpeg grid): zero burned subtitles despite 8
+  script-style dialogue lines; mid-video prop (ribbon hairpin) persists
+  through every later cut; the whip pan hits exactly the props named in
+  the camera-relative spatial map; @ image reference OVERRODE the text's
+  hair description (image owns identity).
+- Ported per the improvement gate. Profile-only now (SPEC_VERSION 1.0.1):
+  seedance assembleHints — '@ image' inline token + image-owns-identity +
+  script-lines-safe; long experimental note. Structural ideas went to
+  /lab/snapshots/1.1.0-storyboard.json for A/B: beat-rhythm arrow line
+  (new 'rhythm' section), spatial blocking in scene, per-cut
+  '(Cut N · ~X sec · shot type)' headers with named camera grammar,
+  linger-ending variant, prop-lifecycle continuity, off-screen audio
+  events. NOT shipped live — Grok verifiedly needs the bans this
+  reference omits, so labeled-blocks-vs-storyboard is exactly a Spec Lab
+  question.
+- lib/spec-check.ts: ending-hold self-check now accepts 'camera
+  lingers …' as a hold variant.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.
