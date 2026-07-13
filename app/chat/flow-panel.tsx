@@ -356,10 +356,18 @@ export function FlowPanel({
         settings?: unknown[];
         fashion?: unknown[];
       };
-      const characters = Array.isArray(cur.characters) ? cur.characters : [];
+      const characters = Array.isArray(cur.characters)
+        ? (cur.characters as Record<string, unknown>[])
+        : [];
+      // Never overwrite an existing card — bump a numeric suffix instead
+      // ("Flow 1", "Flow 1 · 2", "Flow 1 · 3", …).
+      const base = flow.title.slice(0, 20);
+      const taken = new Set(characters.map((c) => c.label));
+      let label = base;
+      for (let n = 2; taken.has(label); n++) label = `${base} · ${n}`;
       characters.push({
-        id: `flow-${confirmedImg.id}`,
-        label: flow.title.slice(0, 24),
+        id: `flow-${confirmedImg.id}-${Date.now()}`,
+        label,
         desc: "FROM FLOW",
         prompt: confirmedImg.prompt,
         image: confirmedImg.image,
