@@ -2810,7 +2810,6 @@ export default function Home() {
           newSession(); // logo = a fresh start, like a new chat
         }}
         onDashboard={() => router.push("/dashboard")}
-        onFlow={() => setMethod("flow")}
         onSessions={() => {
           setSideOpen((o) => !o);
         }}
