@@ -17,12 +17,6 @@ const BASE = "https://generativelanguage.googleapis.com/v1beta";
 // Operation names look like "models/veo-3.1-.../operations/abc123".
 const OPERATION_NAME = /^models\/[\w.-]+\/operations\/[\w-]+$/;
 
-function apiKey(): string {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("GEMINI_API_KEY is not set — see README.md");
-  return key;
-}
-
 async function readError(res: Response): Promise<string> {
   let message = `Veo API error (HTTP ${res.status})`;
   try {
@@ -46,13 +40,13 @@ async function readError(res: Response): Promise<string> {
 export const veo: VideoProvider = {
   name: "veo",
 
-  async submit(prompt: string, params: SubmitParams) {
+  async submit(prompt: string, params: SubmitParams, apiKey: string) {
     const res = await fetch(
       `${BASE}/models/${params.modelId || PROVIDERS.veo.modelId}:predictLongRunning`,
       {
         method: "POST",
         headers: {
-          "x-goog-api-key": apiKey(),
+          "x-goog-api-key": apiKey,
           "content-type": "application/json",
         },
         body: JSON.stringify({
@@ -87,13 +81,13 @@ export const veo: VideoProvider = {
     return { jobId: name };
   },
 
-  async status(jobId: string): Promise<JobStatus> {
+  async status(jobId: string, apiKey: string): Promise<JobStatus> {
     if (!OPERATION_NAME.test(jobId)) {
       return { state: "error", error: "Malformed job id" };
     }
 
     const res = await fetch(`${BASE}/${jobId}`, {
-      headers: { "x-goog-api-key": apiKey() },
+      headers: { "x-goog-api-key": apiKey },
     });
     if (!res.ok) return { state: "error", error: await readError(res) };
 

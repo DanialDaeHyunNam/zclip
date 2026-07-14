@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { isCloud } from "@/lib/deploy";
-import { RunLocalGuide } from "../run-local-guide";
 import Studio from "./studio";
 
 export const metadata: Metadata = {
@@ -9,13 +7,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Server gate. On the public cloud deploy the studio can't actually work
- * (keys are dev-only, generation spends real money) — so we serve the
- * local-install guide instead, and the heavy client studio never ships to
- * the visitor. Locally (`bun dev` / self-host) the real studio loads.
- * See lib/deploy.ts for how cloud-vs-local is decided.
+ * The studio runs everywhere since v0.5.0 (docs/HOSTED.md): hosted visitors
+ * bring their own keys (localStorage → per-request pass-through headers),
+ * local installs keep the .env.local flow. Hosted-specific behavior keys off
+ * useHosted() (the data-hosted stamp in app/layout.tsx); the local-install
+ * guide still lives at /install and is where every hosted limit points.
  */
 export default function ChatPage() {
-  if (isCloud()) return <RunLocalGuide gated />;
   return <Studio />;
 }

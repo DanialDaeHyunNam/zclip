@@ -1,4 +1,5 @@
 import { checkPassword, unauthorized } from "@/lib/auth";
+import { resolveKey } from "@/lib/server-keys";
 import { upstreamFor } from "@/lib/video-upstream";
 
 /**
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
   if (!checkPassword(req)) return unauthorized();
 
   const url = new URL(req.url);
-  const upstream = upstreamFor(url);
+  const upstream = upstreamFor(url, (envVar) => resolveKey(req, envVar));
   if ("error" in upstream) {
     return Response.json({ error: upstream.error }, { status: 400 });
   }

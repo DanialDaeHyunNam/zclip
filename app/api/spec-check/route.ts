@@ -1,5 +1,6 @@
 import { REFINER_MODEL_ID } from "@/lib/config";
 import { checkPassword, unauthorized } from "@/lib/auth";
+import { resolveKey, missingKey } from "@/lib/server-keys";
 import {
   SPEC_VERSION,
   SECTIONS,
@@ -130,13 +131,8 @@ const textOf = (data: unknown): string | undefined =>
 export async function POST(req: Request) {
   if (!checkPassword(req)) return unauthorized();
 
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    return Response.json(
-      { error: "GEMINI_API_KEY is not set — see README.md" },
-      { status: 500 },
-    );
-  }
+  const key = resolveKey(req, "GEMINI_API_KEY");
+  if (!key) return missingKey("GEMINI_API_KEY", "Gemini");
 
   let mode: unknown, draft: unknown, answers: unknown, provider: unknown;
   let targetSeconds: unknown, aspect: unknown, context: unknown, images: unknown;

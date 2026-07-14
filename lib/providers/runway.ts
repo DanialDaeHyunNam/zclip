@@ -23,18 +23,9 @@ const VERSION = "2024-11-06";
 const TASK_ID = /^[\w-]+$/;
 const MAX_URI_BYTES = 16_000_000;
 
-function apiKey(): string {
-  const key = process.env.RUNWAYML_API_SECRET;
-  if (!key)
-    throw new Error(
-      "RUNWAYML_API_SECRET is not set — add a Runway API key (dev.runwayml.com) in the UI key panel.",
-    );
-  return key;
-}
-
-function headers(json = true): Record<string, string> {
+function headers(apiKey: string, json = true): Record<string, string> {
   return {
-    authorization: `Bearer ${apiKey()}`,
+    authorization: `Bearer ${apiKey}`,
     "x-runway-version": VERSION,
     ...(json ? { "content-type": "application/json" } : {}),
   };
@@ -55,7 +46,7 @@ const decodedBytes = (b64: string) => Math.floor((b64.length * 3) / 4);
 export const runway: VideoProvider = {
   name: "runway",
 
-  async submit(_prompt: string, params: SubmitParams) {
+  async submit(_prompt: string, params: SubmitParams, apiKey: string) {
     if (!params.character || !params.drivingVideo) {
       throw new Error(
         "Act-Two needs both a character (a cast card) and a driving video (attach a reference clip). Pick a face card and attach a video, then send.",
@@ -70,7 +61,7 @@ export const runway: VideoProvider = {
     const ratio = params.aspectRatio === "16:9" ? "1280:720" : "720:1280";
     const res = await fetch(`${BASE}/character_performance`, {
       method: "POST",
-      headers: headers(),
+      headers: headers(apiKey),
       body: JSON.stringify({
         model: params.modelId || "act_two",
         character: {
@@ -96,12 +87,12 @@ export const runway: VideoProvider = {
     return { jobId: id };
   },
 
-  async status(jobId: string): Promise<JobStatus> {
+  async status(jobId: string, apiKey: string): Promise<JobStatus> {
     if (!TASK_ID.test(jobId)) {
       return { state: "error", error: "Malformed task id" };
     }
     const res = await fetch(`${BASE}/tasks/${jobId}`, {
-      headers: headers(false),
+      headers: headers(apiKey, false),
     });
     if (!res.ok) return { state: "error", error: await readError(res) };
 

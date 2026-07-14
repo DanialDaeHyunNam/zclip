@@ -1,4 +1,5 @@
 import { checkPassword, unauthorized } from "@/lib/auth";
+import { resolveKey, missingKey } from "@/lib/server-keys";
 
 /**
  * DRESS — composite a chosen outfit onto a character image with the Gemini
@@ -10,10 +11,6 @@ import { checkPassword, unauthorized } from "@/lib/auth";
 const MODEL = "gemini-2.5-flash-image";
 const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_B64 = 4_000_000;
-
-function apiKey(): string | null {
-  return process.env.GEMINI_API_KEY ?? null;
-}
 
 function parseImage(raw: unknown): { base64: string; mimeType: string } | null {
   if (!raw || typeof raw !== "object") return null;
@@ -27,10 +24,8 @@ function parseImage(raw: unknown): { base64: string; mimeType: string } | null {
 export async function POST(req: Request) {
   if (!checkPassword(req)) return unauthorized();
 
-  const key = apiKey();
-  if (!key) {
-    return Response.json({ error: "GEMINI_API_KEY is not set" }, { status: 400 });
-  }
+  const key = resolveKey(req, "GEMINI_API_KEY");
+  if (!key) return missingKey("GEMINI_API_KEY", "Gemini");
 
   let body: Record<string, unknown>;
   try {

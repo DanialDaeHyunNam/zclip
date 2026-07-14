@@ -3,14 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MODELS,
+  PROVIDERS,
   ASPECT_RATIOS,
   RESOLUTIONS,
   resolveModel,
   effectiveSeconds,
   estimateModelCost,
   type AspectRatio,
+  type ProviderName,
   type Resolution,
 } from "@/lib/config";
+import { keyHeader } from "@/lib/client-keys";
 import * as store from "@/lib/store";
 import { type Clip, fmtCost, GALLERY_KEY, PW_KEY } from "@/lib/clip";
 import { persistRemoteVideo } from "@/lib/persist-clip";
@@ -211,13 +214,18 @@ export function FlowPanel({
     ? estimateModelCost(motionModel, flow.resolution, flow.duration)
     : null;
 
-  const headers = useCallback((): Record<string, string> => {
-    const pw = storedPw();
-    return {
-      "content-type": "application/json",
-      ...(pw ? { "x-app-password": pw } : {}),
-    };
-  }, []);
+  /** Password + the hosted pass-through provider key (lib/client-keys) —
+   *  which envVar rides depends on what the request actually spends. */
+  const headers = useCallback(
+    (envVar?: string | null): Record<string, string> => {
+      const pw = storedPw();
+      return keyHeader(envVar, {
+        "content-type": "application/json",
+        ...(pw ? { "x-app-password": pw } : {}),
+      });
+    },
+    [],
+  );
 
   /* hydrate flows from the shared store */
   useEffect(() => {
@@ -287,7 +295,16 @@ export function FlowPanel({
     try {
       const r = await fetch("/api/image", {
         method: "POST",
-        headers: headers(),
+        // Edits route through Gemini image server-side regardless of engine.
+        headers: headers(
+          editFrom
+            ? "GEMINI_API_KEY"
+            : imgEngine.key === "gpt"
+              ? "OPENAI_API_KEY"
+              : imgEngine.key === "gemini"
+                ? "GEMINI_API_KEY"
+                : "XAI_API_KEY",
+        ),
         body: JSON.stringify({
           prompt: flow.imgPrompt,
           engine: imgEngine.key,
@@ -398,7 +415,7 @@ export function FlowPanel({
     try {
       const r = await fetch("/api/generate", {
         method: "POST",
-        headers: headers(),
+        headers: headers(m.envVar),
         body: JSON.stringify({
           prompt: flow.motionPrompt,
           provider: m.provider,
@@ -456,7 +473,11 @@ export function FlowPanel({
           try {
             const r = await fetch(
               `/api/status?id=${encodeURIComponent(a.jobId)}&provider=${a.provider}`,
-              { headers: headers() },
+              {
+                headers: headers(
+                  PROVIDERS[a.provider as ProviderName]?.envVar ?? null,
+                ),
+              },
             );
             const b = await r.json();
             if (!r.ok || b.state === "error" || b.state === "failed") {

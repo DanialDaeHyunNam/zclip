@@ -26,21 +26,26 @@ export function hostAllowed(remote: string, hosts: string[]): boolean {
   }
 }
 
+/** `keyFor` resolves the provider key an upstream needs. The default (plain
+ *  env read) serves the dev-only clip vault; /api/video passes a per-request
+ *  resolver so hosted visitors' header keys ride through (never the env —
+ *  lib/server-keys.ts owns that rule). */
 export function upstreamFor(
   url: URL,
+  keyFor: (envVar: string) => string | null = (v) => process.env[v] ?? null,
 ): { target: string; headers: Record<string, string> } | { error: string } {
   const uri = url.searchParams.get("uri");
   if (uri) {
     if (!uri.startsWith(VEO_PREFIX)) return { error: "Invalid video uri" };
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) return { error: "GEMINI_API_KEY is not set" };
+    const key = keyFor("GEMINI_API_KEY");
+    if (!key) return { error: "No Gemini key for this download — add GEMINI_API_KEY in the key panel" };
     return { target: uri, headers: { "x-goog-api-key": key } };
   }
   if (url.searchParams.get("provider") === "sora") {
     const ref = url.searchParams.get("ref") ?? "";
     if (!SORA_REF.test(ref)) return { error: "Invalid video ref" };
-    const key = process.env.OPENAI_API_KEY;
-    if (!key) return { error: "OPENAI_API_KEY is not set" };
+    const key = keyFor("OPENAI_API_KEY");
+    if (!key) return { error: "No OpenAI key for this download — add OPENAI_API_KEY in the key panel" };
     return {
       target: `https://api.openai.com/v1/videos/${ref}/content`,
       headers: { authorization: `Bearer ${key}` },

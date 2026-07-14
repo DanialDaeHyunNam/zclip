@@ -1,4 +1,5 @@
 import { checkPassword, unauthorized } from "@/lib/auth";
+import { resolveKey, missingKey } from "@/lib/server-keys";
 
 /**
  * Still-image generation for the Flow method's stage 1 (the "who/look"
@@ -33,9 +34,7 @@ async function readErr(res: Response, label: string): Promise<string> {
   }
 }
 
-async function grokImage(prompt: string): Promise<Img> {
-  const key = process.env.XAI_API_KEY;
-  if (!key) throw new Error("XAI_API_KEY is not set — add it in the key panel (Grok)");
+async function grokImage(prompt: string, key: string): Promise<Img> {
   const res = await fetch("https://api.x.ai/v1/images/generations", {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
@@ -48,9 +47,7 @@ async function grokImage(prompt: string): Promise<Img> {
   return fromUrl(url);
 }
 
-async function gptImage(prompt: string, portrait: boolean): Promise<Img> {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY is not set — add it in the key panel (Sora)");
+async function gptImage(prompt: string, portrait: boolean, key: string): Promise<Img> {
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
@@ -68,9 +65,7 @@ async function gptImage(prompt: string, portrait: boolean): Promise<Img> {
   return { base64: b64, mimeType: "image/png" };
 }
 
-async function geminiImage(prompt: string, ref?: Img): Promise<Img> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("GEMINI_API_KEY is not set — add it in the key panel");
+async function geminiImage(prompt: string, key: string, ref?: Img): Promise<Img> {
   // With a reference image this becomes an EDIT: same subject, apply the
   // described change (Gemini 2.5 Flash Image is natively multimodal).
   const parts: Record<string, unknown>[] = [{ text: prompt }];
@@ -131,14 +126,27 @@ export async function POST(req: Request) {
     }
   }
 
+  // A reference forces the Gemini edit path, so the key follows the engine
+  // that will actually run — not the one the picker shows.
+  const envVar = ref
+    ? "GEMINI_API_KEY"
+    : engine === "gpt"
+      ? "OPENAI_API_KEY"
+      : engine === "gemini"
+        ? "GEMINI_API_KEY"
+        : "XAI_API_KEY";
+  const label = envVar === "GEMINI_API_KEY" ? "Gemini" : envVar === "OPENAI_API_KEY" ? "OpenAI" : "xAI";
+  const key = resolveKey(req, envVar);
+  if (!key) return missingKey(envVar, label);
+
   try {
     const img = ref
-      ? await geminiImage(p, ref)
+      ? await geminiImage(p, key, ref)
       : engine === "gpt"
-        ? await gptImage(p, portrait)
+        ? await gptImage(p, portrait, key)
         : engine === "gemini"
-          ? await geminiImage(p)
-          : await grokImage(p);
+          ? await geminiImage(p, key)
+          : await grokImage(p, key);
     if (img.base64.length > MAX_B64) {
       return Response.json(
         { error: "Generated image unexpectedly large — try again" },

@@ -11,6 +11,8 @@ import {
   type Resolution,
 } from "@/lib/config";
 import { checkPassword, unauthorized } from "@/lib/auth";
+import { resolveKey, missingKey } from "@/lib/server-keys";
+import { isCloud } from "@/lib/deploy";
 
 const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_B64 = 4_000_000; // ~3MB decoded — client downscales well below this
@@ -121,6 +123,22 @@ export async function POST(req: Request) {
       ? body.modelId
       : undefined;
 
+  // Hosted: the reference-video Seedance path parks the clip on the OWNER's
+  // Vercel Blob (lib/blob.ts) — a shared quota public visitors must not
+  // drain. Keyless-ref Seedance still works hosted (docs/HOSTED.md §3.3).
+  if (isCloud() && resolved.name === "seedance" && drivingVideo) {
+    return Response.json(
+      {
+        error:
+          "Reference-video Seedance isn't available on the hosted app — it stages the clip on the operator's storage. Install ZCLIP locally (see /install) to use it; Seedance without a reference video works right here.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const apiKey = resolveKey(req, info.envVar);
+  if (!apiKey) return missingKey(info.envVar, info.label);
+
   try {
     const { jobId } = await resolved.adapter.submit(prompt.trim(), {
       aspectRatio,
@@ -130,7 +148,7 @@ export async function POST(req: Request) {
       character,
       drivingVideo,
       modelId,
-    });
+    }, apiKey);
     return Response.json({ jobId });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Submit failed";

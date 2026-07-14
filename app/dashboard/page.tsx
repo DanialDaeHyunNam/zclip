@@ -11,6 +11,8 @@ import {
   DURATION_CHOICES,
   type ProviderName,
 } from "@/lib/config";
+import { localKeyFlags } from "@/lib/client-keys";
+import { useHosted } from "@/lib/use-version";
 import { Rail } from "../rail";
 
 /**
@@ -45,12 +47,18 @@ const load = <T,>(key: string, fallback: T): T => {
 };
 
 export default function Dashboard() {
+  const hosted = useHosted();
   const [clips, setClips] = useState<LedgerClip[]>([]);
   const [sessions, setSessions] = useState<LedgerSession[]>([]);
   const [keys, setKeys] = useState<Record<string, boolean>>({});
   const [storageBytes, setStorageBytes] = useState(0);
   // Provider filter — the chart + breakdowns show only this model when set.
   const [filter, setFilter] = useState<ProviderName | null>(null);
+  // Hosted-only "delete all data" (docs/HOSTED.md §3.5) — locally the file
+  // store is the source of truth, so the honest reset is deleting
+  // .zclip-data/ in the project folder (a localStorage wipe would resurrect).
+  const [wipeOpen, setWipeOpen] = useState(false);
+  const [wipeDone, setWipeDone] = useState(false);
 
   useEffect(() => {
     setClips(load<LedgerClip[]>("hooklab.gallery", []));
@@ -66,9 +74,25 @@ export default function Dashboard() {
     const pw = localStorage.getItem("hooklab.pw") ?? "";
     fetch("/api/keys", { headers: pw ? { "x-app-password": pw } : {} })
       .then((r) => r.json())
-      .then((b) => setKeys(b.keys ?? b))
-      .catch(() => {});
+      // Browser-stored keys (hosted pass-through) count as present too.
+      .then((b) => setKeys({ ...(b.keys ?? b), ...localKeyFlags() }))
+      .catch(() => setKeys(localKeyFlags()));
   }, []);
+
+  const wipeAll = () => {
+    const doomed: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith("hooklab.")) doomed.push(k);
+    }
+    doomed.forEach((k) => localStorage.removeItem(k));
+    setClips([]);
+    setSessions([]);
+    setStorageBytes(0);
+    setKeys(hosted ? {} : keys);
+    setWipeOpen(false);
+    setWipeDone(true);
+  };
 
   const takes = useMemo(() => clips.filter((c) => c.provider !== "grab"), [clips]);
   const grabs = clips.length - takes.length;
@@ -370,7 +394,87 @@ export default function Dashboard() {
           </p>
         </div>
       </section>
+
+      {/* data controls — hosted keeps everything in this browser, so this
+          is the one real "leave no trace" switch. Local installs are file-
+          backed (.zclip-data is the source of truth); wiping localStorage
+          there would just resurrect on reload, so we point at the folder. */}
+      <section className="dash-section">
+        <span className="label">Your data</span>
+        {hosted ? (
+          <div className="dash-config">
+            <p className="hint">
+              Everything ZCLIP knows — sessions, takes, the spend ledger,
+              saved API keys — lives in this browser&apos;s localStorage.
+              Nothing is stored on the server.
+            </p>
+            {wipeDone ? (
+              <p className="hint">All ZCLIP data in this browser was deleted.</p>
+            ) : (
+              <button
+                className="btn-ghost btn-danger"
+                onClick={() => setWipeOpen(true)}
+              >
+                Delete all data
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="hint">
+            This install is file-backed: your sessions and takes live in{" "}
+            <code>.zclip-data/</code> inside the project folder (localStorage
+            is only a mirror). To erase everything, quit the dev server and
+            delete that folder — plus <code>.env.local</code> if you want the
+            saved API keys gone too.
+          </p>
+        )}
+      </section>
       </div>
+
+      {wipeOpen && (
+        <div
+          className="rlg-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Delete all data"
+          onClick={() => setWipeOpen(false)}
+        >
+          <div className="rlg-modal-card about-card" onClick={(e) => e.stopPropagation()}>
+            <div className="rlg-modal-head">
+              <span className="label">Delete all data</span>
+              <button
+                type="button"
+                className="rlg-modal-close"
+                onClick={() => setWipeOpen(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="rlg-modal-body">
+              <p className="archive-note">
+                This permanently deletes <b>everything ZCLIP keeps in this
+                browser</b>: all sessions and takes, the library, your saved
+                API keys — and the archive, which doubles as the{" "}
+                <b>spend ledger</b> (this dashboard&apos;s history goes with it).
+              </p>
+              <p className="archive-note">
+                Past takes cannot be re-downloaded afterwards — providers purge
+                their copies within days. Download anything you want to keep
+                first.
+              </p>
+              <div className="rlg-cta-row">
+                <button className="btn-ghost" onClick={() => setWipeOpen(false)}>
+                  Cancel
+                </button>
+                <button className="btn-ghost btn-danger" onClick={wipeAll}>
+                  Delete everything
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

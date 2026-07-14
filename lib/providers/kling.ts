@@ -19,11 +19,10 @@ import type { VideoProvider, SubmitParams, JobStatus } from "./types";
 const BASE = "https://api-singapore.klingai.com";
 const TASK_ID = /^[\w-]+$/;
 
-function jwt(): string {
-  const raw = process.env.KLING_API_KEY;
-  if (!raw || !raw.includes(":")) {
+function jwt(raw: string): string {
+  if (!raw.includes(":")) {
     throw new Error(
-      "KLING_API_KEY is not set (format ACCESS_KEY:SECRET_KEY) — add it in the UI key panel",
+      "KLING_API_KEY must be ACCESS_KEY:SECRET_KEY (colon-separated) — fix it in the UI key panel",
     );
   }
   const [ak, sk] = raw.split(":", 2);
@@ -53,9 +52,9 @@ const snapSeconds = (s: number): "5" | "10" => (s <= 7 ? "5" : "10");
 export const kling: VideoProvider = {
   name: "kling",
 
-  async submit(prompt: string, params: SubmitParams) {
+  async submit(prompt: string, params: SubmitParams, apiKey: string) {
     const headers = {
-      authorization: `Bearer ${jwt()}`,
+      authorization: `Bearer ${jwt(apiKey)}`,
       "content-type": "application/json",
     };
     const modelName = params.modelId || PROVIDERS.kling.modelId;
@@ -90,13 +89,13 @@ export const kling: VideoProvider = {
     return { jobId: `${endpoint}:${taskId}` };
   },
 
-  async status(jobId: string): Promise<JobStatus> {
+  async status(jobId: string, apiKey: string): Promise<JobStatus> {
     const [endpoint, taskId] = jobId.split(":", 2);
     if (!taskId || !TASK_ID.test(taskId)) {
       return { state: "error", error: "Bad Kling job id" };
     }
     const res = await fetch(`${BASE}/v1/videos/${endpoint}/${taskId}`, {
-      headers: { authorization: `Bearer ${jwt()}` },
+      headers: { authorization: `Bearer ${jwt(apiKey)}` },
     });
     if (!res.ok) return { state: "error", error: await readError(res) };
     const data = (await res.json())?.data;

@@ -29,6 +29,7 @@ type Diff = { n: string; title: string; body: string; big?: boolean };
 type Step = { n: string; tag: string; title: string; body: string; link?: { href: string; label: string } };
 type Copy = {
   navFeatures: string; navWorkflow: string; launch: string; runLocal: string;
+  tryWeb: string; trackNote: string;
   badge: string; h1a: string; h1b: string;
   leadStrong: string; lead1: string; lead2: string; star: string;
   whyTitle: string; bigTag: string; diffs: Diff[];
@@ -45,6 +46,9 @@ const COPY: Record<Lang, Copy> = {
     navWorkflow: "Workflow",
     launch: "Launch Studio",
     runLocal: "Run it locally",
+    tryWeb: "Try it in the browser",
+    trackNote:
+      "Two honest ways to run it. In the browser: your keys stay in this browser and pass through the server only while a request runs — never stored there. Installed locally: keys never leave your machine, every take is vaulted to disk forever, and everything unlocks. Local is the better home; the browser is the fastest taste.",
     badge: "Open-source AI UGC hook studio",
     h1a: "UGC reaction hooks,",
     h1b: "typed, not filmed.",
@@ -84,6 +88,9 @@ const COPY: Record<Lang, Copy> = {
     navWorkflow: "워크플로우",
     launch: "스튜디오 열기",
     runLocal: "로컬로 실행",
+    tryWeb: "브라우저에서 써보기",
+    trackNote:
+      "정직한 두 가지 실행 방식. 브라우저에서는: 키가 이 브라우저에만 저장되고, 요청이 처리되는 동안에만 서버를 경유합니다 — 서버에 저장되지 않습니다. 로컬 설치에서는: 키가 내 컴퓨터 밖으로 나가지 않고, 모든 테이크가 디스크에 영구 보관되며, 모든 기능이 열립니다. 진짜 집은 로컬 — 브라우저는 가장 빠른 맛보기입니다.",
     badge: "오픈소스 AI UGC 훅 스튜디오",
     h1a: "UGC 리액션 훅,",
     h1b: "찍지 말고, 입력하세요.",
@@ -180,7 +187,13 @@ function LandingInner({ cloud }: { cloud: boolean }) {
         </p>
         <div className="ld-cta-row">
           {cloud ? (
-            <button type="button" className="btn-primary ld-cta" onClick={openStudio}>{studioLabel} →</button>
+            // Two-track (docs/HOSTED.md §1): local install stays the PRIMARY
+            // CTA — it's the more private, more capable way to run ZCLIP —
+            // and the browser studio is the honest quick taste next to it.
+            <>
+              <button type="button" className="btn-primary ld-cta" onClick={openStudio}>{studioLabel} →</button>
+              <Link className="btn-ghost ld-cta" href="/chat">{t.tryWeb} →</Link>
+            </>
           ) : (
             <Link className="btn-primary ld-cta" href="/chat">{studioLabel} →</Link>
           )}
@@ -188,6 +201,7 @@ function LandingInner({ cloud }: { cloud: boolean }) {
             <span className="ld-star-icon">★</span> {t.star}
           </a>
         </div>
+        {cloud && <p className="ld-track-note">{t.trackNote}</p>}
         <DemoReel />
       </header>
 

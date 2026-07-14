@@ -25,12 +25,6 @@ const TASK_ID = /^[\w-]+$/;
  *  one small blob (deletable from the Vercel dashboard). */
 const taskBlobs = new Map<string, string>();
 
-function apiKey(): string {
-  const key = process.env.ARK_API_KEY;
-  if (!key) throw new Error("ARK_API_KEY is not set — add it in the UI key panel");
-  return key;
-}
-
 async function readError(res: Response): Promise<string> {
   try {
     const body = await res.json();
@@ -43,7 +37,7 @@ async function readError(res: Response): Promise<string> {
 export const seedance: VideoProvider = {
   name: "seedance",
 
-  async submit(prompt: string, params: SubmitParams) {
+  async submit(prompt: string, params: SubmitParams, apiKey: string) {
     const text = `${prompt} --ratio ${params.aspectRatio} --duration ${params.durationSeconds} --resolution ${params.resolution}`;
     const content: Array<Record<string, unknown>> = [{ type: "text", text }];
     // Seedance rejects mixing first/last-frame content with reference media
@@ -80,7 +74,7 @@ export const seedance: VideoProvider = {
     const res = await fetch(`${BASE}/contents/generations/tasks`, {
       method: "POST",
       headers: {
-        authorization: `Bearer ${apiKey()}`,
+        authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
       },
       body: JSON.stringify({
@@ -101,12 +95,12 @@ export const seedance: VideoProvider = {
     return { jobId: id };
   },
 
-  async status(jobId: string): Promise<JobStatus> {
+  async status(jobId: string, apiKey: string): Promise<JobStatus> {
     if (!TASK_ID.test(jobId)) {
       return { state: "error", error: "Malformed job id" };
     }
     const res = await fetch(`${BASE}/contents/generations/tasks/${jobId}`, {
-      headers: { authorization: `Bearer ${apiKey()}` },
+      headers: { authorization: `Bearer ${apiKey}` },
     });
     if (!res.ok) return { state: "error", error: await readError(res) };
 

@@ -29,8 +29,11 @@ store survives port moves); test against it with client-side checks only.
   vars, docs/key URLs, pricing, chart colors, `implemented`, notes),
   param whitelists, `estimateCostUsd()` (respects `minSeconds`).
 - `lib/providers/*.ts` — one adapter per provider, interface =
-  `submit(prompt, params) → {jobId}` / `status(jobId) → {state, videoUrl?}`
-  (`lib/providers/types.ts`). `params.image` = optional base64 reference.
+  `submit(prompt, params, apiKey) → {jobId}` / `status(jobId, apiKey) →
+  {state, videoUrl?}` (`lib/providers/types.ts`). `params.image` = optional
+  base64 reference. Adapters NEVER read provider keys from process.env —
+  the key arrives per request (see Hosted below); keys must never leak
+  into error messages/logs.
 - `app/api/generate` POST → submit, returns jobId fast (async pattern:
   video takes 60–180s; client polls). Validates params against whitelists
   server-side — never trust the UI.
@@ -47,8 +50,8 @@ store survives port moves); test against it with client-side checks only.
   (effective immediately). Env-var allowlist in config `KEY_ENV_VARS`.
 - `app/api/auth` — optional shared-password gate (`APP_PASSWORD` env).
   Client sends `x-app-password` header; `<video>` URLs use `?pw=` param.
-- `app/chat/page.tsx` — SERVER GATE (not the studio): `isCloud()` →
-  `<RunLocalGuide gated>` on the cloud deploy, else `<Studio>`. The studio
+- `app/chat/page.tsx` — the studio EVERYWHERE since v0.5.0 (the cloud gate
+  is gone; hosted behavior keys off `useHosted()` client-side). The studio
   UI itself is `app/chat/studio.tsx` (the single big client component):
   chat thread (turns) / rewind / sessions sidebar / preview / params /
   key panel / spend chart / archive. State shapes documented inline
@@ -74,11 +77,40 @@ store survives port moves); test against it with client-side checks only.
   pages only (studio stays English). Each page holds its own `COPY={en,ko}`.
   Always render `en` on server + first paint (hydration), then adopt stored/nav.
 
+## Hosted (v0.5.0) — the cloud deploy is a real BYOK studio
+
+Design SSOT: `docs/HOSTED.md`. The load-bearing rules:
+
+- **Key pass-through**: hosted keys live in localStorage (`hooklab.keys`,
+  via `lib/client-keys.ts` — NOT the file store, keys must never land in
+  .zclip-data) and ride each API call in the `x-provider-key` header.
+  `lib/server-keys.ts` resolves per request: header wins; env fallback is
+  **LOCAL-ONLY** — on cloud a missing header refuses loudly (this is the
+  owner-wallet firewall; never weaken it). `/api/keys` GET also reports
+  provider env keys as absent on cloud for the same reason.
+- **Never mutate process.env per request** — concurrent visitors would
+  cross-bill. The key is an explicit adapter argument instead.
+- **Veo/Sora playback/download on hosted** = client fetch with the key
+  header → `URL.createObjectURL` (`lib/video-src.ts` cache + the
+  `videoSrc()` resolver in studio/archive). The key must NEVER ride a URL
+  query — Vercel logs full URLs, and the public copy promises "never
+  logged". `?pw=` (APP_PASSWORD) in URLs is fine — that's the owner's own
+  secret, pre-existing behavior.
+- **Hosted feature walls** (each one points at /install): ref-video
+  Seedance (owner Blob quota), >4.5MB Act-Two bodies (Vercel platform cap,
+  checked client-side pre-send), GRAB/vault/store/key-writer (dev-only
+  403s, unchanged).
+- Landing is two-track since v0.5.0: local install = PRIMARY CTA; hosted
+  studio = honest quick taste. Every hosted limit is an install touchpoint,
+  never an apology (docs/HOSTED.md §1).
+
 ## localStorage keys
 
 `hooklab.thread` (current session turns) · `hooklab.sessions` (history,
 max 20) · `hooklab.sessionId` · `hooklab.gallery` (append-only clip
-archive — the spend ledger; survives rewinds) · `hooklab.pw`.
+archive — the spend ledger; survives rewinds) · `hooklab.pw` ·
+`hooklab.keys` (hosted BYOK keys — plain localStorage ONLY, never the
+file store; the dashboard's hosted "Delete all data" wipes all hooklab.*).
 Snapshots (video frames) are compacted to the newest 3 turns on write —
 do NOT store full images/videos in localStorage (5MB quota).
 

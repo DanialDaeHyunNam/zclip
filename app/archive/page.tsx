@@ -13,6 +13,8 @@ import {
   isLocalVideoUrl,
 } from "@/lib/clip";
 import { useHosted } from "@/lib/use-version";
+import { keyHeader, videoUrlEnvVar } from "@/lib/client-keys";
+import { cachedSrc, fetchBlobSrc } from "@/lib/video-src";
 import { Rail } from "../rail";
 import { ClipCardView } from "../clip-card";
 
@@ -97,14 +99,43 @@ export default function ArchivePage() {
     [pw],
   );
 
+  /** Hosted Veo/Sora playback: key in a header, never the URL — fetch the
+   *  MP4 and hand <video> a blob: object URL (docs/HOSTED.md §3.2). */
+  const [, setSrcEpoch] = useState(0);
+  const videoSrc = useCallback(
+    (url: string): string => {
+      const envVar = hosted ? videoUrlEnvVar(url) : null;
+      if (!envVar) return withPw(url);
+      const hit = cachedSrc(url);
+      if (hit) return hit;
+      void fetchBlobSrc(url, keyHeader(envVar, pwHeaders()))
+        .then(() => setSrcEpoch((n) => n + 1))
+        .catch(() => {});
+      return "";
+    },
+    [hosted, withPw, pwHeaders],
+  );
+
   const persist = (next: Clip[]) => {
     setClips(next);
     store.set(GALLERY_KEY, JSON.stringify(next));
   };
 
-  const download = (videoUrl: string) => {
+  const download = async (videoUrl: string) => {
     const a = document.createElement("a");
-    if (videoUrl.startsWith("/")) {
+    const envVar =
+      hosted && videoUrl.startsWith("/") ? videoUrlEnvVar(videoUrl) : null;
+    if (envVar) {
+      try {
+        a.href = await fetchBlobSrc(videoUrl, keyHeader(envVar, pwHeaders()));
+        a.download = `reaction-hook-${Date.now()}.mp4`;
+      } catch {
+        setGrabErr(
+          "Download failed — the provider may have already expired this file.",
+        );
+        return;
+      }
+    } else if (videoUrl.startsWith("/")) {
       a.href = `${withPw(videoUrl)}&dl=1`;
     } else {
       a.href = videoUrl;
@@ -358,10 +389,23 @@ export default function ArchivePage() {
         </div>
         <p className="archive-note">
           Every finished take piles in here automatically, grouped by the
-          session it came from. Add your own references with{" "}
-          <b>＋ Add reference</b> (GRAB a video by URL), or drop a video onto
-          the composer in the studio. Stored in this browser only; providers
-          purge source files (~2 days on Veo) — download anything you want to keep.
+          session it came from.{" "}
+          {hosted ? (
+            <>
+              Stored in this browser only — providers purge their files within
+              days (~2 on Veo) and the hosted app can&apos;t vault them, so{" "}
+              <b>download anything you want to keep</b>. A{" "}
+              <a href="/install">local install</a> vaults every take to disk
+              automatically.
+            </>
+          ) : (
+            <>
+              Add your own references with <b>＋ Add reference</b> (GRAB a
+              video by URL), or drop a video onto the composer in the studio.
+              Takes are vaulted to <code>.zclip-data/</code> on this machine;
+              providers purge their own copies within days (~2 on Veo).
+            </>
+          )}
         </p>
 
         {/* add a reference — GRAB by URL, collapsed until ＋ (dev only, since
@@ -465,7 +509,7 @@ export default function ArchivePage() {
                 <ClipCardView
                   key={c.jobId}
                   clip={c}
-                  withPw={withPw}
+                  withPw={videoSrc}
                   onDownload={download}
                   onRemove={removeClip}
                   onUse={useClipAsRef}

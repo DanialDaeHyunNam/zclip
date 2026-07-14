@@ -13,12 +13,6 @@ import type { VideoProvider, SubmitParams, JobStatus } from "./types";
 const BASE = "https://api.openai.com/v1";
 const VIDEO_ID = /^video_[\w-]+$/;
 
-function apiKey(): string {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("OPENAI_API_KEY is not set — add it in the UI key panel");
-  return key;
-}
-
 function modelId(params: SubmitParams): string {
   return params.modelId || PROVIDERS.sora.modelId;
 }
@@ -44,7 +38,7 @@ async function readError(res: Response): Promise<string> {
 export const sora: VideoProvider = {
   name: "sora",
 
-  async submit(prompt: string, params: SubmitParams) {
+  async submit(prompt: string, params: SubmitParams, apiKey: string) {
     let res: Response;
     if (params.image) {
       // input_reference must be sent as a file -> multipart. Docs note the
@@ -63,14 +57,14 @@ export const sora: VideoProvider = {
       );
       res = await fetch(`${BASE}/videos`, {
         method: "POST",
-        headers: { authorization: `Bearer ${apiKey()}` },
+        headers: { authorization: `Bearer ${apiKey}` },
         body: fd,
       });
     } else {
       res = await fetch(`${BASE}/videos`, {
         method: "POST",
         headers: {
-          authorization: `Bearer ${apiKey()}`,
+          authorization: `Bearer ${apiKey}`,
           "content-type": "application/json",
         },
         body: JSON.stringify({
@@ -89,12 +83,12 @@ export const sora: VideoProvider = {
     return { jobId: id };
   },
 
-  async status(jobId: string): Promise<JobStatus> {
+  async status(jobId: string, apiKey: string): Promise<JobStatus> {
     if (!VIDEO_ID.test(jobId)) {
       return { state: "error", error: "Malformed job id" };
     }
     const res = await fetch(`${BASE}/videos/${jobId}`, {
-      headers: { authorization: `Bearer ${apiKey()}` },
+      headers: { authorization: `Bearer ${apiKey}` },
     });
     if (!res.ok) return { state: "error", error: await readError(res) };
 

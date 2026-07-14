@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { KEY_ENV_VARS } from "@/lib/config";
 import { checkPassword, unauthorized } from "@/lib/auth";
+import { isCloud } from "@/lib/deploy";
 
 /**
  * In-UI API key management.
@@ -21,8 +22,11 @@ export async function GET(req: Request) {
   if (!checkPassword(req)) return unauthorized();
   return Response.json({
     writable: isDev(),
+    // Cloud: provider env keys are unusable there (lib/server-keys.ts blocks
+    // the fallback), so reporting them "set" would trick the UI into sending
+    // key-less requests. Only the visitor's browser keys count on hosted.
     keys: Object.fromEntries(
-      KEY_ENV_VARS.map((k) => [k, Boolean(process.env[k])]),
+      KEY_ENV_VARS.map((k) => [k, !isCloud() && Boolean(process.env[k])]),
     ),
   });
 }

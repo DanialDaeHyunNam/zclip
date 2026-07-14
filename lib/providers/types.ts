@@ -28,8 +28,11 @@ export interface JobStatus {
 
 export interface VideoProvider {
   name: string;
-  /** Kick off generation; must return fast (the job runs async provider-side). */
-  submit(prompt: string, params: SubmitParams): Promise<{ jobId: string }>;
+  /** Kick off generation; must return fast (the job runs async provider-side).
+   *  `apiKey` arrives per request (header on hosted, env fallback locally —
+   *  lib/server-keys.ts). Adapters never read provider keys from process.env,
+   *  and the key must never leak into error messages or logs. */
+  submit(prompt: string, params: SubmitParams, apiKey: string): Promise<{ jobId: string }>;
   /** One cheap poll of provider state; never blocks until completion. */
-  status(jobId: string): Promise<JobStatus>;
+  status(jobId: string, apiKey: string): Promise<JobStatus>;
 }

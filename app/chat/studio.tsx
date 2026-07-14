@@ -17,7 +17,14 @@ import {
   type Resolution,
 } from "@/lib/config";
 import { CHARACTERS, SETTINGS, FASHION, composeStarter } from "@/lib/prompts";
+import {
+  keyHeader,
+  videoUrlEnvVar,
+  setLocalKey,
+  localKeyFlags,
+} from "@/lib/client-keys";
 import * as store from "@/lib/store";
+import { cachedSrc, fetchBlobSrc } from "@/lib/video-src";
 import { VERSION, RELEASES_URL } from "@/lib/version";
 import { useHosted, useUpdateCheck } from "@/lib/use-version";
 import { UpdateGuide } from "./update-guide";
@@ -379,6 +386,9 @@ export default function Home() {
   const updatable = !hosted && hasUpdate;
   const [showUpdate, setShowUpdate] = useState(false);
   const [updDismissed, setUpdDismissed] = useState(false);
+  // Hosted "browser mode" banner — session-dismissible, honest by default
+  // (docs/HOSTED.md §1): hosted works for real, local is the better home.
+  const [hostedNoteHidden, setHostedNoteHidden] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [draft, setDraft] = useState("");
@@ -543,12 +553,45 @@ export default function Home() {
     [pw],
   );
 
+  /** pwHeaders + the request's provider key from the browser key store —
+   *  the hosted pass-through (docs/HOSTED.md §3.1). Locally the store is
+   *  empty, no header rides, and routes fall back to .env.local. */
+  const keyedHeaders = useCallback(
+    (
+      envVar: string | null | undefined,
+      base: Record<string, string> = {},
+    ): Record<string, string> => keyHeader(envVar, pwHeaders(base)),
+    [pwHeaders],
+  );
+
   /** Same-origin proxy URLs need the password as a query param (a <video>
    *  tag can't send headers). Provider-hosted absolute URLs pass through. */
   const withPw = useCallback(
     (url: string) =>
       url.startsWith("/") && pw ? `${url}&pw=${encodeURIComponent(pw)}` : url,
     [pw],
+  );
+
+  /** Bumped whenever a hosted blob-src fetch lands, so <video> sites and the
+   *  snapshot-capture effect re-run and pick the object URL up. */
+  const [srcEpoch, setSrcEpoch] = useState(0);
+
+  /** withPw, plus the hosted swap for auth-headed (Veo/Sora) proxy URLs:
+   *  the key must ride a header, never the URL (docs/HOSTED.md §3.2), so
+   *  the MP4 is fetched here and played as a blob: object URL. Synchronous
+   *  contract — returns "" while the blob is in flight, then re-renders. */
+  const videoSrc = useCallback(
+    (url: string): string => {
+      const envVar = hosted ? videoUrlEnvVar(url) : null;
+      if (!envVar) return withPw(url);
+      const hit = cachedSrc(url);
+      if (hit) return hit;
+      void fetchBlobSrc(url, keyedHeaders(envVar, {}))
+        .then(() => setSrcEpoch((n) => n + 1))
+        .catch(() => {});
+      return "";
+    },
+    [hosted, withPw, keyedHeaders],
   );
 
   const patchTurn = useCallback((id: string, patch: Partial<Turn>) => {
@@ -586,7 +629,9 @@ export default function Home() {
         .then((r) => r.json())
         .then((b) => {
           if (b.keys) {
-            setKeys(b.keys);
+            // Browser-stored keys (hosted pass-through) count as present
+            // alongside the server's env booleans.
+            setKeys({ ...b.keys, ...localKeyFlags() });
             setKeysWritable(Boolean(b.writable));
             setKeysLoaded(true);
           }
@@ -738,16 +783,23 @@ export default function Home() {
         !snapCapturing.current.has(x.id),
     );
     if (!t) return;
-    snapCapturing.current.add(t.id);
     // Only same-origin (proxied) videos can be drawn to a canvas without
     // tainting it — skip provider-hosted URLs entirely (no console noise).
-    if (!t.videoUrl!.startsWith("/")) return;
+    if (!t.videoUrl!.startsWith("/")) {
+      snapCapturing.current.add(t.id);
+      return;
+    }
+    // Hosted Veo/Sora: "" while the blob is in flight — leave the take
+    // unclaimed so the srcEpoch re-run captures it once the src exists.
+    const src = videoSrc(t.videoUrl!);
+    if (!src) return;
+    snapCapturing.current.add(t.id);
     const v = document.createElement("video");
     v.crossOrigin = "anonymous";
     v.muted = true;
     v.playsInline = true;
     v.preload = "auto";
-    v.src = withPw(t.videoUrl!);
+    v.src = src;
     v.addEventListener("loadedmetadata", () => {
       v.currentTime = Math.max(0, Math.min(v.duration * 0.5, v.duration - 0.1));
     });
@@ -765,7 +817,7 @@ export default function Home() {
       v.removeAttribute("src");
       v.load();
     });
-  }, [turns, withPw, patchTurn]);
+  }, [turns, videoSrc, srcEpoch, patchTurn]);
   useEffect(() => {
     if (!hydrated) return;
     if (clips.length || store.get(GALLERY_KEY)) {
@@ -842,7 +894,11 @@ export default function Home() {
       try {
         const res = await fetch(
           `/api/status?id=${encodeURIComponent(jobId!)}&provider=${provider}`,
-          { headers: pwHeaders() },
+          {
+            headers: keyedHeaders(
+              PROVIDERS[provider as ProviderName]?.envVar ?? null,
+            ),
+          },
         );
         if (res.status === 401) {
           finish({ status: "error", error: "Password rejected" });
@@ -874,7 +930,7 @@ export default function Home() {
     poll();
     const iv = setInterval(poll, POLL_MS);
     return () => clearInterval(iv);
-  }, [pollTurn?.jobId, ready, pwHeaders, patchTurn, notifyDone]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pollTurn?.jobId, ready, keyedHeaders, patchTurn, notifyDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* archive every finished take (survives rewinds) */
   useEffect(() => {
@@ -1193,7 +1249,9 @@ export default function Home() {
     if (!clip.videoUrl) return;
     setError(null);
     try {
-      const r = await fetch(clip.videoUrl, { headers: pwHeaders({}) });
+      const r = await fetch(clip.videoUrl, {
+        headers: keyedHeaders(videoUrlEnvVar(clip.videoUrl), {}),
+      });
       if (!r.ok) throw new Error();
       const blob = await r.blob();
       await attachMediaFile(
@@ -1376,7 +1434,7 @@ export default function Home() {
       if (!outfitB64) return charB64;
       const dr = await fetch("/api/dress", {
         method: "POST",
-        headers: pwHeaders({ "content-type": "application/json" }),
+        headers: keyedHeaders("GEMINI_API_KEY", { "content-type": "application/json" }),
         body: JSON.stringify({
           character: { base64: charB64, mimeType: "image/jpeg" },
           outfit: { base64: outfitB64, mimeType: "image/jpeg" },
@@ -1438,7 +1496,7 @@ export default function Home() {
       const call = (mode: "check" | "assemble") =>
         fetch("/api/spec-check", {
           method: "POST",
-          headers: pwHeaders({ "content-type": "application/json" }),
+          headers: keyedHeaders("GEMINI_API_KEY", { "content-type": "application/json" }),
           body: JSON.stringify({
             mode,
             draft: draftText,
@@ -1595,7 +1653,7 @@ export default function Home() {
         : undefined;
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: pwHeaders({ "content-type": "application/json" }),
+        headers: keyedHeaders(model.envVar, { "content-type": "application/json" }),
         body: JSON.stringify({
           prompt,
           provider: providerId,
@@ -1665,18 +1723,24 @@ export default function Home() {
     setPitchSaving(true);
     setPitchMsg("");
     try {
-      const res = await fetch("/api/keys", {
-        method: "POST",
-        headers: pwHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify({
-          envVar: "GEMINI_API_KEY",
-          value: pitchInput.trim(),
-        }),
-      });
-      const body = await res.json();
-      if (!res.ok) {
-        setPitchMsg(body.error ?? "Could not save the key");
-        return;
+      if (hosted) {
+        // Same rule as saveKey: browser-only storage, pass-through header.
+        setLocalKey("GEMINI_API_KEY", pitchInput.trim());
+        setKeys((k) => ({ ...k, GEMINI_API_KEY: true }));
+      } else {
+        const res = await fetch("/api/keys", {
+          method: "POST",
+          headers: pwHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({
+            envVar: "GEMINI_API_KEY",
+            value: pitchInput.trim(),
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok) {
+          setPitchMsg(body.error ?? "Could not save the key");
+          return;
+        }
       }
       setPitchInput("");
       await refreshKeys();
@@ -1806,10 +1870,26 @@ export default function Home() {
       setDraft("");
       setAttach(null);
       setSelectedId(id);
+      // Vercel's serverless body cap (~4.5MB) sits far below Runway's 16MB
+      // inline limit — refuse before the platform kills the request with an
+      // opaque 413 (docs/HOSTED.md §3.4).
+      if (
+        hosted &&
+        manual.videoBase64.length + charB64.length > 4_200_000
+      ) {
+        patchTurn(id, {
+          status: "error",
+          error:
+            "The hosted app caps a request at ~4.5MB (platform limit) — trim the driving clip shorter, or install ZCLIP locally for Runway's full 16MB (see /install).",
+        });
+        return;
+      }
       try {
         const res = await fetch("/api/generate", {
           method: "POST",
-          headers: pwHeaders({ "content-type": "application/json" }),
+          headers: keyedHeaders(PROVIDERS.runway.envVar, {
+            "content-type": "application/json",
+          }),
           body: JSON.stringify({
             provider: "runway",
             modelId: model.modelId,
@@ -2089,7 +2169,7 @@ export default function Home() {
       } else {
         const r = await fetch("/api/refine", {
           method: "POST",
-          headers: pwHeaders({ "content-type": "application/json" }),
+          headers: keyedHeaders("GEMINI_API_KEY", { "content-type": "application/json" }),
           body: JSON.stringify({
             base,
             history,
@@ -2129,7 +2209,7 @@ export default function Home() {
 
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: pwHeaders({ "content-type": "application/json" }),
+        headers: keyedHeaders(model.envVar, { "content-type": "application/json" }),
         body: JSON.stringify({
           prompt,
           provider: providerId,
@@ -2393,7 +2473,7 @@ export default function Home() {
           .slice(-6);
         const r = await fetch("/api/refine", {
           method: "POST",
-          headers: pwHeaders({ "content-type": "application/json" }),
+          headers: keyedHeaders("GEMINI_API_KEY", { "content-type": "application/json" }),
           body: JSON.stringify({ base, history, message: turn.userText }),
         });
         const b = await r.json();
@@ -2406,7 +2486,7 @@ export default function Home() {
       }
       const res = await fetch("/api/generate", {
         method: "POST",
-        headers: pwHeaders({ "content-type": "application/json" }),
+        headers: keyedHeaders(model.envVar, { "content-type": "application/json" }),
         body: JSON.stringify({
           prompt,
           provider: providerId,
@@ -2436,6 +2516,16 @@ export default function Home() {
     if (!keyInput.trim() || keySaving) return;
     setKeySaving(true);
     setKeyMsg("");
+    // Hosted: the key never reaches the server at rest — localStorage only,
+    // sent per request in the pass-through header (docs/HOSTED.md §3.1).
+    if (hosted) {
+      setLocalKey(providerInfo.envVar, keyInput.trim());
+      setKeys((k) => ({ ...k, [providerInfo.envVar]: true }));
+      setKeyInput("");
+      setKeyMsg(`Saved in this browser — ${providerInfo.label} is ready.`);
+      setKeySaving(false);
+      return;
+    }
     try {
       const res = await fetch("/api/keys", {
         method: "POST",
@@ -2488,9 +2578,25 @@ export default function Home() {
     }
   };
 
-  const download = (videoUrl: string) => {
+  const download = async (videoUrl: string) => {
     const a = document.createElement("a");
-    if (videoUrl.startsWith("/")) {
+    const envVar =
+      hosted && videoUrl.startsWith("/") ? videoUrlEnvVar(videoUrl) : null;
+    if (envVar) {
+      // Hosted Veo/Sora: an <a href> can't send the key header either —
+      // reuse the blob path (usually already cached from playback).
+      try {
+        a.href = await fetchBlobSrc(videoUrl, keyedHeaders(envVar, {}));
+        a.download = `reaction-hook-${Date.now()}.mp4`;
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Download failed — the provider may have already expired this file.",
+        );
+        return;
+      }
+    } else if (videoUrl.startsWith("/")) {
       a.href = `${withPw(videoUrl)}&dl=1`;
     } else {
       a.href = videoUrl;
@@ -2849,6 +2955,29 @@ export default function Home() {
             type="button"
             className="update-banner-x"
             onClick={() => setUpdDismissed(true)}
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {hosted && !hostedNoteHidden && (
+        <div className="update-banner">
+          <a className="update-banner-main" href="/install">
+            <span className="update-banner-dot" aria-hidden />
+            Browser mode — your keys stay in this browser and pass through the
+            server only while a request runs.{" "}
+            <span className="update-banner-cur">
+              Install locally and they never leave your machine, takes are
+              vaulted forever, and every feature unlocks.
+            </span>
+            <b className="update-banner-cta">Install →</b>
+          </a>
+          <button
+            type="button"
+            className="update-banner-x"
+            onClick={() => setHostedNoteHidden(true)}
             aria-label="Dismiss"
           >
             ✕
@@ -3399,7 +3528,7 @@ export default function Home() {
                         >
                           <span className="starter-img">
                             <video
-                              src={withPw(c.videoUrl!)}
+                              src={videoSrc(c.videoUrl!)}
                               muted
                               playsInline
                               preload="metadata"
@@ -4101,7 +4230,7 @@ export default function Home() {
                 flowPreview.kind === "video" ? (
                   <video
                     key={flowPreview.src}
-                    src={withPw(flowPreview.src)}
+                    src={videoSrc(flowPreview.src)}
                     controls
                     playsInline
                     autoPlay
@@ -4157,7 +4286,7 @@ export default function Home() {
               <video
                 key={`${previewTurn.id}:${previewTurn.videoUrl}`}
                 className="fade"
-                src={withPw(previewTurn.videoUrl)}
+                src={videoSrc(previewTurn.videoUrl)}
                 autoPlay
                 muted
                 loop
@@ -4201,6 +4330,14 @@ export default function Home() {
                 ↓ Download
               </button>
               <span className="cost">{fmtCost(previewTurn.costUsd) ?? ""}</span>
+              {hosted && (
+                // Hosted has no clip vault — the provider's copy is the only
+                // copy, and providers purge within days (docs/HOSTED.md §3.2).
+                <span className="frame-idle-sub">
+                  download it — providers delete files after a few days, and
+                  the hosted app can&apos;t vault them (a local install does)
+                </span>
+              )}
             </div>
           )}
 
@@ -4307,7 +4444,7 @@ export default function Home() {
                 <span className="label">
                   {providerInfo.label} · API key required
                 </span>
-                {keysWritable ? (
+                {keysWritable || hosted ? (
                   <>
                     <div className="key-row">
                       <input
@@ -4326,12 +4463,32 @@ export default function Home() {
                         {keySaving ? "Saving…" : "Save"}
                       </button>
                     </div>
-                    <p className="key-hint">
-                      Writes to <code>.env.local</code>, effective immediately ·{" "}
-                      <a href={providerInfo.keyUrl} target="_blank" rel="noreferrer">
-                        Get a key ↗
-                      </a>
-                    </p>
+                    {hosted ? (
+                      // The honest pass-through disclosure — hosted can't be
+                      // "direct to provider" (CORS + authed downloads), so
+                      // say exactly what the server does (docs/HOSTED.md §2).
+                      <p className="key-hint">
+                        Stored in this browser (localStorage) only. While a
+                        generation request is processed it passes through the
+                        ZCLIP server to the {providerInfo.company}{" "}
+                        {providerInfo.label} API — never stored or logged on
+                        the server. Use a dedicated key with a spend limit.
+                        Your prompt and reference images/videos go to the{" "}
+                        {providerInfo.label} API when you generate. Prefer
+                        keys that never leave your machine?{" "}
+                        <a href="/install">Install locally ↗</a> ·{" "}
+                        <a href={providerInfo.keyUrl} target="_blank" rel="noreferrer">
+                          Get a key ↗
+                        </a>
+                      </p>
+                    ) : (
+                      <p className="key-hint">
+                        Writes to <code>.env.local</code>, effective immediately ·{" "}
+                        <a href={providerInfo.keyUrl} target="_blank" rel="noreferrer">
+                          Get a key ↗
+                        </a>
+                      </p>
+                    )}
                   </>
                 ) : (
                   <p className="key-hint">
@@ -4366,12 +4523,23 @@ export default function Home() {
                   <span className="label">
                     Seedance 2.0 · one more thing for video references
                   </span>
+                  {hosted ? (
+                    <p className="key-hint">
+                      Reference-video Seedance isn&apos;t available on the
+                      hosted app — the clip has to be staged on a storage
+                      bucket, and here that would be the operator&apos;s.{" "}
+                      <a href="/install">Install ZCLIP locally ↗</a> and it
+                      stages on your own free Vercel Blob store instead.
+                      Seedance without a video reference works right here.
+                    </p>
+                  ) : (
                   <p className="key-hint">
                     ByteDance fetches your reference video by URL — it can&apos;t
                     reach this machine. ZCLIP parks the clip on YOUR free Vercel
                     Blob store just for the job, then deletes it.
                   </p>
-                  {keysWritable ? (
+                  )}
+                  {hosted ? null : keysWritable ? (
                     <>
                       <div className="key-row">
                         <input
@@ -4442,7 +4610,7 @@ export default function Home() {
               <ClipCardView
                 key={c.jobId}
                 clip={c}
-                withPw={withPw}
+                withPw={videoSrc}
                 onDownload={download}
                 onRemove={removeClip}
                 onUse={useClipAsRef}

@@ -1,5 +1,6 @@
 import { REFINER_MODEL_ID } from "@/lib/config";
 import { checkPassword, unauthorized } from "@/lib/auth";
+import { resolveKey, missingKey } from "@/lib/server-keys";
 
 /**
  * Conversational prompt refinement via Gemini Flash (same API key as Veo).
@@ -27,13 +28,8 @@ Rules:
 export async function POST(req: Request) {
   if (!checkPassword(req)) return unauthorized();
 
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    return Response.json(
-      { error: "GEMINI_API_KEY is not set — see README.md" },
-      { status: 500 },
-    );
-  }
+  const key = resolveKey(req, "GEMINI_API_KEY");
+  if (!key) return missingKey("GEMINI_API_KEY", "Gemini");
 
   let base: unknown, message: unknown, images: unknown, history: unknown, contexts: unknown, mode: unknown, targetSeconds: unknown, rules: unknown;
   try {

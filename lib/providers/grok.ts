@@ -19,12 +19,6 @@ const BASE = "https://api.x.ai/v1";
 const REQUEST_ID = /^[\w-]+$/;
 const IMAGE_MODEL = "grok-imagine-image-quality";
 
-function apiKey(): string {
-  const key = process.env.XAI_API_KEY;
-  if (!key) throw new Error("XAI_API_KEY is not set — add it in the UI key panel");
-  return key;
-}
-
 async function readError(res: Response): Promise<string> {
   try {
     const body = await res.json();
@@ -39,9 +33,9 @@ async function readError(res: Response): Promise<string> {
 export const grok: VideoProvider = {
   name: "grok",
 
-  async submit(prompt: string, params: SubmitParams) {
+  async submit(prompt: string, params: SubmitParams, apiKey: string) {
     const headers = {
-      authorization: `Bearer ${apiKey()}`,
+      authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
     };
 
@@ -85,12 +79,12 @@ export const grok: VideoProvider = {
     return { jobId: id };
   },
 
-  async status(jobId: string): Promise<JobStatus> {
+  async status(jobId: string, apiKey: string): Promise<JobStatus> {
     if (!REQUEST_ID.test(jobId)) {
       return { state: "error", error: "Malformed job id" };
     }
     const res = await fetch(`${BASE}/videos/${jobId}`, {
-      headers: { authorization: `Bearer ${apiKey()}` },
+      headers: { authorization: `Bearer ${apiKey}` },
     });
     if (!res.ok) return { state: "error", error: await readError(res) };
 
