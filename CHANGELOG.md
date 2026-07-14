@@ -5,6 +5,38 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.5.0 — 2026-07-15
+
+### Added
+- **The hosted app is a real studio now — bring your own keys.**
+  zclip.vercel.app's `/chat` no longer gates to an install guide: paste a
+  provider key and generate. Keys live in **your browser** (localStorage)
+  and **pass through** the server only while a request runs — never stored
+  or logged there; the key panel says exactly this, always. Full design
+  doc: [docs/HOSTED.md](docs/HOSTED.md).
+- **Owner-wallet firewall.** On cloud deploys the server refuses to fall
+  back to environment provider keys — visitors can only ever spend their
+  own. (Locally `.env.local` works exactly as before.)
+- **Hosted Veo/Sora playback & download** fetch the MP4 with the key in a
+  header and play a `blob:` URL — the key never appears in a URL, so it
+  can't land in request logs.
+- **Two-track landing.** Local install is the primary CTA; "try it in the
+  browser" sits next to it with an honest note on the difference (local =
+  keys never leave your machine + permanent vault + every feature).
+- **Delete all data** (hosted): one button on the dashboard wipes every
+  `hooklab.*` localStorage entry — sessions, takes, keys, and the spend
+  ledger — behind a warning modal. Local installs: delete `.zclip-data/`.
+
+### Changed
+- Provider adapters take the API key as an explicit per-request argument
+  (`submit(prompt, params, apiKey)`) — no more `process.env` reads inside
+  adapters, so concurrent hosted visitors can never cross-bill.
+- Hosted limits fail loud and point at the local install: reference-video
+  Seedance (would stage clips on the operator's storage), Act-Two bodies
+  over Vercel's ~4.5MB platform cap (16MB locally), expired archive
+  replays (providers purge within days — hosted has no vault; a download
+  nudge now sits on every finished take).
+
 ## 0.4.0 — 2026-07-13
 
 ### Added
