@@ -119,21 +119,51 @@ squeezed between attach/SPEC/Send).
 
 **Learned**: none
 
+### 2026-07-13
+**Focus**: CHASE reference intake → 1.0.1/1.0.2, Spec Lab goes real —
+modes, cast lock, first verdicts (null result), review loop live.
+- CHASE fan-meeting vlog intake (frame-verified): @ image token +
+  image-owns-identity + script-lines-safe → seedance profile (1.0.1);
+  structural ideas → /lab snapshot 1.1.0-storyboard. Self-check accepts
+  "camera lingers" endings.
+- Arena field failures fixed (1.0.2): Veo celebrity-likeness hard block →
+  fictional-names rule + veo avoid; 16k-char Gemini ramble → compress-
+  retry backstop; generate cap 4000→6000; lab poll missed state "error"
+  (spun as RENDERING forever).
+- Lab matured: MODEL A/B mode (same prompt, two models), verdict note
+  input, per-run CAST LOCK (random but identical subject both arms,
+  gender-matched — controls the casting variable), English test-brief
+  presets (🎲), grok as default judge (owner principle: cheapest capable
+  model first; ~$1.38/8s pair).
+- First real verdicts: 1.0.2 vs storyboard on Grok @4s = tie, variance
+  dominates → candidate stays parked (improvement gate); methodology
+  distilled to grok profile ("judge structure on ≥8s multi-cut briefs").
+  /spec-lab-review skill (personal, ~/.claude) + /lab/experiments.jsonl
+  journal + cursor now form the record→distill loop.
+- Shipped in v0.4.0 (see flow-method-kling unit for the release itself).
+
+**Learned**: an A/A run (live vs baseline) doubles as a noise-floor
+measurement — without it, the storyboard tie would have been ambiguous.
+Null results earn their keep when the methodology lesson ships somewhere
+queryable (the model profile), not just the journal.
+
 ## Pending
-- [ ] First real-money spec take (Sora is MODEL_NOTES' calibration candidate);
-      confirm references actually ride /api/generate end-to-end
+- [x] First real-money spec take — done 2026-07-13 on Grok (not Sora): spec
+      A/B arena pair (1.0.2 vs 1.1.0-storyboard, cast:Noa reference rode
+      through) + studio spec takes (lab/ledger.json, experiments.jsonl)
 - [ ] Key-less onboarding flow one real pass (pitch modal untested live)
-- [ ] Release: version bump + CHANGELOG + tag + deploy (feature sits on main
-      unreleased)
+- [x] Release: shipped as v0.4.0 2026-07-13 (package.json bump + CHANGELOG
+      entry + git tag v0.4.0, main pushed to origin)
 - [x] Transfer-in-SPEC question — resolved by AUTO-BYPASS (video ref on a
       non-clip-reading model skips SPEC into the classic transfer flow;
       Seedance 2.0 keeps SPEC); porting transcription into assemble stays
       a future option only if the bypass proves annoying
-- [ ] Eyeball the stepper's REVIEW step visually in a real session
-      (logic verified via curl; the final screen itself wasn't reached in
-      headless runs — browse daemon kept dying)
+- [x] Eyeball the stepper's REVIEW step — owner ran real spec takes
+      through it on 2026-07-13 (arena + studio)
 - [ ] Refresh the model-picker GUIDE + MODEL_PROFILES notes as real
       billed tests land (guide is dated Jul 2026 market chatter)
+- [ ] Storyboard candidate decisive test: ONE ≥8s multi-cut pair on Grok
+      (~$2.50) — else retire it to Seedance hints permanently
 
 ## Notes
 Docs trail: DEVLOG #27–#29, docs/VIDEO-PROMPT-SPEC.md (kept current),

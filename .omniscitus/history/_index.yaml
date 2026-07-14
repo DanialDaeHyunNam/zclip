@@ -36,10 +36,25 @@ units:
     domain: web
     status: open
     created: 2026-07-12
-    last_updated: 2026-07-12
-    session_count: 3
+    last_updated: 2026-07-13
+    session_count: 4
     title: "Video Prompt Spec Gate"
+  - id: flow-method-kling
+    file: web/2026-07-13-flow-method-kling.md
+    domain: web
+    status: open
+    created: 2026-07-13
+    last_updated: 2026-07-13
+    session_count: 1
+    title: "Flow Method & Kling Provider"
 weekly_summaries:
+  - week: "2026-W28"
+    file: "_weekly/2026-W28.md"
+    start: "2026-07-06"
+    end: "2026-07-12"
+    unit_count: 6
+    domains: [web, product]
+    generated_at: "2026-07-13"
   - week: "2026-W27"
     file: "_weekly/2026-W27.md"
     start: "2026-06-29"

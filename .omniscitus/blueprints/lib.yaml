@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-13T02:39:25.377Z
+updated: 2026-07-14T15:54:22.983Z
 
 files:
   "lib/config.ts":
@@ -68,10 +68,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T05:17:21.754Z
-    change_count: 2
+    last_modified: 2026-07-14T15:39:31.142Z
+    change_count: 3
     purpose: "VideoProvider adapter interface (submit/status) + SubmitParams (image/character/drivingVideo/modelId) + JobStatus"
     change_log:
+      - date: 2026-07-14T15:39:31.142Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T05:17:21.754Z
         action: edit
         source: "claude:Danial Nam"
@@ -82,10 +85,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T05:18:10.960Z
-    change_count: 2
+    last_modified: 2026-07-14T15:40:47.318Z
+    change_count: 6
     purpose: "Runway Act-Two adapter: character_performance (face + driving video → motion transfer), poll tasks, CloudFront output proxied"
     change_log:
+      - date: 2026-07-14T15:40:47.318Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:44.636Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:42.710Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:41.314Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T05:18:10.960Z
         action: edit
         source: "claude:Danial Nam"
@@ -107,10 +122,19 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T05:17:27.304Z
-    change_count: 1
+    last_modified: 2026-07-14T15:39:51.886Z
+    change_count: 4
     purpose: "Google Veo adapter (Gemini LRO predictLongRunning → poll); first-frame i2v; honors params.modelId"
     change_log:
+      - date: 2026-07-14T15:39:51.886Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:39:49.290Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:39:42.011Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T05:17:27.304Z
         action: edit
         source: "claude:Danial Nam"
@@ -118,10 +142,19 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T05:17:36.853Z
-    change_count: 1
+    last_modified: 2026-07-14T15:40:30.682Z
+    change_count: 4
     purpose: "xAI Grok Imagine adapter: text→image→video (skips image step with a reference); proxies vidgen.x.ai output"
     change_log:
+      - date: 2026-07-14T15:40:30.682Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:27.907Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:25.461Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T05:17:36.853Z
         action: edit
         source: "claude:Danial Nam"
@@ -129,10 +162,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-10T04:30:50.666Z
-    change_count: 6
+    last_modified: 2026-07-14T15:41:23.325Z
+    change_count: 10
     purpose: "ByteDance Seedance adapter (unverified endpoint/model id from ModelArk docs)"
     change_log:
+      - date: 2026-07-14T15:41:23.325Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:41:20.688Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:41:17.851Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:41:15.476Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T04:30:50.666Z
         action: edit
         source: "claude:Danial Nam"
@@ -155,10 +200,25 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T05:17:57.049Z
-    change_count: 1
+    last_modified: 2026-07-14T15:40:13.424Z
+    change_count: 6
     purpose: "OpenAI Sora adapter: base/pro via modelId, size gating, 8s min, /content download proxied"
     change_log:
+      - date: 2026-07-14T15:40:13.424Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:10.330Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:08.738Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:06.596Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:04.677Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T05:17:57.049Z
         action: edit
         source: "claude:Danial Nam"
@@ -287,10 +347,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-10
-    last_modified: 2026-07-10T02:02:29.513Z
-    change_count: 1
+    last_modified: 2026-07-14T15:44:14.177Z
+    change_count: 2
     purpose: "Resolves /api/video queries into upstream fetch target + auth headers — shared URL dialect for the playback proxy and the clip vault"
     change_log:
+      - date: 2026-07-14T15:44:14.177Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T02:02:29.513Z
         action: write
         source: "claude:Danial Nam"
@@ -371,10 +434,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-12
-    last_modified: 2026-07-13T02:39:25.377Z
-    change_count: 7
+    last_modified: 2026-07-13T06:03:25.808Z
+    change_count: 9
     purpose: "SSOT of the photoreal video-prompt spec — SPEC_VERSION, 15 SECTIONS, GATES, SELF_CHECKS, MODEL_PROFILES; changes gated by Spec Lab wins (mono skill retired 2026-07-12)"
     change_log:
+      - date: 2026-07-13T06:03:25.808Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:53:04.456Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:39:25.377Z
         action: edit
         source: "claude:Danial Nam"
@@ -409,10 +478,58 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-13T02:19:50.118Z
+    last_modified: 2026-07-14T15:41:01.808Z
+    change_count: 4
+    purpose: "Kling (Kuaishou) adapter — per-request HS256 JWT from KLING_API_KEY='AK:SK', i2v/t2v endpoints, jobId carries endpoint for polling, 5/10s grid. UNVERIFIED until first real run"
+    change_log:
+      - date: 2026-07-14T15:41:01.808Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:58.303Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:40:56.130Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:19:50.118Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/server-keys.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-14
+    last_modified: 2026-07-14T15:50:10.222Z
+    change_count: 3
+    purpose: ""
+    change_log:
+      - date: 2026-07-14T15:50:10.222Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:49:06.634Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:39:01.510Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/client-keys.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-14
+    last_modified: 2026-07-14T15:47:37.627Z
     change_count: 1
     purpose: ""
     change_log:
-      - date: 2026-07-13T02:19:50.118Z
+      - date: 2026-07-14T15:47:37.627Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/video-src.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-14
+    last_modified: 2026-07-14T15:54:22.983Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-14T15:54:22.983Z
         action: write
         source: "claude:Danial Nam"

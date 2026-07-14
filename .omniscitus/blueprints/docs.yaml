@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-13T02:25:28.344Z
+updated: 2026-07-14T16:08:44.651Z
 
 files:
   "docs/ARCHITECTURE.md":
@@ -20,10 +20,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-13T02:25:28.344Z
-    change_count: 8
+    last_modified: 2026-07-13T06:03:29.723Z
+    change_count: 9
     purpose: "Chronological build log (#1–26) with evidence for every decision and pivot"
     change_log:
+      - date: 2026-07-13T06:03:29.723Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:25:28.344Z
         action: edit
         source: "claude:Danial Nam"
@@ -70,4 +73,18 @@ files:
         source: "claude:Danial Nam"
       - date: 2026-07-12T05:47:28.606Z
         action: edit
+        source: "claude:Danial Nam"
+  "docs/HOSTED.md":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-14
+    last_modified: 2026-07-14T16:08:44.651Z
+    change_count: 2
+    purpose: ""
+    change_log:
+      - date: 2026-07-14T16:08:44.651Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:34:42.736Z
+        action: write
         source: "claude:Danial Nam"

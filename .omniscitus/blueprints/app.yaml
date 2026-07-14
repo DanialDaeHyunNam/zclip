@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-13T02:42:15.730Z
+updated: 2026-07-14T16:07:47.788Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -114,10 +114,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-07T07:58:51.878Z
-    change_count: 79
+    last_modified: 2026-07-14T15:46:01.180Z
+    change_count: 80
     purpose: "The entire studio UI (one client component): chat thread, rewind, sessions, archive, spend popover, starter carousels + Library pill, GRAB panel, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-14T15:46:01.180Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T07:58:51.878Z
         action: write
         source: "claude:Danial Nam"
@@ -359,10 +362,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-10T02:40:51.590Z
-    change_count: 3
+    last_modified: 2026-07-14T15:42:28.096Z
+    change_count: 5
     purpose: "Gemini Flash prompt refiner: history/context-aware rewrite, multimodal (reads attached frames), and hard-ruled performance-transfer mode (motion transcription, replace performer+location only)"
     change_log:
+      - date: 2026-07-14T15:42:28.096Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:42:26.434Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T02:40:51.590Z
         action: edit
         source: "claude:Danial Nam"
@@ -376,10 +385,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-08T05:09:15.722Z
-    change_count: 17
+    last_modified: 2026-07-14T16:00:38.766Z
+    change_count: 21
     purpose: "Read-only spend & config dashboard: stat tiles, 14-day stacked columns, by-session and by-model bars, provider/pricing/key config table — all from the localStorage ledger"
     change_log:
+      - date: 2026-07-14T16:00:38.766Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:00:05.071Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:00:01.004Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:59:55.121Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-08T05:09:15.722Z
         action: edit
         source: "claude:Danial Nam"
@@ -435,10 +456,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-12T14:12:13.161Z
-    change_count: 70
+    last_modified: 2026-07-14T16:03:12.751Z
+    change_count: 71
     purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
+      - date: 2026-07-14T16:03:12.751Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-12T14:12:13.161Z
         action: edit
         source: "claude:Danial Nam"
@@ -653,10 +677,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-13T02:23:24.552Z
-    change_count: 23
+    last_modified: 2026-07-13T07:51:22.466Z
+    change_count: 25
     purpose: "Shared left rail (logo · Sessions · Dashboard · Library · Download · About, then Help + version) across /chat, /archive, /dashboard; buttons navigate to routes (Library/Dashboard) or toggle the persistent sessions sidebar — no + New button"
     change_log:
+      - date: 2026-07-13T07:51:22.466Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:51:20.592Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:23:24.552Z
         action: edit
         source: "claude:Danial Nam"
@@ -730,10 +760,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-10T02:02:41.255Z
-    change_count: 2
+    last_modified: 2026-07-14T15:44:24.055Z
+    change_count: 4
     purpose: "Streams provider MP4s needing auth headers (Veo uri, Sora ref) or lacking CORS (remote CDN allowlist incl. Runway CloudFront); SSRF-guarded"
     change_log:
+      - date: 2026-07-14T15:44:24.055Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:44:22.369Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T02:02:41.255Z
         action: write
         source: "claude:Danial Nam"
@@ -744,10 +780,19 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-13T02:27:47.793Z
-    change_count: 6
+    last_modified: 2026-07-14T15:41:58.196Z
+    change_count: 9
     purpose: "POST submit → adapter; validates params/image/character/drivingVideo/modelId against whitelists, returns jobId fast"
     change_log:
+      - date: 2026-07-14T15:41:58.196Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:41:47.300Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:41:34.807Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:27:47.793Z
         action: edit
         source: "claude:Danial Nam"
@@ -805,10 +850,19 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T05:47:38.346Z
-    change_count: 1
+    last_modified: 2026-07-14T15:42:51.738Z
+    change_count: 4
     purpose: "Composites a chosen outfit onto a character image (gemini-2.5-flash-image) so Act-Two animates a dressed character"
     change_log:
+      - date: 2026-07-14T15:42:51.738Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:42:49.937Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:42:48.527Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T05:47:38.346Z
         action: write
         source: "claude:Danial Nam"
@@ -945,10 +999,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-08T01:31:28.360Z
-    change_count: 14
+    last_modified: 2026-07-14T16:02:45.555Z
+    change_count: 18
     purpose: "The bilingual (EN/한국어) landing/about page body (client), wrapped by the app/page.tsx server shell"
     change_log:
+      - date: 2026-07-14T16:02:45.555Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:02:29.489Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:02:25.034Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:02:21.357Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-08T01:31:28.360Z
         action: edit
         source: "claude:Danial Nam"
@@ -1006,10 +1072,109 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-13T02:42:15.730Z
-    change_count: 290
+    last_modified: 2026-07-14T16:01:42.465Z
+    change_count: 323
     purpose: "The entire studio UI (one big client component): chat thread, rewind, persistent sessions sidebar, spend popover, starter carousels + Library pill, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-14T16:01:42.465Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:01:17.654Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:01:12.543Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:56:48.953Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:55:47.607Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:55:37.607Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:55:21.227Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:55:19.203Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:53:25.700Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:53:09.816Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:52:41.607Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:52:30.460Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:52:17.379Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:52:14.252Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:51:56.527Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:51:53.371Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:51:43.967Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:51:37.163Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:51:25.402Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:51:23.467Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:51:08.466Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:50:59.193Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:50:57.240Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:50:47.510Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:50:34.964Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:50:30.991Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:29:08.794Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:29:04.237Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:28:29.802Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:21:20.827Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T03:03:51.634Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T03:03:41.180Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:48:48.061Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:42:15.730Z
         action: edit
         source: "claude:Danial Nam"
@@ -1920,10 +2085,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-08
-    last_modified: 2026-07-08T02:13:09.382Z
-    change_count: 4
+    last_modified: 2026-07-13T08:21:56.604Z
+    change_count: 6
     purpose: "Shared bilingual how-to steps (HowToList, **bold** highlight parser) — used by the in-app help modal and the install guide"
     change_log:
+      - date: 2026-07-13T08:21:56.604Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T08:21:47.907Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-08T02:13:09.382Z
         action: edit
         source: "claude:Danial Nam"
@@ -1982,10 +2153,19 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-08
-    last_modified: 2026-07-10T02:26:47.391Z
-    change_count: 14
+    last_modified: 2026-07-14T16:07:47.788Z
+    change_count: 17
     purpose: "The Library page (/archive) — all takes/GRABs grouped by session with the rail; a collapsible '+ Add reference' GRAB form; 'use as reference' hands a clip back to the studio"
     change_log:
+      - date: 2026-07-14T16:07:47.788Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:59:07.320Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:58:44.930Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T02:26:47.391Z
         action: edit
         source: "claude:Danial Nam"
@@ -2069,10 +2249,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-12
-    last_modified: 2026-07-13T02:38:47.637Z
-    change_count: 10
+    last_modified: 2026-07-14T15:43:16.164Z
+    change_count: 12
     purpose: "Video Prompt Spec Gate route (separate track from refine, NO 900-char clamp) — mode:check → missing gates + provider-fit warnings, mode:assemble → 15-section prompt; MODEL_PROFILES-aware, multimodal"
     change_log:
+      - date: 2026-07-14T15:43:16.164Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:42:46.649Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:38:47.637Z
         action: edit
         source: "claude:Danial Nam"
@@ -2125,28 +2311,65 @@ files:
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-12T00:00:00.000Z
-    change_count: 0
+    last_modified: 2026-07-14T16:04:31.133Z
+    change_count: 2
     purpose: "Key panel API — GET which env keys exist (booleans) + writable flag; POST (dev only) writes into .env.local + process.env (KEY_ENV_VARS allowlist)"
     change_log:
-      []
+      - date: 2026-07-14T16:04:31.133Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:04:27.757Z
+        action: edit
+        source: "claude:Danial Nam"
   "app/api/status/route.ts":
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-12T00:00:00.000Z
-    change_count: 0
+    last_modified: 2026-07-14T15:50:14.769Z
+    change_count: 3
     purpose: "One cheap provider poll — GET ?id=&provider= → job state / videoUrl"
     change_log:
-      []
+      - date: 2026-07-14T15:50:14.769Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:50:12.110Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:42:16.298Z
+        action: edit
+        source: "claude:Danial Nam"
   "app/api/image/route.ts":
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-13T02:35:40.443Z
-    change_count: 2
-    purpose: ""
+    last_modified: 2026-07-14T15:43:44.639Z
+    change_count: 10
+    purpose: "Flow stage-1 still generation — Grok/GPT/Gemini image engines behind existing keys; a reference image switches to Gemini EDIT mode; returns durable base64"
     change_log:
+      - date: 2026-07-14T15:43:44.639Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:43:33.405Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:43:31.032Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:43:28.831Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:43:26.361Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:29:49.084Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:26:25.157Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:26:19.447Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:35:40.443Z
         action: write
         source: "claude:Danial Nam"
@@ -2154,23 +2377,23 @@ files:
         action: write
         source: "claude:Danial Nam"
   "app/flow/page.tsx":
-    status: active
+    status: deleted
     source: "claude:Danial Nam"
     created: 2026-07-13
     last_modified: 2026-07-13T02:21:35.170Z
     change_count: 1
-    purpose: ""
+    purpose: "(deleted) standalone Flow page — merged into the studio as the CHAT|FLOW method toggle"
     change_log:
       - date: 2026-07-13T02:21:35.170Z
         action: write
         source: "claude:Danial Nam"
   "app/flow/flow-client.tsx":
-    status: active
+    status: deleted
     source: "claude:Danial Nam"
     created: 2026-07-13
     last_modified: 2026-07-13T02:30:10.148Z
     change_count: 8
-    purpose: ""
+    purpose: "(deleted) standalone Flow client — became app/chat/flow-panel.tsx"
     change_log:
       - date: 2026-07-13T02:30:10.148Z
         action: edit
@@ -2200,10 +2423,91 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-13T02:37:54.474Z
-    change_count: 1
-    purpose: ""
+    last_modified: 2026-07-14T15:57:57.920Z
+    change_count: 28
+    purpose: "FLOW method panel (embedded in the studio): still→motion pipeline — look generate/upload/EDIT with confirm gate, motion iteration via i2v, presets, session-scoped flows, shared-Library interop, Character-card export"
     change_log:
+      - date: 2026-07-14T15:57:57.920Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:57:38.901Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:57:36.739Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:57:34.393Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T15:57:25.467Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:53:18.801Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:52:51.010Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:28:28.173Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:28:16.180Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:28:12.159Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:28:03.277Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:27:59.750Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:27:44.190Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:27:39.813Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:27:26.904Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:27:24.228Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:27:06.159Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:26:51.027Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:26:47.921Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T07:26:45.579Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T06:04:49.482Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T04:18:09.400Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:58:16.291Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:58:13.475Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:58:02.348Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:51:03.670Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-13T02:50:55.688Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:37:54.474Z
         action: write
         source: "claude:Danial Nam"

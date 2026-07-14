@@ -1,15 +1,24 @@
 version: 1
-updated: 2026-07-13T02:25:11.013Z
+updated: 2026-07-14T16:11:01.461Z
 
 files:
   "README.md":
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-07T13:57:54.125Z
-    change_count: 8
+    last_modified: 2026-07-14T16:09:54.946Z
+    change_count: 11
     purpose: "Open-source README: quickstart, requirements, why-not-the-playground, GRAB tool, provider/pricing table, security model, add-a-provider guide, deploy, troubleshooting"
     change_log:
+      - date: 2026-07-14T16:09:54.946Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:09:33.918Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:09:14.759Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T13:57:54.125Z
         action: edit
         source: "claude:Danial Nam"
@@ -38,7 +47,7 @@ files:
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-12T00:00:00.000Z
+    last_modified: 2026-07-13T00:00:00.000Z
     change_count: 0
     purpose: "MIT license — the repo ships open source"
     change_log:
@@ -60,10 +69,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-13T02:25:11.013Z
-    change_count: 12
+    last_modified: 2026-07-14T16:10:38.069Z
+    change_count: 16
     purpose: "Agent handoff notes: architecture, commands, provider facts (incl. Act-Two), design system, verification patterns"
     change_log:
+      - date: 2026-07-14T16:10:38.069Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:10:27.320Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:10:09.107Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-14T16:10:06.286Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:25:11.013Z
         action: edit
         source: "claude:Danial Nam"
@@ -190,10 +211,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-10T12:37:43.247Z
-    change_count: 15
+    last_modified: 2026-07-14T16:11:01.461Z
+    change_count: 16
     purpose: "Per-release notes (Added/Changed/Fixed) surfaced via the version chip; every release bumps it (the update prompt depends on it)"
     change_log:
+      - date: 2026-07-14T16:11:01.461Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T12:37:43.247Z
         action: edit
         source: "claude:Danial Nam"
