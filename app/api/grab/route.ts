@@ -21,7 +21,9 @@ import { dirUsage } from "@/lib/dir-usage";
  */
 
 const GRABS_DIR = path.join(process.cwd(), ".grabs");
+const CLIPS_DIR = path.join(process.cwd(), ".zclip-data", "clips");
 const FILE_NAME = /^grab-[\w.-]+\.mp4$/;
+const CLIP_FILE_NAME = /^clip-[\w.-]+\.mp4$/;
 const BLOCKED_HOST =
   /^(localhost|127\.|0\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|\[?::1|metadata\.)/i;
 const X_URL =
@@ -232,6 +234,63 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
   const action = body.action;
+
+  // Trim an ALREADY-vaulted clip (grab or take) into a new short clip —
+  // no external URL, so it's handled before the URL validation below.
+  // This is what lets the MOVES stage trim a >15s reference in place.
+  if (action === "trim-local") {
+    const src = typeof body.src === "string" ? body.src : "";
+    const start = Number(body.start);
+    const end = Number(body.end);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || start < 0) {
+      return Response.json({ error: "Bad trim range" }, { status: 400 });
+    }
+    // Resolve the source to a vaulted file — grabs and clips only, name-
+    // validated so the trim can never read an arbitrary path.
+    const gm = src.match(/^\/api\/grab\?f=(.+)$/);
+    const cm = src.match(/^\/api\/clips\?f=(.+)$/);
+    let srcPath: string | null = null;
+    if (gm) {
+      const f = decodeURIComponent(gm[1]);
+      if (FILE_NAME.test(f)) srcPath = path.join(GRABS_DIR, f);
+    } else if (cm) {
+      const f = decodeURIComponent(cm[1]);
+      if (CLIP_FILE_NAME.test(f)) srcPath = path.join(CLIPS_DIR, f);
+    }
+    if (!srcPath) {
+      return Response.json({ error: "Unsupported source" }, { status: 400 });
+    }
+    try {
+      await stat(srcPath);
+    } catch {
+      return Response.json({ error: "Source clip not found" }, { status: 404 });
+    }
+    await mkdir(GRABS_DIR, { recursive: true });
+    const out = path.join(GRABS_DIR, `grab-${Date.now()}-cut.mp4`);
+    try {
+      await run("ffmpeg", [
+        "-y",
+        "-ss", String(start),
+        "-i", srcPath,
+        "-t", String(Math.max(0.5, end - start)),
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-movflags", "+faststart",
+        out,
+      ]);
+      const info = await stat(out);
+      const served = path.basename(out);
+      return Response.json({
+        name: served,
+        url: `/api/grab?f=${encodeURIComponent(served)}`,
+        bytes: info.size,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Trim failed";
+      return Response.json({ error: message }, { status: 502 });
+    }
+  }
+
   const raw = typeof body.url === "string" ? body.url.trim() : "";
   let u: URL;
   try {

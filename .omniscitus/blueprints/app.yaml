@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T09:40:02.796Z
+updated: 2026-07-15T09:46:53.016Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -17,10 +17,16 @@ files:
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-15T06:15:54.424Z
-    change_count: 9
+    last_modified: 2026-07-15T09:45:29.574Z
+    change_count: 11
     purpose: "Dev-only reference-video fetcher: YouTube via yt-dlp, X posts/articles via guest GraphQL, direct .mp4; optional ffmpeg trim; serves grabbed files back"
     change_log:
+      - date: 2026-07-15T09:45:29.574Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:45:12.949Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T06:15:54.424Z
         action: edit
         source: "claude:Danial Nam"
@@ -2516,10 +2522,25 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-15T09:40:02.796Z
-    change_count: 67
+    last_modified: 2026-07-15T09:46:53.016Z
+    change_count: 72
     purpose: "FLOW method panel (embedded in the studio): still→motion pipeline — look generate/upload/EDIT with confirm gate, motion iteration via i2v, presets, session-scoped flows, shared-Library interop, Character-card export"
     change_log:
+      - date: 2026-07-15T09:46:53.016Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:46:30.541Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:46:13.722Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:45:55.697Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:45:41.226Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T09:40:02.796Z
         action: edit
         source: "claude:Danial Nam"

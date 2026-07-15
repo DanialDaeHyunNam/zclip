@@ -196,6 +196,17 @@ const splitDataUrl = (d: string): { base64: string; mimeType: string } => {
     : { mimeType: "image/jpeg", base64: d };
 };
 
+/** "6:30" → 390, "1:02:05" → 3725, "95.5" → 95.5; "" → null; bad → NaN. */
+const parseClock = (raw: string): number | null => {
+  const t = raw.trim();
+  if (!t) return null;
+  const parts = t.split(":");
+  if (parts.length > 3 || parts.some((p) => p === "" || !/^\d+(\.\d+)?$/.test(p)))
+    return NaN;
+  if (parts.slice(1).some((p) => Number(p) >= 60)) return NaN;
+  return parts.reduce((acc, p) => acc * 60 + Number(p), 0);
+};
+
 export function FlowPanel({
   onPreview,
   sessionId,
@@ -224,6 +235,11 @@ export function FlowPanel({
   const [libClips, setLibClips] = useState<Clip[]>([]);
   const [uploadBusy, setUploadBusy] = useState(false);
   const refFileRef = useRef<HTMLInputElement>(null);
+  /** Inline MOVES trim (m:ss → m:ss) so an over-15s reference is cut right
+   *  here instead of round-tripping to the Library. */
+  const [trimFrom, setTrimFrom] = useState("");
+  const [trimTo, setTrimTo] = useState("");
+  const [trimBusy, setTrimBusy] = useState(false);
 
   /* flows scoped to the current session (legacy flows show everywhere) */
   const visibleFlows = flows.filter(
@@ -665,6 +681,69 @@ export function FlowPanel({
     }
   };
 
+  /** Trim the selected MOVES clip in place (server ffmpeg) → a new short
+   *  Library clip, set as the reference. */
+  const trimRefClip = async () => {
+    if (!flow?.refClip || trimBusy) return;
+    const start = parseClock(trimFrom);
+    const end = parseClock(trimTo);
+    if (start == null || end == null || !Number.isFinite(start) || !Number.isFinite(end)) {
+      setError("Trim needs a start and end — m:ss like 0:05 → 0:18 (or seconds).");
+      return;
+    }
+    if (end <= start) {
+      setError("Trim end must be after the start.");
+      return;
+    }
+    if (end - start > 15.2) {
+      setError(`That's ${Math.round(end - start)}s — keep the trim ≤15s (Seedance's reference cap).`);
+      return;
+    }
+    setTrimBusy(true);
+    setError(null);
+    try {
+      const pw = storedPw();
+      const r = await fetch("/api/grab", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(pw ? { "x-app-password": pw } : {}) },
+        body: JSON.stringify({ action: "trim-local", src: flow.refClip.url, start, end }),
+      });
+      const b = await r.json();
+      if (!r.ok) throw new Error(b.error ?? "Trim failed");
+      const label = `${flow.refClip.label.replace(/ · .*$/, "")} · ${trimFrom}–${trimTo}`;
+      const clip: Clip = {
+        jobId: b.name,
+        sessionId: sessionId ?? undefined,
+        provider: "grab",
+        prompt: label,
+        note: `Reference · trimmed · ${label}`,
+        variantLabel: "Reference",
+        createdAt: Date.now(),
+        status: "done",
+        aspectRatio: flow.aspect,
+        durationSeconds: Math.round(end - start),
+        resolution: flow.resolution,
+        videoUrl: b.url,
+        costUsd: 0,
+      };
+      try {
+        const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
+        store.set(GALLERY_KEY, JSON.stringify([clip, ...gallery]));
+      } catch {
+        /* library share is best-effort */
+      }
+      setLibClips((cs) => [clip, ...cs]);
+      patchFlow(flow.id, { refClip: { url: b.url, label } });
+      setTrimFrom("");
+      setTrimTo("");
+      preview({ kind: "video", src: b.url, aspect: flow.aspect, label: "MOVES reference (trimmed)" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Trim failed");
+    } finally {
+      setTrimBusy(false);
+    }
+  };
+
   /* ── stage 2: motion generation (i2v on the confirmed still) ── */
 
   const generateMotion = async () => {
@@ -960,7 +1039,7 @@ export function FlowPanel({
           : "Confirm the LOOK once, then iterate the MOTION forever — the still never re-rolls. Finished takes land in the Library; a confirmed still can become a Character card."}
       </p>
 
-      {error && <div className="error-box fade">{error}</div>}
+      {error && <div className="error-box fade" style={{ marginBottom: 20 }}>{error}</div>}
 
       {/* ── Stage 1 · MOVES (transfer flows only) ───── */}
       {isTransfer && (
@@ -1039,6 +1118,40 @@ export function FlowPanel({
               }}
             />
           </div>
+
+          {/* Inline trim — cut the selected reference to ≤15s right here,
+              no round-trip to the Library. Result becomes the reference. */}
+          {flow.refClip && (
+            <div className="grab-row grab-trim" style={{ marginTop: 12, flexWrap: "wrap" }}>
+              <span className="label">Trim to a beat (optional)</span>
+              <input
+                className="grab-num"
+                type="text"
+                inputMode="numeric"
+                placeholder="from 0:05"
+                value={trimFrom}
+                onChange={(e) => setTrimFrom(e.target.value)}
+                disabled={trimBusy}
+              />
+              <span className="mono">→</span>
+              <input
+                className="grab-num"
+                type="text"
+                inputMode="numeric"
+                placeholder="to 0:18"
+                value={trimTo}
+                onChange={(e) => setTrimTo(e.target.value)}
+                disabled={trimBusy}
+              />
+              <button
+                className="btn-ghost"
+                onClick={() => void trimRefClip()}
+                disabled={trimBusy || !trimFrom.trim() || !trimTo.trim()}
+              >
+                {trimBusy ? "TRIMMING…" : "✂ Trim"}
+              </button>
+            </div>
+          )}
         </section>
       )}
 

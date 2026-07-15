@@ -5,6 +5,17 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.7.1 — 2026-07-15
+
+### Added
+- **Inline MOVES trim.** A transfer flow can trim its reference clip to a
+  beat (m:ss → m:ss) right in the MOVES stage — server-side ffmpeg cuts
+  the already-vaulted clip into a new short Library clip and sets it as the
+  reference. No more round-trip to the Library to re-GRAB a >15s clip.
+
+### Fixed
+- Breathing room below the flow error box.
+
 ## 0.7.0 — 2026-07-15
 
 ### Added
