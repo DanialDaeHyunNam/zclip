@@ -50,21 +50,27 @@ export const seedance: VideoProvider = {
     //    reference-to-video pattern (@Image + @Video) — UNVERIFIED on
     //    ModelArk until a first real run; if it errors, the message
     //    surfaces loudly in the take like any provider error.
-    if (params.image && !params.drivingVideo) {
+    // Identity references. With a driving video they're reference_image
+    // items (multi-subject r2v: one per person, in order — the prompt
+    // refers to them as "first/second reference person"). Without a video,
+    // a single image is the classic first-frame reference.
+    const refImages =
+      params.images?.length ? params.images : params.image ? [params.image] : [];
+    if (refImages.length && !params.drivingVideo) {
       content.push({
         type: "image_url",
         image_url: {
-          url: `data:${params.image.mimeType};base64,${params.image.base64}`,
+          url: `data:${refImages[0].mimeType};base64,${refImages[0].base64}`,
         },
       });
-    } else if (params.image && params.drivingVideo) {
-      content.push({
-        type: "image_url",
-        image_url: {
-          url: `data:${params.image.mimeType};base64,${params.image.base64}`,
-        },
-        role: "reference_image",
-      });
+    } else if (refImages.length && params.drivingVideo) {
+      for (const img of refImages) {
+        content.push({
+          type: "image_url",
+          image_url: { url: `data:${img.mimeType};base64,${img.base64}` },
+          role: "reference_image",
+        });
+      }
     }
     let blobUrl: string | undefined;
     if (params.drivingVideo) {

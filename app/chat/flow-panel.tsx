@@ -131,7 +131,12 @@ interface Flow {
   imgEngine?: string;
   imgPrompt: string;
   imgAttempts: FlowImageAttempt[];
-  confirmedImgId: string | null;
+  /** Legacy single-confirm (undefined once confirmedImgIds is written). */
+  confirmedImgId?: string | null;
+  /** Confirmed looks, in order. Look flows keep exactly one; transfer flows
+   *  can confirm several (one identity per person in the reference clip —
+   *  they ride as reference_image items in this order). */
+  confirmedImgIds?: string[];
   motionPrompt: string;
   motionModelKey: string;
   motionAttempts: FlowMotionAttempt[];
@@ -158,7 +163,7 @@ const newFlow = (n: number, sessionId?: string, kind: FlowKind = "look"): Flow =
   imgEngine: "grok",
   imgPrompt: "",
   imgAttempts: [],
-  confirmedImgId: null,
+  confirmedImgIds: [],
   // Transfer flows open with the distilled template — editing a working
   // draft beats a blank box (same philosophy as 🎲 starters).
   motionPrompt: kind === "transfer" ? TRANSFER_PRESETS[0] : "",
@@ -250,10 +255,13 @@ export function FlowPanel({
     const seen = new Set<string>();
     for (const f of flows) {
       if (f.id === flow.id) continue;
-      const img = f.imgAttempts.find((a) => a.id === f.confirmedImgId);
-      if (img && !seen.has(img.image)) {
-        seen.add(img.image);
-        out.push({ image: img.image, label: f.title });
+      const ids = f.confirmedImgIds ?? (f.confirmedImgId ? [f.confirmedImgId] : []);
+      for (const id of ids) {
+        const img = f.imgAttempts.find((a) => a.id === id);
+        if (img && !seen.has(img.image)) {
+          seen.add(img.image);
+          out.push({ image: img.image, label: f.title });
+        }
       }
     }
     try {
@@ -279,20 +287,26 @@ export function FlowPanel({
   const useSharedLook = (look: { image: string; label: string }) => {
     if (!flow) return;
     const existing = flow.imgAttempts.find((a) => a.image === look.image);
-    if (existing) {
-      patchFlow(flow.id, { confirmedImgId: existing.id });
-    } else {
-      const attempt: FlowImageAttempt = {
-        id: `i${Date.now()}`,
-        prompt: `(shared · ${look.label})`,
-        image: look.image,
-        createdAt: Date.now(),
+    const id = existing?.id ?? `i${Date.now()}`;
+    patchFlow(flow.id, (f) => {
+      const cur = f.confirmedImgIds ?? (f.confirmedImgId ? [f.confirmedImgId] : []);
+      // Transfer flows ADD the shared look (multi-person); look flows replace.
+      const next = isTransfer
+        ? cur.includes(id)
+          ? cur
+          : [...cur, id]
+        : [id];
+      return {
+        imgAttempts: existing
+          ? f.imgAttempts
+          : [
+              ...f.imgAttempts,
+              { id, prompt: `(shared · ${look.label})`, image: look.image, createdAt: Date.now() },
+            ],
+        confirmedImgIds: next,
+        confirmedImgId: undefined,
       };
-      patchFlow(flow.id, (f) => ({
-        imgAttempts: [...f.imgAttempts, attempt],
-        confirmedImgId: attempt.id,
-      }));
-    }
+    });
     preview({
       kind: "image",
       src: look.image,
@@ -306,8 +320,41 @@ export function FlowPanel({
   const imgEngine =
     IMG_ENGINES.find((e) => e.key === (flow?.imgEngine ?? "grok")) ??
     IMG_ENGINES[0];
-  const confirmedImg =
-    flow?.imgAttempts.find((a) => a.id === flow.confirmedImgId) ?? null;
+  // Confirmed looks, in order. Migrate the legacy single field on read.
+  const confirmedIds =
+    flow?.confirmedImgIds ??
+    (flow?.confirmedImgId ? [flow.confirmedImgId] : []);
+  const confirmedImgs = confirmedIds
+    .map((id) => flow?.imgAttempts.find((a) => a.id === id))
+    .filter(Boolean) as FlowImageAttempt[];
+  const confirmedImg = confirmedImgs[0] ?? null; // first = backward-compat
+
+  /** Click a thumbnail: look flows single-select; transfer flows toggle
+   *  membership (one identity per person in the reference clip). */
+  const toggleConfirm = (id: string) => {
+    if (!flow) return;
+    const cur =
+      flow.confirmedImgIds ?? (flow.confirmedImgId ? [flow.confirmedImgId] : []);
+    const next = isTransfer
+      ? cur.includes(id)
+        ? cur.filter((x) => x !== id)
+        : [...cur, id]
+      : cur.length === 1 && cur[0] === id
+        ? []
+        : [id];
+    patchFlow(flow.id, { confirmedImgIds: next, confirmedImgId: undefined });
+    const shown = flow.imgAttempts.find(
+      (a) => a.id === (next[next.length - 1] ?? id),
+    );
+    if (shown) {
+      preview({
+        kind: "image",
+        src: shown.image,
+        aspect: flow.aspect,
+        label: "look",
+      });
+    }
+  };
   const effSecs = flow
     ? effectiveSeconds(motionModel.provider, flow.duration, flow.resolution)
     : 5;
@@ -335,15 +382,35 @@ export function FlowPanel({
       try {
         const list = JSON.parse(store.get(FLOWS_KEY) ?? "[]") as Flow[];
         if (Array.isArray(list) && list.length) {
-          // Legacy tabs said "Flow N" — rename to the pipeline they are
-          // (owner call 2026-07-15: tabs read as image → motion).
-          const named = list.map((f) =>
-            /^Flow \d+$/.test(f.title)
-              ? { ...f, title: f.title.replace(/^Flow /, "Image → Motion ") }
-              : f,
-          );
-          setFlows(named);
-          setFlowId(named[named.length - 1].id);
+          const migrated = list.map((f) => {
+            // Legacy tabs said "Flow N" — rename to the pipeline they are.
+            const title = /^Flow \d+$/.test(f.title)
+              ? f.title.replace(/^Flow /, "Image → Motion ")
+              : f.title;
+            // Collapse duplicate attempt thumbnails (same image imported
+            // several times by the pre-0.6.3 shared-look bug), keeping the
+            // first id; repoint confirmations onto the survivor.
+            const byImage = new Map<string, string>(); // image → surviving id
+            const remap = new Map<string, string>(); // old id → surviving id
+            const attempts: FlowImageAttempt[] = [];
+            for (const a of f.imgAttempts) {
+              const keep = byImage.get(a.image);
+              if (keep) {
+                remap.set(a.id, keep);
+              } else {
+                byImage.set(a.image, a.id);
+                attempts.push(a);
+              }
+            }
+            const legacyIds =
+              f.confirmedImgIds ?? (f.confirmedImgId ? [f.confirmedImgId] : []);
+            const confirmedImgIds = [
+              ...new Set(legacyIds.map((id) => remap.get(id) ?? id)),
+            ];
+            return { ...f, title, imgAttempts: attempts, confirmedImgIds, confirmedImgId: undefined };
+          });
+          setFlows(migrated);
+          setFlowId(migrated[migrated.length - 1].id);
         } else {
           const f = newFlow(1);
           setFlows([f]);
@@ -607,6 +674,8 @@ export function FlowPanel({
     setError(null);
     const m = resolveModel(flow.motionModelKey);
     const { base64, mimeType } = splitDataUrl(confirmedImg.image);
+    // Every confirmed look, in order — multi-subject transfer sends them all.
+    const refImages = confirmedImgs.map((a) => splitDataUrl(a.image));
 
     // Transfer flows carry the MOVES clip as a Library pointer — fetch and
     // encode it now (same-origin, password header as query param not needed
@@ -686,8 +755,9 @@ export function FlowPanel({
           durationSeconds: flow.duration,
           resolution: flow.resolution,
           image: { base64, mimeType },
-          // Transfer: the confirmed look rides as role reference_image and
-          // this clip as reference_video (seedance adapter pairs them).
+          // Transfer: each confirmed look rides as a reference_image (one per
+          // person) next to the clip's reference_video — Seedance pairs them.
+          images: isTransfer ? refImages : undefined,
           drivingVideo,
         }),
       });
@@ -973,18 +1043,29 @@ export function FlowPanel({
       )}
 
       {/* ── STILL / LOOK stage ──────────────────────── */}
-      <section className={`flow-stage ${confirmedImg ? "locked" : ""}`}>
+      {/* Transfer flows stay OPEN after confirming — you may add a second
+          person's look. Look flows collapse to locked on the single confirm. */}
+      <section className={`flow-stage ${confirmedImg && !isTransfer ? "locked" : ""}`}>
         <div className="flow-stage-head">
           <span className="spec-head">
             {isTransfer ? "STAGE 2 · IMAGE" : "STAGE 1 · STILL"} — THE LOOK{" "}
-            {confirmedImg ? "· CONFIRMED ✓" : ""}
+            {confirmedImgs.length
+              ? isTransfer
+                ? `· ${confirmedImgs.length} SELECTED ✓`
+                : "· CONFIRMED ✓"
+              : ""}
           </span>
+          {isTransfer && (
+            <span className="flow-engine mono">
+              one look per person in the clip — click to select several
+            </span>
+          )}
         </div>
 
         {/* looks made elsewhere — other flows' confirmed stills + Character
-            cards — one click imports AND confirms (it earned its confirm
-            in its home flow) */}
-        {!confirmedImg && sharedLooks.length > 0 && (
+            cards. Look flows: one click imports AND confirms. Transfer flows:
+            adds it to the selected set (keep clicking to add more people). */}
+        {(!confirmedImg || isTransfer) && sharedLooks.length > 0 && (
           <>
             <p className="flow-locked-hint" style={{ marginBottom: 8 }}>
               Reuse a look you already made:
@@ -1006,7 +1087,7 @@ export function FlowPanel({
           </>
         )}
 
-        {(!confirmedImg || editFrom) && (
+        {(!confirmedImg || editFrom || isTransfer) && (
           <>
             {editFrom && (
               <div className="chips-row" style={{ marginBottom: 8 }}>
@@ -1105,50 +1186,46 @@ export function FlowPanel({
 
         {flow.imgAttempts.length > 0 && (
           <div className="flow-thumbs">
-            {flow.imgAttempts.map((a) => (
-              <button
-                key={a.id}
-                className={`flow-thumb ${flow.confirmedImgId === a.id ? "sel" : ""}`}
-                onClick={() => {
-                  patchFlow(flow.id, {
-                    confirmedImgId:
-                      flow.confirmedImgId === a.id ? null : a.id,
-                  });
-                  preview({
-                    kind: "image",
-                    src: a.image,
-                    aspect: flow.aspect,
-                    label:
-                      flow.confirmedImgId === a.id
-                        ? "still · unconfirmed"
-                        : "still · CONFIRMED",
-                  });
-                }}
-                title={
-                  flow.confirmedImgId === a.id
-                    ? "Confirmed — click to unconfirm"
-                    : "Click to CONFIRM this look"
-                }
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={a.image} alt="" />
-                {flow.confirmedImgId === a.id && (
-                  <span className="flow-thumb-tag">CONFIRMED</span>
-                )}
-                <span
-                  role="button"
-                  className="flow-thumb-edit"
-                  title="Edit from this look — same person, describe only the change (outfit, background…)"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditFrom(a);
-                    patchFlow(flow.id, { imgPrompt: "" });
-                  }}
+            {flow.imgAttempts.map((a) => {
+              const order = confirmedIds.indexOf(a.id); // -1 if unselected
+              const sel = order >= 0;
+              return (
+                <button
+                  key={a.id}
+                  className={`flow-thumb ${sel ? "sel" : ""}`}
+                  onClick={() => toggleConfirm(a.id)}
+                  title={
+                    sel
+                      ? "Selected — click to remove"
+                      : isTransfer
+                        ? "Click to add this person to the transfer"
+                        : "Click to CONFIRM this look"
+                  }
                 >
-                  ✎
-                </span>
-              </button>
-            ))}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.image} alt="" />
+                  {sel && (
+                    <span className="flow-thumb-tag">
+                      {isTransfer && confirmedIds.length > 1
+                        ? `#${order + 1}`
+                        : "CONFIRMED"}
+                    </span>
+                  )}
+                  <span
+                    role="button"
+                    className="flow-thumb-edit"
+                    title="Edit from this look — same person, describe only the change (outfit, background…)"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditFrom(a);
+                      patchFlow(flow.id, { imgPrompt: "" });
+                    }}
+                  >
+                    ✎
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -1161,9 +1238,13 @@ export function FlowPanel({
             </button>
             <button
               className="link-btn"
-              onClick={() => patchFlow(flow.id, { confirmedImgId: null })}
+              onClick={() =>
+                patchFlow(flow.id, { confirmedImgIds: [], confirmedImgId: undefined })
+              }
             >
-              ✎ Change look
+              {isTransfer && confirmedImgs.length > 1
+                ? "✕ Clear selection"
+                : "✎ Change look"}
             </button>
           </div>
         )}
@@ -1183,10 +1264,19 @@ export function FlowPanel({
           </span>
           <span className="flow-engine mono">
             {isTransfer
-              ? "Seedance 2.0 family — reference ≤15s; Fast ≈25% cheaper for iteration"
+              ? "Seedance 2.0 family — reference ≤15s; Mini is cheapest"
               : "recommended: Kling 3.0 (most natural motion per dollar)"}
           </span>
         </div>
+
+        {isTransfer && confirmedImgs.length > 1 && (
+          <p className="flow-locked-hint" style={{ marginBottom: 12 }}>
+            {confirmedImgs.length} looks selected — in the prompt, refer to
+            them in order (&quot;the first reference person… the second…&quot;)
+            and say where each one is (left / right) so the clip&apos;s
+            dancers map to the right identity.
+          </p>
+        )}
 
         {/* model/params always visible & editable */}
         <div className="flow-params">

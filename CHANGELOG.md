@@ -5,6 +5,26 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.7.0 — 2026-07-15
+
+### Added
+- **Multi-subject motion transfer.** A transfer flow's IMAGE stage is now
+  multi-select — confirm one look per person in the reference clip (the
+  two-dancer case). Each rides as its own `reference_image` next to the
+  clip's `reference_video`, in the order you pick (badges #1, #2…), and a
+  hint reminds you to say which is which (left / right) in the prompt. Look
+  flows stay single-confirm.
+- **Seedance 2.0 Mini** (`dreamina-seedance-2-0-mini-260615`) — the
+  cheapest clip-reader (ModelArk with-video token rate $2.1/M flat: ~12%
+  under standard @720p, ~55% @1080p). Selectable in transfer flows for the
+  tightest-budget pass.
+
+### Changed
+- Seedance pricing estimates corrected from owner-read ModelArk token rates
+  (standard $2.4–4.7/M with video); Mini/Fast slot in below.
+- Duplicate look thumbnails (from the pre-0.6.3 shared-look bug) collapse on
+  load, with confirmations repointed onto the survivor.
+
 ## 0.6.4 — 2026-07-15
 
 ### Added

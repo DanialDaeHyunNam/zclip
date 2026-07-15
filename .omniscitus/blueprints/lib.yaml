@@ -1,15 +1,21 @@
 version: 1
-updated: 2026-07-15T09:18:00.570Z
+updated: 2026-07-15T09:35:19.541Z
 
 files:
   "lib/config.ts":
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T09:18:00.570Z
-    change_count: 19
+    last_modified: 2026-07-15T09:33:28.331Z
+    change_count: 21
     purpose: "The switchboard: PROVIDERS adapters + MODELS catalog (model≠adapter), pricing, duration rules (effectiveSeconds), cost estimates, key allowlist"
     change_log:
+      - date: 2026-07-15T09:33:28.331Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:32:00.638Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T09:18:00.570Z
         action: edit
         source: "claude:Danial Nam"
@@ -71,10 +77,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-14T15:39:31.142Z
-    change_count: 3
+    last_modified: 2026-07-15T09:35:10.036Z
+    change_count: 4
     purpose: "VideoProvider adapter interface (submit/status) + SubmitParams (image/character/drivingVideo/modelId) + JobStatus"
     change_log:
+      - date: 2026-07-15T09:35:10.036Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T15:39:31.142Z
         action: edit
         source: "claude:Danial Nam"
@@ -165,10 +174,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T08:30:49.329Z
-    change_count: 11
+    last_modified: 2026-07-15T09:35:19.541Z
+    change_count: 12
     purpose: "ByteDance Seedance adapter (unverified endpoint/model id from ModelArk docs)"
     change_log:
+      - date: 2026-07-15T09:35:19.541Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T08:30:49.329Z
         action: edit
         source: "claude:Danial Nam"

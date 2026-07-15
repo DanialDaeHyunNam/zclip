@@ -114,6 +114,20 @@ export async function POST(req: Request) {
   if (typeof image === "string") {
     return Response.json({ error: image }, { status: 400 });
   }
+  // Multi-identity references (Seedance r2v, one per person). Capped at 6 —
+  // enough for any multi-subject clip, keeps the request bounded.
+  let images: { base64: string; mimeType: string }[] | undefined;
+  if (Array.isArray(body.images)) {
+    if (body.images.length > 6) {
+      return Response.json({ error: "Too many reference images (max 6)" }, { status: 400 });
+    }
+    const parsed = body.images.map(parseImage);
+    const bad = parsed.find((p) => typeof p === "string");
+    if (typeof bad === "string") {
+      return Response.json({ error: bad }, { status: 400 });
+    }
+    images = parsed.filter(Boolean) as { base64: string; mimeType: string }[];
+  }
   const character = parseImage(body.character);
   if (typeof character === "string") {
     return Response.json({ error: character }, { status: 400 });
@@ -153,6 +167,7 @@ export async function POST(req: Request) {
       durationSeconds,
       resolution,
       image,
+      images,
       character,
       drivingVideo,
       modelId,

@@ -8,6 +8,11 @@ export interface SubmitParams {
   /** Optional visual reference (drag-dropped in the UI, downscaled
    *  client-side). Each adapter maps it to its provider's image mode. */
   image?: { base64: string; mimeType: string };
+  /** Multiple identity references (Seedance 2.0 reference-to-video: one
+   *  per person in a multi-subject reference video). When present with a
+   *  drivingVideo, each rides as a role:"reference_image" content item, in
+   *  order. Adapters that take a single image ignore this. */
+  images?: { base64: string; mimeType: string }[];
   /** Performance-transfer inputs (Runway Act-Two only). `character` is the
    *  face/identity to animate; `drivingVideo` is the motion source whose
    *  performance is mapped onto that face. */

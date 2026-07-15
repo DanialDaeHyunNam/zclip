@@ -302,7 +302,8 @@ export const MODELS: ModelEntry[] = [
     provider: "seedance",
     modelId: "dreamina-seedance-2-0-260128",
     tagline: "Reads the whole reference video + audio; sound in output",
-    // ≈$4.3/M tokens with video input (ModelArk) — estimate until a metered run
+    // ModelArk token rate (with video input): $2.4/M @720p, $4.7/M @1080p
+    // (owner-read pricing 2026-07-15). Per-second is a rough derived est.
     price: { "720p": 0.1, "1080p": 0.22 },
     quality: 3,
     speed: 1,
@@ -312,11 +313,23 @@ export const MODELS: ModelEntry[] = [
     short: "Seedance 2.0 Fast",
     provider: "seedance",
     modelId: "dreamina-seedance-2-0-fast-260128",
-    tagline: "Same clip-reading tricks, ~25% cheaper — iterate here, finish on 2.0",
-    // ≈$3.3/M tokens with video input (ModelArk resource packs) — estimate
-    price: { "720p": 0.08, "1080p": 0.17 },
+    tagline: "Faster clip-reader for iteration — finish on 2.0",
+    // Between mini and standard — token rate unconfirmed, per-second est.
+    price: { "720p": 0.09, "1080p": 0.16 },
     quality: 2,
     speed: 2,
+  }),
+  variant({
+    key: "seedance-2-mini",
+    short: "Seedance 2.0 Mini",
+    provider: "seedance",
+    modelId: "dreamina-seedance-2-0-mini-260615",
+    tagline: "Cheapest clip-reader — flat token rate, biggest saving at 1080p",
+    // ModelArk token rate (with video input): $2.1/M FLAT (owner-read
+    // 2026-07-15) — ~12% under standard @720p, ~55% under @1080p.
+    price: { "720p": 0.09, "1080p": 0.1 },
+    quality: 1,
+    speed: 3,
   }),
 ];
 

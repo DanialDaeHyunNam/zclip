@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T09:18:48.481Z
+updated: 2026-07-15T09:40:02.796Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -798,10 +798,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T08:32:47.345Z
-    change_count: 12
+    last_modified: 2026-07-15T09:35:47.675Z
+    change_count: 14
     purpose: "POST submit → adapter; validates params/image/character/drivingVideo/modelId against whitelists, returns jobId fast"
     change_log:
+      - date: 2026-07-15T09:35:47.675Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:35:45.521Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T08:32:47.345Z
         action: edit
         source: "claude:Danial Nam"
@@ -2510,10 +2516,46 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-15T09:18:48.481Z
-    change_count: 55
+    last_modified: 2026-07-15T09:40:02.796Z
+    change_count: 67
     purpose: "FLOW method panel (embedded in the studio): still→motion pipeline — look generate/upload/EDIT with confirm gate, motion iteration via i2v, presets, session-scoped flows, shared-Library interop, Character-card export"
     change_log:
+      - date: 2026-07-15T09:40:02.796Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:39:45.714Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:39:08.663Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:39:01.573Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:38:32.714Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:37:52.851Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:37:43.247Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:37:13.179Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:37:00.542Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:36:48.759Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:36:35.859Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:36:21.880Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T09:18:48.481Z
         action: edit
         source: "claude:Danial Nam"
