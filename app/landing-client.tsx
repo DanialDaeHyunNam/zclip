@@ -71,6 +71,11 @@ const COPY: Record<Lang, Copy> = {
         local: "Everything unlocks — GRAB, the clip vault, reference-video Seedance, Act-Two up to 16MB.",
       },
       {
+        label: "Updates",
+        browser: "Always the latest version — improvements land automatically, nothing to install.",
+        local: "An in-app banner tells you when a new version ships; updating is one command.",
+      },
+      {
         label: "Setup",
         browser: "Zero. Paste a key, generate in 30 seconds.",
         local: "One copy-paste install (macOS / Windows guide, ~3 minutes).",
@@ -138,6 +143,11 @@ const COPY: Record<Lang, Copy> = {
         label: "기능",
         browser: "GRAB(URL 참조) 없음 · 참조영상 Seedance 없음 · Act-Two는 ~4.5MB까지.",
         local: "전부 열립니다 — GRAB, 클립 볼트, 참조영상 Seedance, Act-Two 16MB.",
+      },
+      {
+        label: "업데이트",
+        browser: "항상 최신 버전 — 개선이 자동으로 반영됩니다. 설치할 것 없음.",
+        local: "새 버전이 나오면 앱 안 배너로 알려주고, 업데이트는 명령어 한 줄.",
       },
       {
         label: "시작",

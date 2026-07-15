@@ -5,6 +5,13 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.5.4 — 2026-07-15
+
+### Changed
+- Local-vs-browser comparison modal gains an "Updates" row: the browser
+  is always the latest version automatically; a local install gets the
+  in-app update banner and a one-command update.
+
 ## 0.5.3 — 2026-07-15
 
 ### Added

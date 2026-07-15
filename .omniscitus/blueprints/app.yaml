@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T02:26:08.954Z
+updated: 2026-07-15T04:32:51.167Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -1011,10 +1011,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T01:40:01.820Z
-    change_count: 24
+    last_modified: 2026-07-15T04:32:51.167Z
+    change_count: 26
     purpose: "The bilingual (EN/한국어) landing/about page body (client), wrapped by the app/page.tsx server shell"
     change_log:
+      - date: 2026-07-15T04:32:51.167Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T04:32:46.610Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T01:40:01.820Z
         action: edit
         source: "claude:Danial Nam"
