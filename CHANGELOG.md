@@ -5,6 +5,12 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.8.2 — 2026-07-16
+
+### Fixed
+- FLOW progress-bar ANIMATE button no longer stretches to fill the whole
+  bar (it inherited btn-primary's full width) — it's sized to its label now.
+
 ## 0.8.1 — 2026-07-16
 
 ### Fixed

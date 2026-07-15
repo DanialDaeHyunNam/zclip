@@ -5807,6 +5807,8 @@ button {
 }
 .flow-animate-btn {
   flex: none;
+  width: auto; /* override .btn-primary width:100% */
+  padding: 14px 30px;
   white-space: nowrap;
 }
 
