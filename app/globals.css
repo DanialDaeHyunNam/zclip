@@ -5849,6 +5849,27 @@ button {
   background: rgba(111, 220, 255, 0.15);
 }
 
+/* "use this look's prompt as text" — bottom overlay on transfer thumbnails */
+.flow-thumb-text {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  padding: 3px 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+.flow-thumb-text:hover {
+  border-color: rgba(111, 220, 255, 0.6);
+  background: rgba(111, 220, 255, 0.15);
+}
+
 .side-flow-badge {
   color: var(--accent);
 }

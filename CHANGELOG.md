@@ -5,6 +5,17 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.7.3 — 2026-07-15
+
+### Added
+- **Text identity for transfer flows** — the way around Seedance's
+  real-person filter. The IMAGE stage is now optional: skip it and describe
+  the character in the prompt (no image → nothing for the filter to block).
+  Each generated look also gets an **"↳ text"** button that drops the exact
+  prompt that made it in as the character description, so you reuse a
+  crafted RENA-style look as words instead of a (blocked) photo. Motion
+  still comes from the depth reference clip; identity from the text.
+
 ## 0.7.2 — 2026-07-15
 
 ### Added

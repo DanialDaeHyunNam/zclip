@@ -358,6 +358,36 @@ export function FlowPanel({
     .map((id) => flow?.imgAttempts.find((a) => a.id === id))
     .filter(Boolean) as FlowImageAttempt[];
   const confirmedImg = confirmedImgs[0] ?? null; // first = backward-compat
+  // Motion is generatable when: look flow has a confirmed still, OR transfer
+  // flow has its MOVES clip (the identity look is optional there).
+  const canAnimate = isTransfer ? Boolean(flow?.refClip) : Boolean(confirmedImg);
+
+  /** Reuse a look's GENERATION PROMPT as the character description, instead
+   *  of sending the image (which Seedance's real-person filter blocks). The
+   *  look deselects as an image ref; its prompt is injected as a Character
+   *  line, replacing the template's generic "person from the reference
+   *  image" sentence. Only meaningful for looks made from a prompt. */
+  const useLookAsText = (a: FlowImageAttempt) => {
+    if (!flow) return;
+    const desc = a.prompt.trim();
+    if (desc.length < 12 || /^\((uploaded|shared)/.test(desc)) {
+      setError(
+        "This look has no text description to reuse (it was uploaded or imported). Use a look you generated from a prompt, or type the character into the prompt yourself.",
+      );
+      return;
+    }
+    const cur =
+      flow.confirmedImgIds ?? (flow.confirmedImgId ? [flow.confirmedImgId] : []);
+    const body = flow.motionPrompt.replace(
+      /The subjects? (?:is|are) the (?:person|people) from the reference images?[,.]?\s*(?:outfit[^.]*\.)?\s*/i,
+      "",
+    );
+    patchFlow(flow.id, {
+      confirmedImgIds: cur.filter((id) => id !== a.id),
+      confirmedImgId: undefined,
+      motionPrompt: `Character (text identity, no image): ${desc}\n${body}`,
+    });
+  };
 
   /** Click a thumbnail: look flows single-select; transfer flows toggle
    *  membership (one identity per person in the reference clip). */
@@ -761,8 +791,13 @@ export function FlowPanel({
   /* ── stage 2: motion generation (i2v on the confirmed still) ── */
 
   const generateMotion = async () => {
-    if (!flow || !confirmedImg || !flow.motionPrompt.trim()) return;
-    if (flow.kind === "transfer" && !flow.refClip) return;
+    if (!flow || !flow.motionPrompt.trim()) return;
+    // Look flows need a confirmed still (it IS the i2v input). Transfer flows
+    // need the MOVES clip; the identity look is OPTIONAL — describing a
+    // fictional character in the prompt (no image) sidesteps Seedance's
+    // real-person filter entirely (motion from the depth clip, identity from
+    // text).
+    if (flow.kind === "transfer" ? !flow.refClip : !confirmedImg) return;
     setArmed(null);
     setError(null);
     // Jump to the top so the rendering preview (left frame) is in view.
@@ -770,8 +805,9 @@ export function FlowPanel({
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
     const m = resolveModel(flow.motionModelKey);
-    const { base64, mimeType } = splitDataUrl(confirmedImg.image);
-    // Every confirmed look, in order — multi-subject transfer sends them all.
+    // i2v (look flow) sends the confirmed still as the image. Transfer sends
+    // each confirmed look as a reference_image — or none, for text-only.
+    const stillImage = confirmedImg ? splitDataUrl(confirmedImg.image) : undefined;
     const refImages = confirmedImgs.map((a) => splitDataUrl(a.image));
 
     // Transfer flows carry the MOVES clip as a Library pointer — fetch and
@@ -851,10 +887,12 @@ export function FlowPanel({
           aspectRatio: flow.aspect,
           durationSeconds: flow.duration,
           resolution: flow.resolution,
-          image: { base64, mimeType },
+          // Look flow: the still is the i2v input. Transfer: no first-frame
+          // image (identity is reference_image or pure text).
+          image: isTransfer ? undefined : stillImage,
           // Transfer: each confirmed look rides as a reference_image (one per
-          // person) next to the clip's reference_video — Seedance pairs them.
-          images: isTransfer ? refImages : undefined,
+          // person). Empty ⇒ text-only identity (skips the real-person filter).
+          images: isTransfer && refImages.length ? refImages : undefined,
           drivingVideo,
         }),
       });
@@ -1179,7 +1217,7 @@ export function FlowPanel({
       <section className={`flow-stage ${confirmedImg && !isTransfer ? "locked" : ""}`}>
         <div className="flow-stage-head">
           <span className="spec-head">
-            {isTransfer ? "STAGE 2 · IMAGE" : "STAGE 1 · STILL"} — THE LOOK{" "}
+            {isTransfer ? "STAGE 2 · IMAGE (OPTIONAL)" : "STAGE 1 · STILL"} — THE LOOK{" "}
             {confirmedImgs.length
               ? isTransfer
                 ? `· ${confirmedImgs.length} SELECTED ✓`
@@ -1188,7 +1226,7 @@ export function FlowPanel({
           </span>
           {isTransfer && (
             <span className="flow-engine mono">
-              one look per person — click to select several · use a STYLIZED look (Seedance blocks photoreal faces)
+              OPTIONAL — or describe the character in the prompt (no image → no real-person filter). A photoreal look gets blocked; a stylized one (anime/3DCG) works.
             </span>
           )}
         </div>
@@ -1354,6 +1392,23 @@ export function FlowPanel({
                   >
                     ✎
                   </span>
+                  {/* Transfer: use this look's PROMPT as the character (text,
+                      not image) — sidesteps the real-person filter. */}
+                  {isTransfer &&
+                    a.prompt.trim().length >= 12 &&
+                    !/^\((uploaded|shared)/.test(a.prompt.trim()) && (
+                      <span
+                        role="button"
+                        className="flow-thumb-text"
+                        title="Use this look's PROMPT as the character description (text — avoids Seedance's real-person filter)"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          useLookAsText(a);
+                        }}
+                      >
+                        ↳ text
+                      </span>
+                    )}
                 </button>
               );
             })}
@@ -1382,11 +1437,7 @@ export function FlowPanel({
       </section>
 
       {/* ── MOTION stage ────────────────────────────── */}
-      <section
-        className={`flow-stage ${
-          confirmedImg && (!isTransfer || flow.refClip) ? "" : "disabled"
-        }`}
-      >
+      <section className={`flow-stage ${canAnimate ? "" : "disabled"}`}>
         <div className="flow-stage-head">
           <span className="spec-head">
             {isTransfer
@@ -1474,7 +1525,7 @@ export function FlowPanel({
           </label>
         </div>
 
-        {confirmedImg && (!isTransfer || flow.refClip) ? (
+        {canAnimate ? (
           <>
             <div className="flow-gen-row">
               <textarea
@@ -1564,7 +1615,7 @@ export function FlowPanel({
         ) : (
           <p className="flow-locked-hint">
             {isTransfer
-              ? "Set the MOVES reference (Stage 1) and confirm a look (Stage 2) — then generate the transfer here, iterating direction and staging without touching either."
+              ? "Set the MOVES reference (Stage 1) — then generate here. A look (Stage 2) is optional: skip it and describe the character in the prompt below."
               : "Confirm a look in Stage 1 first — then iterate motion here as many times as you want without touching the still."}
           </p>
         )}
