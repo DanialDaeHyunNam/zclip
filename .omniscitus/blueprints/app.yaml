@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T06:15:54.424Z
+updated: 2026-07-15T06:57:57.221Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -2213,10 +2213,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-08
-    last_modified: 2026-07-14T16:07:47.788Z
-    change_count: 17
+    last_modified: 2026-07-15T06:57:57.221Z
+    change_count: 21
     purpose: "The Library page (/archive) — all takes/GRABs grouped by session with the rail; a collapsible '+ Add reference' GRAB form; 'use as reference' hands a clip back to the studio"
     change_log:
+      - date: 2026-07-15T06:57:57.221Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T06:57:52.464Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T06:57:49.617Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T06:57:39.264Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T16:07:47.788Z
         action: edit
         source: "claude:Danial Nam"

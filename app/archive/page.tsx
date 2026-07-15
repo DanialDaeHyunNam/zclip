@@ -41,6 +41,30 @@ const loadJson = <T,>(key: string, fallback: T): T => {
   }
 };
 
+/** Human timecode → seconds: "6:30" → 390, "1:02:05" → 3725, "95.5" → 95.5.
+ *  Empty → null (no trim). Malformed → NaN (caller surfaces the error). */
+const parseTimecode = (raw: string): number | null => {
+  const t = raw.trim();
+  if (!t) return null;
+  const parts = t.split(":");
+  if (parts.length > 3 || parts.some((p) => p === "" || !/^\d+(\.\d+)?$/.test(p)))
+    return NaN;
+  // Sub-units (minutes/seconds after a colon) must stay under 60.
+  if (parts.slice(1).some((p) => Number(p) >= 60)) return NaN;
+  return parts.reduce((acc, p) => acc * 60 + Number(p), 0);
+};
+
+/** Seconds → "m:ss" (or "h:mm:ss") for display. */
+const fmtClock = (s: number): string => {
+  const whole = Math.floor(s);
+  const frac = s - whole ? String(+(s - whole).toFixed(2)).slice(1) : "";
+  const h = Math.floor(whole / 3600);
+  const m = Math.floor((whole % 3600) / 60);
+  const sec = whole % 60;
+  const mmss = `${m}:${String(sec).padStart(2, "0")}${frac}`;
+  return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}${frac}` : mmss;
+};
+
 export default function ArchivePage() {
   const router = useRouter();
   const hosted = useHosted();
@@ -290,10 +314,13 @@ export default function ArchivePage() {
     setGrabBusy("fetch");
     setGrabErr(null);
     try {
-      const start = grabStart.trim() === "" ? null : Number(grabStart);
-      const end = grabEnd.trim() === "" ? null : Number(grabEnd);
+      // Users type clock time (6:30); the server keeps speaking seconds.
+      const start = parseTimecode(grabStart);
+      const end = parseTimecode(grabEnd);
       if ((start != null && !Number.isFinite(start)) || (end != null && !Number.isFinite(end)))
-        throw new Error("Trim values must be seconds, e.g. 3 and 9.5");
+        throw new Error("Trim looks off — use minutes:seconds like 6:30, or plain seconds like 390.");
+      if (start != null && end != null && end <= start)
+        throw new Error("Trim end must be after the start.");
       const r = await fetch("/api/grab", {
         method: "POST",
         headers: pwHeaders({ "content-type": "application/json" }),
@@ -308,7 +335,7 @@ export default function ArchivePage() {
         provider: "grab",
         prompt: source,
         note: `Reference · ${source.replace(/^https?:\/\/(www\.)?/, "")}${
-          start != null && end != null ? ` · ${start}–${end}s` : ""
+          start != null && end != null ? ` · ${fmtClock(start)}–${fmtClock(end)}` : ""
         }`,
         variantLabel: "Reference",
         createdAt: Date.now(),
@@ -460,10 +487,10 @@ export default function ArchivePage() {
               <span className="label">Trim (optional)</span>
               <input
                 className="grab-num"
-                type="number"
-                min={0}
-                step={0.5}
-                placeholder="from s"
+                type="text"
+                inputMode="numeric"
+                placeholder="from 6:30"
+                title="minutes:seconds (6:30) or plain seconds (390)"
                 value={grabStart}
                 onChange={(e) => setGrabStart(e.target.value)}
                 disabled={Boolean(grabBusy)}
@@ -471,10 +498,10 @@ export default function ArchivePage() {
               <span className="mono">→</span>
               <input
                 className="grab-num"
-                type="number"
-                min={0}
-                step={0.5}
-                placeholder="to s"
+                type="text"
+                inputMode="numeric"
+                placeholder="to 9:45"
+                title="minutes:seconds (9:45) or plain seconds (585)"
                 value={grabEnd}
                 onChange={(e) => setGrabEnd(e.target.value)}
                 disabled={Boolean(grabBusy)}

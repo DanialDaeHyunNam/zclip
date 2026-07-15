@@ -5,6 +5,13 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.5.6 — 2026-07-15
+
+### Changed
+- GRAB trim inputs take clock time now — type `6:30` → `9:45` (or
+  `1:02:05`, or plain seconds like `390`); conversion to seconds happens
+  behind the scenes, and the library note shows the same clock format.
+
 ## 0.5.5 — 2026-07-15
 
 ### Fixed
