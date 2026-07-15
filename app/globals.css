@@ -5758,7 +5758,7 @@ button {
 .flow-actionbar {
   position: fixed; /* portaled to <body> — viewport-relative, always afloat */
   bottom: 22px;
-  left: 24px;
+  left: 76px; /* clear the 52px rail + gap; centers in the content area */
   right: 24px;
   max-width: 720px;
   margin: 0 auto; /* center within the left/right insets, no vw overflow */
@@ -5813,6 +5813,18 @@ button {
   color: #000;
   border-color: var(--accent);
 }
+/* side panel (292px) open → center in the space to the right of it */
+.flow-actionbar.with-side {
+  left: 368px;
+}
+@media (max-width: 900px) {
+  .flow-actionbar,
+  .flow-actionbar.with-side {
+    left: 16px;
+    right: 16px;
+  }
+}
+
 .flow-animate-btn {
   flex: none;
   width: auto; /* override .btn-primary width:100% */
@@ -5856,7 +5868,8 @@ button {
 .flow-sel-x:hover {
   color: var(--accent);
 }
-.flow-sel-text {
+/* per-chip "sent as IMAGE / TEXT" mode toggle */
+.flow-sel-mode {
   background: none;
   border: 1px solid var(--hair-strong);
   border-radius: var(--r-pill);
@@ -5868,9 +5881,35 @@ button {
   padding: 2px 7px;
   transition: border-color 0.2s ease, color 0.2s ease;
 }
-.flow-sel-text:hover {
+.flow-sel-mode:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+/* a chip in TEXT mode reads differently (its prompt is sent, not the image) */
+.flow-sel-chip.text-mode {
+  border-style: dashed;
+}
+.flow-sel-chip.text-mode img {
+  opacity: 0.5;
+}
+
+/* collapsed (read-only) motion prompt after a take is sent */
+.flow-motion-collapsed {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.015);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.flow-motion-collapsed .flow-take-prompt {
+  margin: 0 0 8px;
+}
+.flow-take-prompt.clamp3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .flow-thumb-tag {

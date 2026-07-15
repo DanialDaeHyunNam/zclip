@@ -5,6 +5,26 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.9.0 — 2026-07-16
+
+### Changed
+- **FLOW image stage is one carousel.** Generated looks and reused looks now
+  live in a single "Pick a look" carousel; the big candidate strip below is
+  gone. A selected look shows only as a compact chip.
+- **Per-look image/text toggle.** Each selected transfer look's chip flips
+  between 🖼 image (reference_image) and ↳ text (its prompt as the character —
+  skips the real-person filter) — and stays selected either way. TEXT-mode
+  identities are prepended to the prompt at send.
+- **ANIMATE is only the floating bar now** — the duplicate inline button is
+  gone. The bar floats (portaled to <body>, so no more horizontal scroll or
+  clipping), centers in the space right of the sessions panel when it's open,
+  and hides while a take is rendering or after you fire until you edit an input.
+- **Flows render independently.** Switching flows syncs the preview to that
+  flow's real state — a render in one flow no longer bleeds into another, and
+  returning to a rendering flow resumes its elapsed timer.
+- Long motion prompts collapse to 3 lines after a take is sent, with ✎ Edit to
+  reopen the textarea; take-list prompts clamp to 3 lines too.
+
 ## 0.8.4 — 2026-07-16
 
 ### Fixed

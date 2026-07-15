@@ -3297,7 +3297,7 @@ export default function Home() {
           </div>
 
           {method === "flow" && (
-            <FlowPanel onPreview={setFlowPreview} sessionId={sessionId} />
+            <FlowPanel onPreview={setFlowPreview} sessionId={sessionId} sideOpen={sideOpen} />
           )}
 
           <div className="thread" ref={threadRef}>

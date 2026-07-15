@@ -138,6 +138,10 @@ interface Flow {
    *  can confirm several (one identity per person in the reference clip —
    *  they ride as reference_image items in this order). */
   confirmedImgIds?: string[];
+  /** Subset of confirmedImgIds sent as TEXT (the prompt that made them)
+   *  instead of as a reference_image — the way around Seedance's real-person
+   *  filter. Toggled per chip. */
+  textLookIds?: string[];
   motionPrompt: string;
   motionModelKey: string;
   motionAttempts: FlowMotionAttempt[];
@@ -225,12 +229,16 @@ const parseClock = (raw: string): number | null => {
 export function FlowPanel({
   onPreview,
   sessionId,
+  sideOpen,
 }: {
   /** Surface an image/video in the studio's shared left frame. */
   onPreview: (p: FlowPreview | null) => void;
   /** Current chat session — flows are scoped to it (legacy flows without
    *  a sessionId stay visible everywhere). */
   sessionId: string | null;
+  /** Sessions side-panel open? The floating action bar centers in the space
+   *  to the RIGHT of it when so. */
+  sideOpen: boolean;
 }) {
   const [flows, setFlows] = useState<Flow[]>([]);
   const [flowId, setFlowId] = useState<string | null>(null);
@@ -258,6 +266,12 @@ export function FlowPanel({
   // Portal target (document.body) is only available after mount.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  // After ANIMATE fires, hide the floating bar until the user edits any
+  // input again (owner call: "animate 후 미노출, 수정하면 다시 준비").
+  const [barHidden, setBarHidden] = useState(false);
+  // Long motion prompt collapses to a read-only 3-line view after a take is
+  // sent; ✎ Edit flips it back to a textarea.
+  const [motionEditing, setMotionEditing] = useState(false);
 
   /* flows scoped to the current session (legacy flows show everywhere) */
   const visibleFlows = flows.filter(
@@ -380,6 +394,48 @@ export function FlowPanel({
   const canAnimate = isTransfer ? Boolean(flow?.refClip) : Boolean(confirmedImg);
   const motionReady = Boolean(flow?.motionPrompt.trim());
   const animateReady = canAnimate && motionReady;
+  // Hide the bar while a take is actually rendering (any pending attempt) —
+  // there's nothing to fire until it lands.
+  const rendering = Boolean(
+    flow?.motionAttempts.some((a) => a.status === "pending"),
+  );
+  // Any edit to a generation input re-shows the bar (it hid after ANIMATE).
+  const inputSig = flow
+    ? `${flow.motionPrompt}|${confirmedIds.join(",")}|${(flow.textLookIds ?? []).join(",")}|${flow.refClip?.url ?? ""}|${flow.motionModelKey}|${flow.aspect}|${flow.duration}|${flow.resolution}`
+    : "";
+  useEffect(() => {
+    setBarHidden(false);
+  }, [inputSig]);
+
+  // Flows are INDEPENDENT: on switching to a flow, sync the shared left frame
+  // to THIS flow's real state — resume its render if a take is pending,
+  // else show its latest result / confirmed look / nothing. So a render in
+  // one flow doesn't bleed into another, and returning to a rendering flow
+  // shows it rendering again (elapsed resumes from the real start).
+  useEffect(() => {
+    if (!flow) return;
+    setMotionEditing(false); // collapse the prompt fresh on each flow
+    const pending = flow.motionAttempts.find((a) => a.status === "pending");
+    if (pending) {
+      preview({
+        kind: "busy",
+        src: "",
+        aspect: pending.aspectRatio,
+        label: `${resolveModel(pending.modelKey).short} — rendering motion · usually 60–180s`,
+        startedAt: pending.createdAt,
+      });
+      return;
+    }
+    const done = flow.motionAttempts.find((a) => a.status === "done" && a.videoUrl);
+    if (done?.videoUrl) {
+      preview({ kind: "video", src: done.videoUrl, aspect: done.aspectRatio, label: `${done.modelLabel} · take` });
+    } else if (confirmedImg) {
+      preview({ kind: "image", src: confirmedImg.image, aspect: flow.aspect, label: "look" });
+    } else {
+      preview(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flow?.id]);
   // Bottom progress bar steps for the current pipeline. `required` gates the
   // ANIMATE button; optional steps show state but don't block.
   const flowSteps = flow
@@ -395,30 +451,26 @@ export function FlowPanel({
         ]
     : [];
 
-  /** Reuse a look's GENERATION PROMPT as the character description, instead
-   *  of sending the image (which Seedance's real-person filter blocks). The
-   *  look deselects as an image ref; its prompt is injected as a Character
-   *  line, replacing the template's generic "person from the reference
-   *  image" sentence. Only meaningful for looks made from a prompt. */
-  const useLookAsText = (a: FlowImageAttempt) => {
+  /** Flip a selected look between IMAGE mode (rides as a reference_image)
+   *  and TEXT mode (its generation prompt is sent as the character
+   *  description — skips Seedance's real-person filter). The chip STAYS
+   *  either way; only how it's sent changes. */
+  const toggleLookText = (a: FlowImageAttempt) => {
     if (!flow) return;
     const desc = a.prompt.trim();
     if (desc.length < 12 || /^\((uploaded|shared)/.test(desc)) {
       setError(
-        "This look has no text description to reuse (it was uploaded or imported). Use a look you generated from a prompt, or type the character into the prompt yourself.",
+        "This look has no text description to switch to (it was uploaded, not generated from a prompt).",
       );
       return;
     }
-    const cur =
-      flow.confirmedImgIds ?? (flow.confirmedImgId ? [flow.confirmedImgId] : []);
-    const body = flow.motionPrompt.replace(
-      /The subjects? (?:is|are) the (?:person|people) from the reference images?[,.]?\s*(?:outfit[^.]*\.)?\s*/i,
-      "",
-    );
-    patchFlow(flow.id, {
-      confirmedImgIds: cur.filter((id) => id !== a.id),
-      confirmedImgId: undefined,
-      motionPrompt: `Character (text identity, no image): ${desc}\n${body}`,
+    patchFlow(flow.id, (f) => {
+      const cur = f.textLookIds ?? [];
+      return {
+        textLookIds: cur.includes(a.id)
+          ? cur.filter((x) => x !== a.id)
+          : [...cur, a.id],
+      };
     });
   };
 
@@ -838,10 +890,18 @@ export function FlowPanel({
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
     const m = resolveModel(flow.motionModelKey);
-    // i2v (look flow) sends the confirmed still as the image. Transfer sends
-    // each confirmed look as a reference_image — or none, for text-only.
+    // i2v (look flow) sends the confirmed still as the image. Transfer splits
+    // each confirmed look by its chip mode: IMAGE looks ride as
+    // reference_image; TEXT looks contribute their prompt to the character
+    // description (prepended below) — the real-person-filter workaround.
     const stillImage = confirmedImg ? splitDataUrl(confirmedImg.image) : undefined;
-    const refImages = confirmedImgs.map((a) => splitDataUrl(a.image));
+    const textIds = new Set(flow.textLookIds ?? []);
+    const imageLooks = confirmedImgs.filter((a) => !textIds.has(a.id));
+    const refImages = imageLooks.map((a) => splitDataUrl(a.image));
+    const textChars = confirmedImgs
+      .filter((a) => textIds.has(a.id))
+      .map((a) => a.prompt.trim())
+      .filter(Boolean);
 
     // Transfer flows carry the MOVES clip as a Library pointer — fetch and
     // encode it now (same-origin, password header as query param not needed
@@ -908,13 +968,26 @@ export function FlowPanel({
       startedAt: Date.now(),
     });
     try {
+      // Strip the user-only marker, then prepend any TEXT-mode character
+      // descriptions so the identity rides in words (no reference_image).
+      const cleanPrompt = flow.motionPrompt.replace(
+        /\s*\(← direct the performance here\)/g,
+        "",
+      );
+      const sentPrompt = textChars.length
+        ? `${textChars
+            .map((d, i) =>
+              textChars.length > 1
+                ? `Reference person ${i + 1}: ${d}`
+                : `Character: ${d}`,
+            )
+            .join("\n")}\n${cleanPrompt}`
+        : cleanPrompt;
       const r = await fetch("/api/generate", {
         method: "POST",
         headers: headers(m.envVar),
         body: JSON.stringify({
-          // the template's "(← direct the performance here)" marker is a
-          // note to the USER — never send it to the model
-          prompt: flow.motionPrompt.replace(/\s*\(← direct the performance here\)/g, ""),
+          prompt: sentPrompt,
           provider: m.provider,
           modelId: m.modelId,
           aspectRatio: flow.aspect,
@@ -957,6 +1030,8 @@ export function FlowPanel({
       patchFlow(flow.id, (f) => ({
         motionAttempts: [attempt, ...f.motionAttempts],
       }));
+      setBarHidden(true); // fired — hide the bar until an input changes
+      setMotionEditing(false); // collapse the prompt back to read-only
     } catch {
       setError("Network error — try again");
       preview(lastShown.current);
@@ -1286,20 +1361,54 @@ export function FlowPanel({
           )}
         </div>
 
-        {/* looks made elsewhere — other flows' confirmed stills + Character
-            cards. Look flows: one click imports AND confirms. Transfer flows:
-            adds it to the selected set (keep clicking to add more people). */}
-        {(!confirmedImg || isTransfer) && sharedLooks.length > 0 && (
+        {/* One carousel to PICK from: this flow's own generated looks
+            (unselected) + looks reused from other flows/cards. Selected ones
+            live in the chip tray above — never duplicated as a big thumbnail. */}
+        {(() => {
+          const attemptImgs = new Set(flow.imgAttempts.map((a) => a.image));
+          const pickAttempts = flow.imgAttempts.filter(
+            (a) => !confirmedIds.includes(a.id),
+          );
+          const pickShared = sharedLooks.filter((l) => !attemptImgs.has(l.image));
+          if (!pickAttempts.length && !pickShared.length) return null;
+          return (
           <>
             <p className="flow-locked-hint" style={{ marginBottom: 8 }}>
-              Reuse a look you already made:
+              Pick a look (or reuse one you already made):
             </p>
             <div className="flow-thumbs" style={{ marginBottom: 14 }}>
-              {sharedLooks.map((l) => (
+              {pickAttempts.map((a) => (
+                <button
+                  key={a.id}
+                  className="flow-thumb"
+                  title={
+                    isTransfer
+                      ? "Click to add this person to the transfer"
+                      : "Click to CONFIRM this look"
+                  }
+                  onClick={() => toggleConfirm(a.id)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.image} alt="" />
+                  <span
+                    role="button"
+                    className="flow-thumb-edit"
+                    title="Edit from this look — same person, describe only the change"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditFrom(a);
+                      patchFlow(flow.id, { imgPrompt: "" });
+                    }}
+                  >
+                    ✎
+                  </span>
+                </button>
+              ))}
+              {pickShared.map((l) => (
                 <button
                   key={l.image.slice(-24)}
                   className="flow-thumb"
-                  title={`Use this look · ${l.label}`}
+                  title={`Reuse this look · ${l.label}`}
                   onClick={() => useSharedLook(l)}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1309,7 +1418,8 @@ export function FlowPanel({
               ))}
             </div>
           </>
-        )}
+          );
+        })()}
 
         {/* Selected looks as compact removable chips — a picked look shows
             ONLY here, never as a big thumbnail below. Transfer flows: each
@@ -1321,19 +1431,26 @@ export function FlowPanel({
               const hasText =
                 a.prompt.trim().length >= 12 &&
                 !/^\((uploaded|shared)/.test(a.prompt.trim());
+              const asText = (flow.textLookIds ?? []).includes(a.id);
               return (
-                <span key={a.id} className="flow-sel-chip">
+                <span key={a.id} className={`flow-sel-chip ${asText ? "text-mode" : ""}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={a.image} alt="" />
                   {isTransfer && confirmedImgs.length > 1 ? `#${n + 1} · ` : ""}
-                  {a.prompt.startsWith("(") ? "look" : a.prompt.slice(0, 20)}
+                  {a.prompt.startsWith("(") ? "look" : a.prompt.slice(0, 18)}
+                  {/* Sent as… toggle: IMAGE (default) vs TEXT (its prompt).
+                      TEXT sidesteps Seedance's real-person filter. */}
                   {isTransfer && hasText && (
                     <button
-                      className="flow-sel-text"
-                      title="Use this look's PROMPT as text (avoids Seedance's real-person filter) instead of the image"
-                      onClick={() => useLookAsText(a)}
+                      className="flow-sel-mode"
+                      title={
+                        asText
+                          ? "Sent as TEXT (this look's prompt). Click to send the IMAGE instead."
+                          : "Sent as the IMAGE. Click to send its PROMPT as text (avoids Seedance's real-person filter)."
+                      }
+                      onClick={() => toggleLookText(a)}
                     >
-                      ↳ text
+                      {asText ? "↳ text" : "🖼 image"}
                     </button>
                   )}
                   <button
@@ -1446,41 +1563,7 @@ export function FlowPanel({
           </>
         )}
 
-        {/* Candidate generated looks — SELECTED ones live in the chip tray
-            above, so only unselected candidates show here (never duplicated). */}
-        {flow.imgAttempts.some((a) => !confirmedIds.includes(a.id)) && (
-          <div className="flow-thumbs">
-            {flow.imgAttempts
-              .filter((a) => !confirmedIds.includes(a.id))
-              .map((a) => (
-                <button
-                  key={a.id}
-                  className="flow-thumb"
-                  onClick={() => toggleConfirm(a.id)}
-                  title={
-                    isTransfer
-                      ? "Click to add this person to the transfer"
-                      : "Click to CONFIRM this look"
-                  }
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={a.image} alt="" />
-                  <span
-                    role="button"
-                    className="flow-thumb-edit"
-                    title="Edit from this look — same person, describe only the change (outfit, background…)"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditFrom(a);
-                      patchFlow(flow.id, { imgPrompt: "" });
-                    }}
-                  >
-                    ✎
-                  </span>
-                </button>
-              ))}
-          </div>
-        )}
+        {/* (candidate looks now live in the single pick carousel above) */}
 
         {confirmedImg && (
           <div className="flow-confirm-row">
@@ -1594,6 +1677,19 @@ export function FlowPanel({
 
         {canAnimate ? (
           <>
+            {/* After a take has been sent, collapse the long prompt to a
+                3-line read-only view with ✎ Edit → textarea (owner call). */}
+            {flow.motionAttempts.length > 0 && !motionEditing ? (
+              <div className="flow-motion-collapsed">
+                <p className="flow-take-prompt clamp3">{flow.motionPrompt}</p>
+                <button
+                  className="link-btn"
+                  onClick={() => setMotionEditing(true)}
+                >
+                  ✎ Edit prompt
+                </button>
+              </div>
+            ) : (
             <div className="flow-gen-row">
               <textarea
                 rows={isTransfer ? 7 : 2}
@@ -1603,20 +1699,10 @@ export function FlowPanel({
                 }
                 placeholder="Describe ONLY the motion — 'subtle breathing, slow blink, hair moving in a soft breeze, a small head tilt and a smile at the lens'"
               />
+              {/* ANIMATE lives ONLY in the floating bottom bar now — the
+                  inline button was a confusing duplicate. This row keeps just
+                  the template/random helper. */}
               <div className="flow-gen-actions">
-                <button
-                  className="btn-primary flow-btn"
-                  disabled={!flow.motionPrompt.trim()}
-                  onClick={() =>
-                    armed === "motion"
-                      ? void generateMotion()
-                      : setArmed("motion")
-                  }
-                >
-                  {armed === "motion"
-                    ? `Confirm · ${motionModel.short} · ${fmtCost(motionCost ?? undefined) ?? "$?"}`
-                    : "Animate"}
-                </button>
                 <button
                   className="link-btn"
                   onClick={() =>
@@ -1637,6 +1723,7 @@ export function FlowPanel({
                 </button>
               </div>
             </div>
+            )}
 
             {flow.motionAttempts.length > 0 && (
               <div className="flow-takes">
@@ -1673,7 +1760,7 @@ export function FlowPanel({
                         ▶ view in the frame
                       </span>
                     )}
-                    <p className="flow-take-prompt">{a.prompt}</p>
+                    <p className="flow-take-prompt clamp3">{a.prompt}</p>
                   </div>
                 ))}
               </div>
@@ -1735,8 +1822,10 @@ export function FlowPanel({
           shifting it off-screen and forcing horizontal scroll). Always
           afloat; ANIMATE enables when the required steps are done. */}
       {mounted &&
+        !barHidden &&
+        !rendering &&
         createPortal(
-          <div className="flow-actionbar">
+          <div className={`flow-actionbar ${sideOpen ? "with-side" : ""}`}>
             <div className="flow-steps">
               {flowSteps.map((s, i) => (
                 <span
