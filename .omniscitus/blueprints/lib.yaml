@@ -500,7 +500,7 @@ files:
     created: 2026-07-14
     last_modified: 2026-07-14T15:50:10.222Z
     change_count: 3
-    purpose: ""
+    purpose: "Per-request provider-key resolution: hosted x-provider-key header first, env fallback LOCAL-ONLY (cloud refuses = owner-wallet firewall), shared missingKey error"
     change_log:
       - date: 2026-07-14T15:50:10.222Z
         action: edit
@@ -517,7 +517,7 @@ files:
     created: 2026-07-14
     last_modified: 2026-07-14T15:47:37.627Z
     change_count: 1
-    purpose: ""
+    purpose: "Browser-side key store for hosted BYOK (hooklab.keys localStorage, never the file store) + keyHeader()/videoUrlEnvVar() pass-through helpers"
     change_log:
       - date: 2026-07-14T15:47:37.627Z
         action: write
@@ -528,7 +528,7 @@ files:
     created: 2026-07-14
     last_modified: 2026-07-14T15:54:22.983Z
     change_count: 1
-    purpose: ""
+    purpose: "Hosted Veo/Sora playback: fetch MP4 with key header, play/cache blob: object URLs so keys never ride URLs (module-level cache, in-flight dedupe)"
     change_log:
       - date: 2026-07-14T15:54:22.983Z
         action: write
