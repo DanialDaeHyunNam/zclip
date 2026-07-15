@@ -5,6 +5,13 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.9.2 — 2026-07-16
+
+### Fixed
+- FLOW: a double-click on ANIMATE no longer fires two identical takes — an
+  in-flight lock guards it and the bar hides on the first click (not after
+  the network round-trip). A failed submit re-shows the bar to retry.
+
 ## 0.9.1 — 2026-07-16
 
 ### Added

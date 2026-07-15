@@ -263,6 +263,8 @@ export function FlowPanel({
   const [trimFrom, setTrimFrom] = useState("");
   const [trimTo, setTrimTo] = useState("");
   const [trimBusy, setTrimBusy] = useState(false);
+  // In-flight guard so a double-click can't fire two takes.
+  const firingRef = useRef(false);
   // Portal target (document.body) is only available after mount.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -883,6 +885,11 @@ export function FlowPanel({
     // real-person filter entirely (motion from the depth clip, identity from
     // text).
     if (flow.kind === "transfer" ? !flow.refClip : !confirmedImg) return;
+    // In-flight lock: the bar only hides after the request resolves, so a
+    // second click in that window would fire a duplicate take. Guard it.
+    if (firingRef.current) return;
+    firingRef.current = true;
+    setBarHidden(true); // hide immediately, don't wait for the network
     setArmed(null);
     setError(null);
     // Jump to the top so the rendering preview (left frame) is in view.
@@ -943,6 +950,8 @@ export function FlowPanel({
             `The MOVES reference is ${Math.round(dur)}s — Seedance reads at most 15s of reference. Trim the beat you want with GRAB (Library ⤓, m:ss trim like 0:05 → 0:18) and pick the trimmed clip here.`,
           );
           preview(lastShown.current);
+          firingRef.current = false;
+          setBarHidden(false);
           return;
         }
         const b64 = await new Promise<string>((res, rej) => {
@@ -957,6 +966,8 @@ export function FlowPanel({
           "Couldn't load the MOVES reference — the saved file may have been cleared. Pick or upload it again.",
         );
         preview(lastShown.current);
+        firingRef.current = false;
+        setBarHidden(false);
         return;
       }
     }
@@ -1006,6 +1017,7 @@ export function FlowPanel({
       if (!r.ok) {
         setError(humanizeError(b.error ?? "Submit failed"));
         preview(lastShown.current); // un-stick the busy frame
+        setBarHidden(false); // failed — let them retry
         return;
       }
       const attempt: FlowMotionAttempt = {
@@ -1035,6 +1047,9 @@ export function FlowPanel({
     } catch {
       setError("Network error — try again");
       preview(lastShown.current);
+      setBarHidden(false);
+    } finally {
+      firingRef.current = false;
     }
   };
 
