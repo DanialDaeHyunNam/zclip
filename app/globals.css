@@ -5412,6 +5412,31 @@ button {
   overflow-y: auto;
 }
 
+/* non-spec take prompts reuse the box but stay neutral (no accent) */
+.spec-final.plain-prompt {
+  background: transparent;
+}
+.spec-final.plain-prompt .spec-final-head {
+  color: var(--faint);
+}
+
+.spec-final-actions {
+  display: inline-flex;
+  gap: 12px;
+  flex: none;
+}
+
+/* default: 3-line clamp; Full view opens the whole thing in a modal */
+.spec-final-body.clamp3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-height: none;
+  white-space: normal;
+}
+
 /* full-prompt viewer modal */
 .prompt-modal {
   max-width: 720px;

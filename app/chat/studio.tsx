@@ -500,6 +500,14 @@ export default function Home() {
     title: string;
     text: string;
   } | null>(null);
+  /** Turn id whose prompt was just copied — shows a transient ✓ on the
+   *  inline Copy button. */
+  const [copiedTurn, setCopiedTurn] = useState<string | null>(null);
+  const copyPrompt = useCallback((id: string, text: string) => {
+    void navigator.clipboard?.writeText(text);
+    setCopiedTurn(id);
+    setTimeout(() => setCopiedTurn((c) => (c === id ? null : c)), 1500);
+  }, []);
   /** Gemini-key onboarding modal. draft = the send it interrupted
    *  ("" ⇒ opened from the SPEC button, nothing pending); flowId claims
    *  the parked reference bundle for that send. */
@@ -3292,40 +3300,40 @@ export default function Home() {
                   <img className="turn-img" src={t.imageThumb} alt="reference" />
                 )}
                 <div className="turn-user">{t.userText}</div>
-                {t.prompt && t.fromSpec ? (
-                  /* spec takes: the finished prompt IS the deliverable —
-                     visible by default, clamped, expandable to a modal */
+                {t.prompt ? (
+                  /* Every take's prompt: clamped to 3 lines, with Copy and a
+                     full-view modal. Spec takes keep their accent styling. */
                   <div
-                    className="spec-final"
+                    className={`spec-final ${t.fromSpec ? "" : "plain-prompt"}`}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="spec-final-head">
                       <span>
-                        SPEC PROMPT · TAKE {takeNo(i)} · {t.prompt.length}{" "}
-                        CHARS
+                        {t.fromSpec ? "SPEC PROMPT" : "PROMPT"} · TAKE{" "}
+                        {takeNo(i)} · {t.prompt.length} CHARS
                       </span>
-                      <button
-                        className="link-btn"
-                        onClick={() =>
-                          setPromptView({
-                            title: `Spec prompt · Take ${takeNo(i)}`,
-                            text: t.prompt!,
-                          })
-                        }
-                      >
-                        ⤢ Full view
-                      </button>
+                      <span className="spec-final-actions">
+                        <button
+                          className="link-btn"
+                          onClick={() => copyPrompt(t.id, t.prompt!)}
+                        >
+                          {copiedTurn === t.id ? "✓ Copied" : "⧉ Copy"}
+                        </button>
+                        <button
+                          className="link-btn"
+                          onClick={() =>
+                            setPromptView({
+                              title: `${t.fromSpec ? "Spec prompt" : "Prompt"} · Take ${takeNo(i)}`,
+                              text: t.prompt!,
+                            })
+                          }
+                        >
+                          ⤢ Full view
+                        </button>
+                      </span>
                     </div>
-                    <p className="spec-final-body">{t.prompt}</p>
+                    <p className="spec-final-body clamp3">{t.prompt}</p>
                   </div>
-                ) : t.prompt ? (
-                  <details
-                    className="turn-prompt"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <summary>Prompt · Take {takeNo(i)}</summary>
-                    <p>{t.prompt}</p>
-                  </details>
                 ) : null}
                 <div className="turn-status">
                   <span className={`dot ${

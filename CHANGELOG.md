@@ -5,6 +5,13 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.7.4 — 2026-07-15
+
+### Changed
+- Chat thread prompts clamp to 3 lines by default with **⧉ Copy** and
+  **⤢ Full view** (modal) buttons — a long spec/take prompt no longer eats
+  the whole thread. Applies to every take's prompt, not just spec takes.
+
 ## 0.7.3 — 2026-07-15
 
 ### Added
