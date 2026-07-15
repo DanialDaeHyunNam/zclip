@@ -5,6 +5,16 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.9.3 — 2026-07-16
+
+### Changed
+- FLOW errors now append the provider's VERBATIM message, so there's no
+  ambiguity about which error it is (a credit/quota error reads nothing like
+  a safety block). Added a plain credit/quota case. The real-person message
+  now correctly says the filter fires on the REFERENCE VIDEO's real people
+  (not the identity image) — so text-only looks don't dodge it; a pose-
+  extracting engine (Kling Motion Control) or Act-Two does.
+
 ## 0.9.2 — 2026-07-16
 
 ### Fixed

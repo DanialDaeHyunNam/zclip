@@ -206,11 +206,23 @@ const splitDataUrl = (d: string): { base64: string; mimeType: string } => {
  *  the transfer flow's whole premise (a look as a reference_image) trips it.
  *  Say what's happening and how to get around it. */
 const humanizeError = (raw: string): string => {
+  // Always keep the provider's exact words so there's no doubt WHICH error
+  // this is (a credit/quota error reads nothing like a safety block).
+  const verbatim = ` (Seedance said: "${raw}")`;
   if (/real person|may contain real/i.test(raw)) {
-    return "Seedance's safety filter blocked this look for looking like a real person — it does this even to AI-generated photoreal faces. Transfer works with a STYLIZED look (illustrated / anime / 3DCG toon), not photoreal. Regenerate the look in that style (or use such a Character card) and try again. For photoreal identity, Runway Act-Two (chat method) is the path.";
+    return (
+      "Seedance's safety filter blocked the REFERENCE — it reads the driving video's frames and flags real people in it (this fires on the video, not just an identity image, so text-only looks don't dodge it). The depth-render references that pass carry pure motion, zero identity. For a raw real-person dance clip, Kling Motion Control (pose-extracted) or Runway Act-Two is the path." +
+      verbatim
+    );
   }
   if (/15\.2|duration.*less than|content\[2\]/i.test(raw)) {
-    return "The reference clip is too long — Seedance reads at most 15s. Trim it to a beat above (m:ss) and retry.";
+    return (
+      "The reference clip is too long — Seedance reads at most 15s. Trim it to a beat above (m:ss) and retry." +
+      verbatim
+    );
+  }
+  if (/balance|insufficient|quota|exhausted|402|payment|credit/i.test(raw)) {
+    return `Out of Seedance credit — top up the ModelArk balance, then retry.${verbatim}`;
   }
   return raw;
 };
