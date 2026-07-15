@@ -37,10 +37,14 @@ const FLOWS_KEY = "hooklab.flows";
 
 /** What the studio's left frame should show for the flow method. */
 export interface FlowPreview {
-  kind: "image" | "video";
+  /** "busy" renders the chat method's scanline + elapsed timer in the
+   *  shared left frame while a still/motion job runs (src unused). */
+  kind: "image" | "video" | "busy";
   src: string;
   aspect: AspectRatio;
   label: string;
+  /** busy only — when the job started, drives the elapsed readout. */
+  startedAt?: number;
 }
 
 /** 🎲 starter drafts — editing a full draft beats a blank box. Varied
@@ -285,12 +289,30 @@ export function FlowPanel({
     [],
   );
 
+  /** onPreview wrapper that remembers the last REAL preview, so a failed
+   *  job can put the frame back instead of leaving a stuck busy screen. */
+  const lastShown = useRef<FlowPreview | null>(null);
+  const preview = useCallback(
+    (p: FlowPreview | null) => {
+      if (!p || p.kind !== "busy") lastShown.current = p;
+      onPreview(p);
+    },
+    [onPreview],
+  );
+
   /* ── stage 1: still generation ─────────────────── */
 
   const generateImage = async () => {
     if (!flow || !flow.imgPrompt.trim() || busyImg) return;
     setArmed(null);
     setBusyImg(true);
+    preview({
+      kind: "busy",
+      src: "",
+      aspect: flow.aspect,
+      label: `${imgEngine.label} — generating a still · usually ~10s`,
+      startedAt: Date.now(),
+    });
     setError(null);
     try {
       const r = await fetch("/api/image", {
@@ -317,6 +339,7 @@ export function FlowPanel({
       const b = await r.json();
       if (!r.ok) {
         setError(b.error ?? "Image generation failed");
+        preview(lastShown.current); // un-stick the busy frame
         return;
       }
       const attempt: FlowImageAttempt = {
@@ -329,7 +352,7 @@ export function FlowPanel({
         imgAttempts: [...f.imgAttempts, attempt],
       }));
       setEditFrom(null); // one-shot, like chat attachments
-      onPreview({
+      preview({
         kind: "image",
         src: attempt.image,
         aspect: flow.aspect,
@@ -337,6 +360,7 @@ export function FlowPanel({
       });
     } catch {
       setError("Network error — try again");
+      preview(lastShown.current);
     } finally {
       setBusyImg(false);
     }
@@ -355,7 +379,7 @@ export function FlowPanel({
         createdAt: Date.now(),
       };
       patchFlow(flow.id, (f) => ({ imgAttempts: [...f.imgAttempts, attempt] }));
-      onPreview({
+      preview({
         kind: "image",
         src: dataUrl,
         aspect: flow.aspect,
@@ -412,6 +436,13 @@ export function FlowPanel({
     setError(null);
     const m = resolveModel(flow.motionModelKey);
     const { base64, mimeType } = splitDataUrl(confirmedImg.image);
+    preview({
+      kind: "busy",
+      src: "",
+      aspect: flow.aspect,
+      label: `${m.short} — rendering motion · usually 60–180s`,
+      startedAt: Date.now(),
+    });
     try {
       const r = await fetch("/api/generate", {
         method: "POST",
@@ -429,6 +460,7 @@ export function FlowPanel({
       const b = await r.json();
       if (!r.ok) {
         setError(b.error ?? "Submit failed");
+        preview(lastShown.current); // un-stick the busy frame
         return;
       }
       const attempt: FlowMotionAttempt = {
@@ -455,6 +487,7 @@ export function FlowPanel({
       }));
     } catch {
       setError("Network error — try again");
+      preview(lastShown.current);
     }
   };
 
@@ -485,6 +518,7 @@ export function FlowPanel({
                 status: "error",
                 error: b.error ?? "Render failed",
               });
+              preview(lastShown.current); // un-stick the busy frame
               return;
             }
             if (b.state === "done" && b.videoUrl) {
@@ -496,7 +530,7 @@ export function FlowPanel({
               );
               const url = local ?? b.videoUrl;
               patchAttempt(f.id, a.id, { status: "done", videoUrl: url });
-              onPreview({
+              preview({
                 kind: "video",
                 src: url,
                 aspect: a.aspectRatio,
@@ -710,7 +744,7 @@ export function FlowPanel({
                     confirmedImgId:
                       flow.confirmedImgId === a.id ? null : a.id,
                   });
-                  onPreview({
+                  preview({
                     kind: "image",
                     src: a.image,
                     aspect: flow.aspect,
@@ -889,7 +923,7 @@ export function FlowPanel({
                     className="flow-take"
                     onClick={() =>
                       a.videoUrl &&
-                      onPreview({
+                      preview({
                         kind: "video",
                         src: a.videoUrl,
                         aspect: a.aspectRatio,
@@ -962,7 +996,7 @@ export function FlowPanel({
                     }
                     return rest;
                   });
-                  onPreview(null);
+                  preview(null);
                 }}
               >
                 Delete

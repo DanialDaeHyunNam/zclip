@@ -355,6 +355,27 @@ function contextManifest(
 // fmtCost / cssAspect / ClipCardView live in lib/clip + app/clip-card (shared
 // with the archive route).
 
+/** The chat method's busy treatment (scanline + elapsed), self-ticking so
+ *  the flow method can drop it into the shared frame without wiring into
+ *  the chat poller's elapsed state. */
+function FlowBusy({ label, since }: { label: string; since: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <>
+      <div className="scanline" />
+      <span className="label">Elapsed</span>
+      <span className="timer">
+        {fmtElapsed(Math.max(0, Math.floor((now - since) / 1000)))}
+      </span>
+      <span className="timer-sub">{label}</span>
+    </>
+  );
+}
+
 /* ── page ────────────────────────────────────────── */
 
 export default function Home() {
@@ -2645,13 +2666,23 @@ export default function Home() {
   const previewBusy =
     previewTurn && (previewTurn.status === "refining" || previewTurn.status === "pending");
 
-  const status = previewBusy
-    ? { text: previewTurn.status === "refining" ? "PREPARING" : "RENDERING", dot: "live" }
-    : previewTurn?.status === "done"
-      ? { text: "COMPLETE", dot: "done" }
-      : previewTurn?.status === "error"
-        ? { text: "FAULT", dot: "fault" }
-        : { text: "STANDBY", dot: "" };
+  // The FLOW method reads its status off flowPreview, not the chat turns —
+  // otherwise the header shows the last chat take's COMPLETE while a flow
+  // job is mid-render.
+  const status =
+    method === "flow"
+      ? flowPreview?.kind === "busy"
+        ? { text: "RENDERING", dot: "live" }
+        : flowPreview
+          ? { text: "COMPLETE", dot: "done" }
+          : { text: "STANDBY", dot: "" }
+      : previewBusy
+        ? { text: previewTurn.status === "refining" ? "PREPARING" : "RENDERING", dot: "live" }
+        : previewTurn?.status === "done"
+          ? { text: "COMPLETE", dot: "done" }
+          : previewTurn?.status === "error"
+            ? { text: "FAULT", dot: "fault" }
+            : { text: "STANDBY", dot: "" };
 
   const frameAspect =
     method === "flow"
@@ -4252,7 +4283,13 @@ export default function Home() {
             {method === "flow" ? (
               /* the flow method drives the SAME frame — stills and takes */
               flowPreview ? (
-                flowPreview.kind === "video" ? (
+                flowPreview.kind === "busy" ? (
+                  <FlowBusy
+                    key={flowPreview.startedAt}
+                    label={flowPreview.label}
+                    since={flowPreview.startedAt ?? Date.now()}
+                  />
+                ) : flowPreview.kind === "video" ? (
                   <video
                     key={flowPreview.src}
                     src={videoSrc(flowPreview.src)}

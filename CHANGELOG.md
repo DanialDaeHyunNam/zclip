@@ -5,6 +5,16 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.5.3 — 2026-07-15
+
+### Added
+- FLOW method gets the chat method's rendering treatment in the shared
+  left frame: scanline sweep + elapsed timer while a still (~10s) or a
+  motion take (60–180s) is generating, and the header status now tracks
+  the flow job (RENDERING/COMPLETE/STANDBY) instead of echoing the last
+  chat take. A failed job puts the previous preview back instead of
+  leaving a stuck busy screen.
+
 ## 0.5.2 — 2026-07-15
 
 ### Fixed
