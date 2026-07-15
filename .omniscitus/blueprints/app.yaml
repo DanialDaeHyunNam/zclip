@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T04:32:51.167Z
+updated: 2026-07-15T06:15:54.424Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -17,10 +17,13 @@ files:
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-10T02:23:12.676Z
-    change_count: 8
+    last_modified: 2026-07-15T06:15:54.424Z
+    change_count: 9
     purpose: "Dev-only reference-video fetcher: YouTube via yt-dlp, X posts/articles via guest GraphQL, direct .mp4; optional ffmpeg trim; serves grabbed files back"
     change_log:
+      - date: 2026-07-15T06:15:54.424Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T02:23:12.676Z
         action: edit
         source: "claude:Danial Nam"

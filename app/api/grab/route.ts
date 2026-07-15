@@ -48,14 +48,14 @@ function devOnly(): Response | null {
 }
 
 /** Run a binary (homebrew fallback included) and wait; rejects on failure. */
-function run(bin: string, args: string[]): Promise<void> {
+function run(bin: string, args: string[], timeoutMs = CHILD_TIMEOUT_MS): Promise<void> {
   const attempt = (cmd: string) =>
     new Promise<void>((resolve, reject) => {
       const child = spawn(cmd, args, { stdio: ["ignore", "ignore", "pipe"] });
       const timer = setTimeout(() => {
         child.kill("SIGKILL");
         reject(new Error(`${bin} timed out`));
-      }, CHILD_TIMEOUT_MS);
+      }, timeoutMs);
       let stderr = "";
       child.stderr.on("data", (d) => (stderr += d));
       child.on("error", reject);
@@ -268,6 +268,12 @@ export async function POST(req: Request) {
       const end = body.end == null ? null : Number(body.end);
       const wantTrim = start != null && end != null && end > start;
 
+      // Set when the download itself already cut the clip (yt-dlp
+      // --download-sections) — the local ffmpeg trim must then be skipped:
+      // the file's timeline starts at 0, so re-trimming at [start,end]
+      // would cut the wrong (usually empty) range.
+      let alreadyTrimmed = false;
+
       if (/\.(mp4|webm|mov)(\?|$)/i.test(raw) || u.hostname === "video.twimg.com") {
         // Direct file — plain download.
         const res = await fetch(raw, { redirect: "follow" });
@@ -280,20 +286,45 @@ export async function POST(req: Request) {
         // H.264 (avc1) rendition so the result plays everywhere, not just in
         // Chrome — some sites (Instagram) also serve VP9, which Apple can't
         // decode. Falls back to any mp4, then anything.
-        await run("yt-dlp", [
-          "--no-playlist",
-          "-f",
-          "bv*[vcodec^=avc1][ext=mp4]+ba[ext=m4a]/b[vcodec^=avc1][ext=mp4]/bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
-          "--merge-output-format", "mp4",
-          "--max-filesize", "200M",
-          "-o", file,
-          raw,
-        ]);
+        // With a trim range, download ONLY that section (a 60s beat from a
+        // 22-minute video used to pull the whole 400MB file and then trip
+        // the 200MB cap). --force-keyframes-at-cuts re-encodes the section
+        // (H.264/AAC for mp4), so it lands frame-accurate and already cut.
+        await run(
+          "yt-dlp",
+          [
+            "--no-playlist",
+            "-f",
+            "bv*[vcodec^=avc1][ext=mp4]+ba[ext=m4a]/b[vcodec^=avc1][ext=mp4]/bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b",
+            "--merge-output-format", "mp4",
+            "--max-filesize", "200M",
+            ...(wantTrim
+              ? ["--download-sections", `*${start}-${end}`, "--force-keyframes-at-cuts"]
+              : []),
+            "-o", file,
+            raw,
+          ],
+          // Section grabs stream through ffmpeg at a throttled rate AND
+          // re-encode at the cuts — a 10-minute section can legitimately
+          // take several minutes. Whole-file grabs keep the tight timeout.
+          wantTrim ? 600_000 : CHILD_TIMEOUT_MS,
+        );
+        if (wantTrim) alreadyTrimmed = true;
+        // yt-dlp treats an exceeded --max-filesize as a SKIP: it aborts the
+        // download but still exits 0, leaving no merged file — which used to
+        // surface as ffmpeg's baffling "Error opening input files". Catch it
+        // here and say what actually happened.
+        const produced = await stat(file).catch(() => null);
+        if (!produced) {
+          throw new Error(
+            "The source is over the 200MB cap, so nothing was saved. Set a trim range (start → end) — then only that section is downloaded — or pick a shorter source.",
+          );
+        }
       }
 
       // Trim re-encodes to H.264; otherwise normalise any VP9/AV1 grab so the
       // downloaded file opens outside the browser too.
-      if (wantTrim) file = await trim(file, start, end);
+      if (wantTrim && !alreadyTrimmed) file = await trim(file, start, end);
       else file = await ensureAppleCompatible(file);
       const info = await stat(file);
       const served = path.basename(file);

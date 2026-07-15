@@ -5,6 +5,17 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.5.5 — 2026-07-15
+
+### Fixed
+- GRAB with a trim range now downloads ONLY that section (yt-dlp
+  `--download-sections` + frame-accurate keyframe cuts) — a 60s beat from a
+  22-minute video used to pull the whole ~400MB file and silently trip the
+  200MB cap, surfacing as ffmpeg's baffling "Error opening input files".
+  When a source really is over the cap, GRAB now says so plainly and
+  suggests setting a trim range. Section grabs also get a longer timeout
+  (they stream slower by nature).
+
 ## 0.5.4 — 2026-07-15
 
 ### Changed
