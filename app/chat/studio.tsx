@@ -3020,7 +3020,7 @@ export default function Home() {
       />
 
       {updatable && !updDismissed && (
-        <div className="update-banner">
+        <div className={`update-banner ${method === "flow" ? "raised" : ""}`}>
           <button
             type="button"
             className="update-banner-main"
@@ -3043,7 +3043,7 @@ export default function Home() {
       )}
 
       {hosted && !hostedNoteHidden && (
-        <div className="update-banner">
+        <div className={`update-banner ${method === "flow" ? "raised" : ""}`}>
           <a className="update-banner-main" href="/install">
             <span className="update-banner-dot" aria-hidden />
             Browser mode — your keys stay in this browser and pass through the

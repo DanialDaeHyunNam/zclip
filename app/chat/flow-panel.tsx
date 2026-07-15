@@ -281,7 +281,9 @@ export function FlowPanel({
    *  (any session — looks are assets, not session state). */
   const sharedLooks = (() => {
     if (!flow) return [];
-    const out: { image: string; label: string }[] = [];
+    // Carry each look's GENERATION PROMPT (cards + flow attempts both keep
+    // it) so a reused look can still feed the "↳ text" identity path.
+    const out: { image: string; label: string; prompt?: string }[] = [];
     const seen = new Set<string>();
     for (const f of flows) {
       if (f.id === flow.id) continue;
@@ -290,18 +292,22 @@ export function FlowPanel({
         const img = f.imgAttempts.find((a) => a.id === id);
         if (img && !seen.has(img.image)) {
           seen.add(img.image);
-          out.push({ image: img.image, label: f.title });
+          out.push({ image: img.image, label: f.title, prompt: img.prompt });
         }
       }
     }
     try {
       const assets = JSON.parse(store.get("hooklab.customAssets") ?? "{}") as {
-        characters?: { label?: string; image?: string }[];
+        characters?: { label?: string; image?: string; prompt?: string }[];
       };
       for (const c of assets.characters ?? []) {
         if (typeof c.image === "string" && c.image.startsWith("data:image/") && !seen.has(c.image)) {
           seen.add(c.image);
-          out.push({ image: c.image, label: c.label ?? "Character card" });
+          out.push({
+            image: c.image,
+            label: c.label ?? "Character card",
+            prompt: typeof c.prompt === "string" ? c.prompt : undefined,
+          });
         }
       }
     } catch {
@@ -314,7 +320,7 @@ export function FlowPanel({
    *  the attempts strip too, so unconfirm/change works as usual. Re-picking
    *  a look that's already an attempt CONFIRMS the existing one instead of
    *  appending a duplicate thumbnail. */
-  const useSharedLook = (look: { image: string; label: string }) => {
+  const useSharedLook = (look: { image: string; label: string; prompt?: string }) => {
     if (!flow) return;
     const existing = flow.imgAttempts.find((a) => a.image === look.image);
     const id = existing?.id ?? `i${Date.now()}`;
@@ -331,7 +337,14 @@ export function FlowPanel({
           ? f.imgAttempts
           : [
               ...f.imgAttempts,
-              { id, prompt: `(shared · ${look.label})`, image: look.image, createdAt: Date.now() },
+              {
+                id,
+                // Keep the real generation prompt when we have one (enables
+                // ↳ text); fall back to a label marker otherwise.
+                prompt: look.prompt?.trim() || `(shared · ${look.label})`,
+                image: look.image,
+                createdAt: Date.now(),
+              },
             ],
         confirmedImgIds: next,
         confirmedImgId: undefined,
@@ -1292,6 +1305,30 @@ export function FlowPanel({
               ))}
             </div>
           </>
+        )}
+
+        {/* Selected looks as compact removable chips (avatar + label + ✕),
+            so a picked look shows here instead of a big thumbnail below. */}
+        {confirmedImgs.length > 0 && (
+          <div className="flow-selected-chips">
+            {confirmedImgs.map((a, n) => (
+              <span key={a.id} className="flow-sel-chip">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={a.image} alt="" />
+                {isTransfer && confirmedImgs.length > 1 ? `#${n + 1} · ` : ""}
+                {a.prompt.startsWith("(")
+                  ? "look"
+                  : a.prompt.slice(0, 22)}
+                <button
+                  className="flow-sel-x"
+                  title="Remove from selection"
+                  onClick={() => toggleConfirm(a.id)}
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
         )}
 
         {(!confirmedImg || editFrom || isTransfer) && (

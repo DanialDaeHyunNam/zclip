@@ -5,6 +5,18 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.8.3 — 2026-07-16
+
+### Changed
+- FLOW progress bar actually floats now — it's fixed to the viewport bottom
+  (was sticky, so it scrolled out of view). Update/browser-mode banners lift
+  above it in flow.
+- A picked look shows as a compact removable chip (avatar + label + ✕) below
+  the reuse carousel, instead of a big thumbnail lower down — and you can
+  deselect right there.
+- Reusing a look now carries its GENERATION PROMPT through (Character cards
+  and flow stills both keep it), so "↳ text" works on reused looks too.
+
 ## 0.8.2 — 2026-07-16
 
 ### Fixed

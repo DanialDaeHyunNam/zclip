@@ -4571,6 +4571,10 @@ button {
   max-width: calc(100vw - 90px);
   animation: bannerUp 0.4s ease both;
 }
+.update-banner.raised {
+  bottom: 96px; /* clear the fixed FLOW action bar */
+}
+
 
 @keyframes bannerUp {
   from {
@@ -5752,13 +5756,15 @@ button {
 /* bottom progress bar — sticky to the viewport bottom while the flow panel
    is on screen, so the steps + ANIMATE are always reachable on this long page */
 .flow-actionbar {
-  position: sticky;
-  bottom: 12px;
-  z-index: 40;
+  position: fixed; /* always afloat, even when its natural spot is scrolled away */
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, calc(100vw - 100px));
+  z-index: 60;
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-top: 20px;
   padding: 12px 16px;
   border: 1px solid rgba(111, 220, 255, 0.35);
   border-radius: var(--r-pill);
@@ -5810,6 +5816,43 @@ button {
   width: auto; /* override .btn-primary width:100% */
   padding: 14px 30px;
   white-space: nowrap;
+}
+
+/* compact "selected look" chips (avatar + label + ✕) */
+.flow-selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.flow-sel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--accent);
+  border-radius: var(--r-pill);
+  background: rgba(111, 220, 255, 0.08);
+  font-size: 11.5px;
+  color: var(--fg);
+}
+.flow-sel-chip img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.flow-sel-x {
+  background: none;
+  border: 0;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  transition: color 0.2s ease;
+}
+.flow-sel-x:hover {
+  color: var(--accent);
 }
 
 .flow-thumb-tag {
@@ -5929,7 +5972,7 @@ button {
 .flow-panel {
   display: flex;
   flex-direction: column;
-  padding: 12px 0 40px;
+  padding: 12px 0 96px; /* clear the fixed action bar */
   overflow-y: auto;
   min-height: 0;
   flex: 1;
