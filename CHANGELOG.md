@@ -5,6 +5,14 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.6.2 — 2026-07-15
+
+### Added
+- The look stage offers "Reuse a look you already made": confirmed stills
+  from your other flows and saved Character cards appear as thumbnails —
+  one click imports and confirms, so a transfer flow can borrow the exact
+  look an Image → Motion flow already locked.
+
 ## 0.6.1 — 2026-07-15
 
 ### Fixed

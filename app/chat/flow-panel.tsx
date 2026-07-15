@@ -239,6 +239,59 @@ export function FlowPanel({
     setEditFrom(null);
   }, [sessionId, flow, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
   const isTransfer = flow?.kind === "transfer";
+
+  /** Looks already made elsewhere, offered for reuse in THIS flow's look
+   *  stage: every other flow's CONFIRMED still + custom Character cards
+   *  (any session — looks are assets, not session state). */
+  const sharedLooks = (() => {
+    if (!flow) return [];
+    const out: { image: string; label: string }[] = [];
+    const seen = new Set<string>();
+    for (const f of flows) {
+      if (f.id === flow.id) continue;
+      const img = f.imgAttempts.find((a) => a.id === f.confirmedImgId);
+      if (img && !seen.has(img.image)) {
+        seen.add(img.image);
+        out.push({ image: img.image, label: f.title });
+      }
+    }
+    try {
+      const assets = JSON.parse(store.get("hooklab.customAssets") ?? "{}") as {
+        characters?: { label?: string; image?: string }[];
+      };
+      for (const c of assets.characters ?? []) {
+        if (typeof c.image === "string" && c.image.startsWith("data:image/") && !seen.has(c.image)) {
+          seen.add(c.image);
+          out.push({ image: c.image, label: c.label ?? "Character card" });
+        }
+      }
+    } catch {
+      /* no cards */
+    }
+    return out.slice(0, 8);
+  })();
+
+  /** Import a shared look as this flow's confirmed still — it lands in
+   *  the attempts strip too, so unconfirm/change works as usual. */
+  const useSharedLook = (look: { image: string; label: string }) => {
+    if (!flow) return;
+    const attempt: FlowImageAttempt = {
+      id: `i${Date.now()}`,
+      prompt: `(shared · ${look.label})`,
+      image: look.image,
+      createdAt: Date.now(),
+    };
+    patchFlow(flow.id, (f) => ({
+      imgAttempts: [...f.imgAttempts, attempt],
+      confirmedImgId: attempt.id,
+    }));
+    preview({
+      kind: "image",
+      src: look.image,
+      aspect: flow.aspect,
+      label: `look · ${look.label}`,
+    });
+  };
   const motionModel = resolveModel(
     flow?.motionModelKey ?? (isTransfer ? "seedance-2" : "kling"),
   );
@@ -904,6 +957,31 @@ export function FlowPanel({
             {confirmedImg ? "· CONFIRMED ✓" : ""}
           </span>
         </div>
+
+        {/* looks made elsewhere — other flows' confirmed stills + Character
+            cards — one click imports AND confirms (it earned its confirm
+            in its home flow) */}
+        {!confirmedImg && sharedLooks.length > 0 && (
+          <>
+            <p className="flow-locked-hint" style={{ marginBottom: 8 }}>
+              Reuse a look you already made:
+            </p>
+            <div className="flow-thumbs" style={{ marginBottom: 14 }}>
+              {sharedLooks.map((l) => (
+                <button
+                  key={l.image.slice(-24)}
+                  className="flow-thumb"
+                  title={`Use this look · ${l.label}`}
+                  onClick={() => useSharedLook(l)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={l.image} alt={l.label} />
+                  <span className="flow-thumb-tag">{l.label.slice(0, 18)}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {(!confirmedImg || editFrom) && (
           <>
