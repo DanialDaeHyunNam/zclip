@@ -53,6 +53,40 @@ export async function POST(req: Request) {
   const gate = devOnly();
   if (gate) return gate;
 
+  // Direct UPLOAD into the vault (multipart) — a real Library item from a
+  // local file, closing the long-standing "composer drop is the only way
+  // in" gap. Same dev-only/size rules as the download path.
+  const ctype = req.headers.get("content-type") ?? "";
+  if (ctype.startsWith("multipart/form-data")) {
+    try {
+      const fd = await req.formData();
+      const f = fd.get("file");
+      if (!(f instanceof File)) {
+        return Response.json({ error: "Missing file field" }, { status: 400 });
+      }
+      if (!/^video\/(mp4|webm|quicktime)$/.test(f.type)) {
+        return Response.json({ error: "Only mp4/webm/mov uploads" }, { status: 400 });
+      }
+      if (f.size > MAX_BYTES) {
+        return Response.json({ error: "Video too large (200MB max)" }, { status: 400 });
+      }
+      const name = `clip-upload-${Date.now()}.mp4`;
+      const file = path.join(CLIPS_DIR, name);
+      await mkdir(CLIPS_DIR, { recursive: true });
+      const tmp = `${file}.${process.pid}.tmp`;
+      await writeFile(tmp, Buffer.from(await f.arrayBuffer()));
+      await rename(tmp, file);
+      return Response.json({
+        name,
+        url: `/api/clips?f=${encodeURIComponent(name)}`,
+        bytes: f.size,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      return Response.json({ error: message }, { status: 502 });
+    }
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();

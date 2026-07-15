@@ -5544,6 +5544,38 @@ button {
   margin: 8px 0 24px;
 }
 
+/* ＋ New flow kind picker — which pipeline is this flow? */
+.flow-kind-pick {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 10px 0 6px;
+}
+.flow-kind-opt {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  color: var(--fg);
+  cursor: pointer;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+.flow-kind-opt:hover {
+  border-color: var(--accent);
+  background: rgba(111, 220, 255, 0.05);
+}
+.flow-kind-desc {
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--dim);
+}
+
 .flow-stage {
   border: 1px solid var(--hair);
   border-radius: var(--r-lg);

@@ -17,7 +17,10 @@ import { isCloud } from "@/lib/deploy";
 const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_B64 = 4_000_000; // ~3MB decoded — client downscales well below this
 const VIDEO_MIMES = ["video/mp4", "video/webm", "video/quicktime"];
+// Runway inlines the video as a data URI (hard 16MB cap); Seedance stages it
+// on Vercel Blob instead, so a longer reference clip is fine there.
 const MAX_VIDEO_B64 = 22_000_000; // ~16MB decoded — Runway's inline data-URI cap
+const MAX_VIDEO_B64_BLOB = 80_000_000; // ~60MB decoded — Blob-staged (Seedance)
 
 /** Validate an optional client-supplied reference image. Returns the image,
  *  undefined when absent, or an error string. */
@@ -35,9 +38,10 @@ function parseImage(
   return { base64, mimeType };
 }
 
-/** Validate an optional video (Act-Two driving reference). */
+/** Validate an optional video (Act-Two driving / Seedance reference). */
 function parseVideo(
   raw: unknown,
+  maxB64: number,
 ): { base64: string; mimeType: string } | undefined | string {
   if (raw == null) return undefined;
   if (typeof raw !== "object") return "Invalid video";
@@ -45,7 +49,8 @@ function parseVideo(
   if (typeof base64 !== "string" || typeof mimeType !== "string")
     return "Invalid video";
   if (!VIDEO_MIMES.includes(mimeType)) return "Unsupported video type";
-  if (base64.length > MAX_VIDEO_B64) return "Driving video too large (max ~16MB — trim it)";
+  if (base64.length > maxB64)
+    return `Reference video too large (max ~${Math.round((maxB64 * 3) / 4 / 1e6)}MB — trim it with GRAB)`;
   if (!/^[A-Za-z0-9+/=]+$/.test(base64)) return "Invalid video encoding";
   return { base64, mimeType };
 }
@@ -113,7 +118,10 @@ export async function POST(req: Request) {
   if (typeof character === "string") {
     return Response.json({ error: character }, { status: 400 });
   }
-  const drivingVideo = parseVideo(body.drivingVideo);
+  const drivingVideo = parseVideo(
+    body.drivingVideo,
+    resolved.name === "seedance" ? MAX_VIDEO_B64_BLOB : MAX_VIDEO_B64,
+  );
   if (typeof drivingVideo === "string") {
     return Response.json({ error: drivingVideo }, { status: 400 });
   }

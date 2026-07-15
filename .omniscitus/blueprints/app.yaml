@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T06:57:57.221Z
+updated: 2026-07-15T08:37:07.893Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -459,10 +459,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-15T01:40:17.463Z
-    change_count: 75
+    last_modified: 2026-07-15T08:37:07.893Z
+    change_count: 76
     purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
+      - date: 2026-07-15T08:37:07.893Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T01:40:17.463Z
         action: edit
         source: "claude:Danial Nam"
@@ -795,10 +798,19 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-14T15:41:58.196Z
-    change_count: 9
+    last_modified: 2026-07-15T08:32:47.345Z
+    change_count: 12
     purpose: "POST submit → adapter; validates params/image/character/drivingVideo/modelId against whitelists, returns jobId fast"
     change_log:
+      - date: 2026-07-15T08:32:47.345Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:32:45.052Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:32:38.915Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T15:41:58.196Z
         action: edit
         source: "claude:Danial Nam"
@@ -2301,10 +2313,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-10
-    last_modified: 2026-07-10T02:22:59.957Z
-    change_count: 4
+    last_modified: 2026-07-15T08:31:28.300Z
+    change_count: 5
     purpose: "Clip vault API — persists finished takes into .zclip-data/clips/ (save/stream/delete + disk usage) so videos outlive provider URL expiry"
     change_log:
+      - date: 2026-07-15T08:31:28.300Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T02:22:59.957Z
         action: edit
         source: "claude:Danial Nam"
@@ -2495,10 +2510,49 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-15T02:25:01.325Z
-    change_count: 34
+    last_modified: 2026-07-15T08:36:38.393Z
+    change_count: 47
     purpose: "FLOW method panel (embedded in the studio): still→motion pipeline — look generate/upload/EDIT with confirm gate, motion iteration via i2v, presets, session-scoped flows, shared-Library interop, Character-card export"
     change_log:
+      - date: 2026-07-15T08:36:38.393Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:36:35.670Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:36:31.413Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:36:21.882Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:36:19.520Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:36:06.095Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:35:02.405Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:34:30.863Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:34:19.510Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:33:56.990Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:33:52.890Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:33:43.264Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T08:33:15.774Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T02:25:01.325Z
         action: edit
         source: "claude:Danial Nam"

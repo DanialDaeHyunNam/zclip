@@ -40,18 +40,30 @@ export const seedance: VideoProvider = {
   async submit(prompt: string, params: SubmitParams, apiKey: string) {
     const text = `${prompt} --ratio ${params.aspectRatio} --duration ${params.durationSeconds} --resolution ${params.resolution}`;
     const content: Array<Record<string, unknown>> = [{ type: "text", text }];
-    // Seedance rejects mixing first/last-frame content with reference media
-    // ("first/last frame content cannot be mixed with reference media
-    // content", verified live 2026-07-10) — so a first-frame image only goes
-    // when NO reference video rides along. With a video reference, subject
-    // and scene live in the prompt text; the video carries the rest.
+    // Image handling depends on what rides along:
+    //  - image alone → FIRST-FRAME reference (no role), the classic i2v path.
+    //  - image + reference video → the image goes as role "reference_image"
+    //    (identity lock) next to the reference_video (motion). Sending it
+    //    role-less alongside a video is what the API rejects ("first/last
+    //    frame content cannot be mixed with reference media content",
+    //    verified live 2026-07-10). Role-tagged mixing is the documented
+    //    reference-to-video pattern (@Image + @Video) — UNVERIFIED on
+    //    ModelArk until a first real run; if it errors, the message
+    //    surfaces loudly in the take like any provider error.
     if (params.image && !params.drivingVideo) {
-      // First-frame reference, ModelArk image_url content item.
       content.push({
         type: "image_url",
         image_url: {
           url: `data:${params.image.mimeType};base64,${params.image.base64}`,
         },
+      });
+    } else if (params.image && params.drivingVideo) {
+      content.push({
+        type: "image_url",
+        image_url: {
+          url: `data:${params.image.mimeType};base64,${params.image.base64}`,
+        },
+        role: "reference_image",
       });
     }
     let blobUrl: string | undefined;

@@ -5,6 +5,31 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.6.0 — 2026-07-15
+
+### Added
+- **MOTION TRANSFER flow — a reference video's moves, performed by your
+  look.** ＋ New flow now asks which pipeline you want: the classic
+  IMAGE → MOTION, or the new MOVES → IMAGE → MOTION. The transfer kind
+  locks a reference clip (pick a GRAB from the Library or upload a local
+  video — direct Library upload is new too), locks a look, then sends
+  both to Seedance 2.0 (the clip-reading model): the look rides as an
+  identity reference next to the motion reference. Opens pre-filled with
+  a field-tested template — 🎲 cycles a green-screen composite variant
+  that generates pre-keyed footage (flat #00FF00, no set, no shadows)
+  for dropping into any edit. Flow tabs are now named after their
+  pipeline ("Image → Motion 1"); existing tabs rename automatically.
+- **Direct upload into the Library** (local only): `/api/clips` accepts a
+  multipart video, vaulting it like any take.
+
+### Changed
+- Seedance 2.0 adapter pairs an identity image (`role: reference_image`)
+  with a reference video instead of dropping the image — first real run
+  still needs to confirm ModelArk accepts the pairing (failures surface
+  loudly in the take, as ever).
+- Reference-video size cap is provider-aware: ~60MB for Blob-staged
+  Seedance (Runway keeps its 16MB inline cap).
+
 ## 0.5.6 — 2026-07-15
 
 ### Changed

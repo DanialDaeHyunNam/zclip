@@ -56,13 +56,23 @@ store survives port moves); test against it with client-side checks only.
   chat thread (turns) / rewind / sessions sidebar / preview / params /
   key panel / spend chart / archive. State shapes documented inline
   (`Turn`, `Clip`, `StoredSession`).
-- `app/flow` — the FLOW method (vs the chat method): still → motion
-  pipeline. Stage 1 generates/uploads a look (`/api/image`, Grok image,
-  ~$0.05) with a CONFIRM gate; stage 2 animates the confirmed still via
-  the normal `/api/generate` i2v (Kling recommended) and can iterate
-  motion forever without re-rolling the still. Interop both ways:
-  finished takes → shared gallery/clip vault (Library), confirmed stills
-  → custom Character cards. State in `hooklab.flows`. Rail ⇶ icon.
+- `app/chat/flow-panel.tsx` — the FLOW method (vs the chat method). TWO
+  pipelines since v0.6.0, picked at ＋ New flow (tabs are named after the
+  pipeline, e.g. "Image → Motion 1"):
+  · **look** (classic): Stage 1 generates/uploads a look (`/api/image`,
+    ~$0.05) with a CONFIRM gate; Stage 2 animates the confirmed still via
+    `/api/generate` i2v (Kling recommended), iterating motion forever.
+  · **transfer** (MOVES → IMAGE → MOTION): Stage 1 sets a reference video
+    (Library clip or direct upload → `/api/clips` multipart, dev-only);
+    Stage 2 = the look; Stage 3 sends look + clip to Seedance 2.0 (the
+    only clip-reading model — image rides as role `reference_image`
+    beside `reference_video`; role mixing UNVERIFIED until a first real
+    run). Opens pre-filled with a transfer template (camera lock /
+    green-screen composite variants — TRANSFER_PRESETS). refClip is a
+    Library POINTER, never base64 (35MB clips must not enter the store).
+  Interop both ways: finished takes → shared gallery/clip vault
+  (Library), confirmed stills → custom Character cards. State in
+  `hooklab.flows`.
 - `app/api/image` — still generation for Flow stage 1 (xAI Grok image,
   downloads the expiring provider URL server-side, returns base64).
 - `app/page.tsx` — server shell (metadata + `isCloud()`) → `app/landing-client.tsx`

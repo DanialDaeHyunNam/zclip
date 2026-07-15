@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-14T15:54:22.983Z
+updated: 2026-07-15T08:30:49.329Z
 
 files:
   "lib/config.ts":
@@ -162,10 +162,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-14T15:41:23.325Z
-    change_count: 10
+    last_modified: 2026-07-15T08:30:49.329Z
+    change_count: 11
     purpose: "ByteDance Seedance adapter (unverified endpoint/model id from ModelArk docs)"
     change_log:
+      - date: 2026-07-15T08:30:49.329Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T15:41:23.325Z
         action: edit
         source: "claude:Danial Nam"

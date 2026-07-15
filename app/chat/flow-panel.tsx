@@ -107,6 +107,13 @@ interface FlowMotionAttempt {
   createdAt: number;
 }
 
+/** What a flow is FOR — picked at ＋ New flow (docs: two pipelines):
+ *   "look"     · LOOK → MOTION (classic still → i2v iterate)
+ *   "transfer" · MOVES → LOOK → TRANSFER (a reference video's choreography
+ *                performed by your confirmed look — clip-reading models
+ *                only, Seedance 2.0 today, Kling Motion Control later). */
+type FlowKind = "look" | "transfer";
+
 interface Flow {
   id: string;
   title: string;
@@ -115,6 +122,11 @@ interface Flow {
    *  a session, not a parallel world. Legacy flows (undefined) show in
    *  every session. */
   sessionId?: string;
+  /** Legacy flows (undefined) are "look". */
+  kind?: FlowKind;
+  /** transfer only — the confirmed motion reference. A LIBRARY POINTER,
+   *  never base64: the file-backed store must not swallow 35MB clips. */
+  refClip?: { url: string; label: string } | null;
   imgEngine?: string;
   imgPrompt: string;
   imgAttempts: FlowImageAttempt[];
@@ -127,25 +139,40 @@ interface Flow {
   resolution: Resolution;
 }
 
-const newFlow = (n: number, sessionId?: string): Flow => ({
+/** Distilled from the two-dancer depth-reference field prompt (2026-07-15):
+ *  camera lock + wardrobe hold are what keep motion transfer usable; the
+ *  green-screen variant generates pre-keyed footage for compositing. */
+const TRANSFER_PRESETS = [
+  "Reproduce the reference video's body motion beat-for-beat on the same timeline. The camera stays completely fixed — every framing change comes from the dancer stepping toward or away from the lens; do NOT move, zoom or reframe the camera. The subject is the person from the reference image, outfit and hair held identical in every frame. Lively natural facial expressions throughout. Avoid: camera drift, face morphing, distorted hands, extra people, text, watermark.",
+  "Reproduce the reference video's motion one-to-one. Locked camera — no zoom, pan or pull-back. The subject is the person from the reference image, outfit held identical in every frame. Every pixel around the subject is one flat solid green (#00FF00), a pure 2D color fill edge to edge, as if already keyed out — no green-screen studio set, no floor shadows, no wall-floor seam, no green cast on the subject, crisp silhouette edges. Avoid: camera movement, gradients in the green, reflections, extra people, text, watermark.",
+];
+
+const newFlow = (n: number, sessionId?: string, kind: FlowKind = "look"): Flow => ({
   id: `f${Date.now()}`,
-  title: `Flow ${n}`,
+  title: kind === "transfer" ? `Moves → Image → Motion ${n}` : `Image → Motion ${n}`,
   createdAt: Date.now(),
   sessionId,
+  kind,
+  refClip: null,
   imgEngine: "grok",
   imgPrompt: "",
   imgAttempts: [],
   confirmedImgId: null,
-  motionPrompt: "",
-  motionModelKey: "kling", // the recommended "make it move" engine
+  // Transfer flows open with the distilled template — editing a working
+  // draft beats a blank box (same philosophy as 🎲 starters).
+  motionPrompt: kind === "transfer" ? TRANSFER_PRESETS[0] : "",
+  motionModelKey: kind === "transfer" ? "seedance-2" : "kling",
   motionAttempts: [],
   aspect: "9:16",
-  duration: 5,
+  duration: kind === "transfer" ? 10 : 5,
   resolution: "720p",
 });
 
 /** i2v-capable models only — Act-Two needs a driving video, not a still. */
 const MOTION_MODELS = MODELS.filter((m) => !m.transferOnly);
+/** Models that READ a reference clip (motion+audio). Seedance 2.0 today;
+ *  Kling Motion Control slots in here when its adapter lands. */
+const TRANSFER_MODELS = MODELS.filter((m) => m.key === "seedance-2");
 
 const storedPw = (): string | null => {
   try {
@@ -185,6 +212,12 @@ export function FlowPanel({
    *  the outfit") — one-shot, consumed by the next Generate. */
   const [editFrom, setEditFrom] = useState<FlowImageAttempt | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  /** ＋ New flow opens a kind picker instead of assuming "look". */
+  const [newPick, setNewPick] = useState(false);
+  /** Library video clips offered as MOVES candidates (transfer flows). */
+  const [libClips, setLibClips] = useState<Clip[]>([]);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const refFileRef = useRef<HTMLInputElement>(null);
 
   /* flows scoped to the current session (legacy flows show everywhere) */
   const visibleFlows = flows.filter(
@@ -205,7 +238,10 @@ export function FlowPanel({
     }
     setEditFrom(null);
   }, [sessionId, flow, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
-  const motionModel = resolveModel(flow?.motionModelKey ?? "kling");
+  const isTransfer = flow?.kind === "transfer";
+  const motionModel = resolveModel(
+    flow?.motionModelKey ?? (isTransfer ? "seedance-2" : "kling"),
+  );
   const imgEngine =
     IMG_ENGINES.find((e) => e.key === (flow?.imgEngine ?? "grok")) ??
     IMG_ENGINES[0];
@@ -238,8 +274,15 @@ export function FlowPanel({
       try {
         const list = JSON.parse(store.get(FLOWS_KEY) ?? "[]") as Flow[];
         if (Array.isArray(list) && list.length) {
-          setFlows(list);
-          setFlowId(list[list.length - 1].id);
+          // Legacy tabs said "Flow N" — rename to the pipeline they are
+          // (owner call 2026-07-15: tabs read as image → motion).
+          const named = list.map((f) =>
+            /^Flow \d+$/.test(f.title)
+              ? { ...f, title: f.title.replace(/^Flow /, "Image → Motion ") }
+              : f,
+          );
+          setFlows(named);
+          setFlowId(named[named.length - 1].id);
         } else {
           const f = newFlow(1);
           setFlows([f]);
@@ -249,6 +292,24 @@ export function FlowPanel({
         const f = newFlow(1);
         setFlows([f]);
         setFlowId(f.id);
+      }
+      // MOVES candidates: any Library entry with a playable video —
+      // GRABbed references first (that's what they're FOR), then takes.
+      try {
+        const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
+        setLibClips(
+          gallery
+            .filter((c) => c.videoUrl)
+            .sort((a, b) =>
+              a.provider === "grab" === (b.provider === "grab")
+                ? b.createdAt - a.createdAt
+                : a.provider === "grab"
+                  ? -1
+                  : 1,
+            ),
+        );
+      } catch {
+        /* empty library */
       }
       setHydrated(true);
     })();
@@ -428,14 +489,98 @@ export function FlowPanel({
     }
   };
 
+  /** Upload a local video into the clip vault → a real Library entry →
+   *  set it as this transfer flow's MOVES reference. */
+  const uploadRefClip = async (file: File) => {
+    if (!flow || uploadBusy) return;
+    setUploadBusy(true);
+    setError(null);
+    try {
+      const pw = storedPw();
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await fetch("/api/clips", {
+        method: "POST",
+        headers: pw ? { "x-app-password": pw } : {},
+        body: fd,
+      });
+      const b = await r.json();
+      if (!r.ok) throw new Error(b.error ?? "Upload failed");
+      const clip: Clip = {
+        jobId: b.name,
+        sessionId: sessionId ?? undefined,
+        provider: "grab",
+        prompt: file.name,
+        note: `Reference · uploaded · ${file.name}`,
+        variantLabel: "Reference",
+        createdAt: Date.now(),
+        status: "done",
+        aspectRatio: flow.aspect,
+        durationSeconds: 0,
+        resolution: flow.resolution,
+        videoUrl: b.url,
+        costUsd: 0,
+      };
+      try {
+        const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
+        store.set(GALLERY_KEY, JSON.stringify([clip, ...gallery]));
+      } catch {
+        /* library share is best-effort */
+      }
+      setLibClips((cs) => [clip, ...cs]);
+      patchFlow(flow.id, { refClip: { url: b.url, label: file.name } });
+      preview({ kind: "video", src: b.url, aspect: flow.aspect, label: "MOVES reference" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadBusy(false);
+    }
+  };
+
   /* ── stage 2: motion generation (i2v on the confirmed still) ── */
 
   const generateMotion = async () => {
     if (!flow || !confirmedImg || !flow.motionPrompt.trim()) return;
+    if (flow.kind === "transfer" && !flow.refClip) return;
     setArmed(null);
     setError(null);
     const m = resolveModel(flow.motionModelKey);
     const { base64, mimeType } = splitDataUrl(confirmedImg.image);
+
+    // Transfer flows carry the MOVES clip as a Library pointer — fetch and
+    // encode it now (same-origin, password header as query param not needed
+    // for fetch()).
+    let drivingVideo: { base64: string; mimeType: string } | undefined;
+    if (flow.kind === "transfer" && flow.refClip) {
+      preview({
+        kind: "busy",
+        src: "",
+        aspect: flow.aspect,
+        label: "loading the MOVES reference…",
+        startedAt: Date.now(),
+      });
+      try {
+        const pw = storedPw();
+        const r = await fetch(flow.refClip.url, {
+          headers: pw ? { "x-app-password": pw } : {},
+        });
+        if (!r.ok) throw new Error();
+        const blob = await r.blob();
+        const b64 = await new Promise<string>((res, rej) => {
+          const fr = new FileReader();
+          fr.onload = () => res(String(fr.result).split(",")[1] ?? "");
+          fr.onerror = rej;
+          fr.readAsDataURL(blob);
+        });
+        drivingVideo = { base64: b64, mimeType: "video/mp4" };
+      } catch {
+        setError(
+          "Couldn't load the MOVES reference — the saved file may have been cleared. Pick or upload it again.",
+        );
+        preview(lastShown.current);
+        return;
+      }
+    }
     preview({
       kind: "busy",
       src: "",
@@ -455,6 +600,9 @@ export function FlowPanel({
           durationSeconds: flow.duration,
           resolution: flow.resolution,
           image: { base64, mimeType },
+          // Transfer: the confirmed look rides as role reference_image and
+          // this clip as reference_video (seedance adapter pairs them).
+          drivingVideo,
         }),
       });
       const b = await r.json();
@@ -597,42 +745,163 @@ export function FlowPanel({
             </span>
           </button>
         ))}
-        <button
-          className="spec-chip"
-          onClick={() => {
-            // an untouched flow is reused instead of stacking clones
-            const empty = visibleFlows.find(
-              (f) =>
-                !f.imgAttempts.length &&
-                !f.motionAttempts.length &&
-                !f.imgPrompt.trim() &&
-                !f.motionPrompt.trim(),
-            );
-            if (empty) {
-              setFlowId(empty.id);
-              return;
-            }
-            const f = newFlow(visibleFlows.length + 1, sessionId ?? undefined);
-            setFlows((fs) => [...fs, f]);
-            setFlowId(f.id);
-          }}
-        >
+        <button className="spec-chip" onClick={() => setNewPick((v) => !v)}>
           ＋ New flow
         </button>
       </div>
+      {newPick && (
+        <div className="flow-kind-pick fade">
+          {(
+            [
+              {
+                kind: "look" as FlowKind,
+                title: "IMAGE → MOTION",
+                desc: "Make a look, confirm it, then iterate motion on it forever.",
+              },
+              {
+                kind: "transfer" as FlowKind,
+                title: "MOVES → IMAGE → MOTION",
+                desc: "Pick a reference video's choreography, confirm a look, and have them perform it (Seedance 2.0 · opens with a working template).",
+              },
+            ]
+          ).map((opt) => (
+            <button
+              key={opt.kind}
+              className="flow-kind-opt"
+              onClick={() => {
+                setNewPick(false);
+                // an untouched flow OF THIS KIND is reused, not cloned
+                const empty = visibleFlows.find(
+                  (f) =>
+                    (f.kind ?? "look") === opt.kind &&
+                    !f.imgAttempts.length &&
+                    !f.motionAttempts.length &&
+                    !f.imgPrompt.trim() &&
+                    !f.refClip &&
+                    (opt.kind === "transfer" || !f.motionPrompt.trim()),
+                );
+                if (empty) {
+                  setFlowId(empty.id);
+                  return;
+                }
+                const n =
+                  visibleFlows.filter((f) => (f.kind ?? "look") === opt.kind)
+                    .length + 1;
+                const f = newFlow(n, sessionId ?? undefined, opt.kind);
+                setFlows((fs) => [...fs, f]);
+                setFlowId(f.id);
+              }}
+            >
+              <span className="spec-head">{opt.title}</span>
+              <span className="flow-kind-desc">{opt.desc}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <p className="flow-sub">
-        Confirm the LOOK once, then iterate the MOTION forever — the still
-        never re-rolls. Finished takes land in the Library; a confirmed
-        still can become a Character card.
+        {isTransfer
+          ? "Lock the MOVES (a reference video) and the LOOK once — then iterate the TRANSFER forever. Motion copies beat-for-beat; identity comes from your look."
+          : "Confirm the LOOK once, then iterate the MOTION forever — the still never re-rolls. Finished takes land in the Library; a confirmed still can become a Character card."}
       </p>
 
       {error && <div className="error-box fade">{error}</div>}
 
-      {/* ── Stage 1 · STILL ─────────────────────────── */}
+      {/* ── Stage 1 · MOVES (transfer flows only) ───── */}
+      {isTransfer && (
+        <section className={`flow-stage ${flow.refClip ? "locked" : ""}`}>
+          <div className="flow-stage-head">
+            <span className="spec-head">
+              STAGE 1 · MOVES — THE REFERENCE {flow.refClip ? "· SET ✓" : ""}
+            </span>
+            <span className="flow-engine mono">
+              tip: depth-render references carry pure motion, zero identity bleed
+            </span>
+          </div>
+          {flow.refClip ? (
+            <div className="chips-row">
+              <span className="sel-chip fade">
+                ▶ {flow.refClip.label}
+                <button
+                  className="link-btn"
+                  onClick={() =>
+                    preview({
+                      kind: "video",
+                      src: flow.refClip!.url,
+                      aspect: flow.aspect,
+                      label: "MOVES reference",
+                    })
+                  }
+                >
+                  view
+                </button>
+                <button
+                  className="link-btn danger"
+                  onClick={() => patchFlow(flow.id, { refClip: null })}
+                >
+                  ✕ change
+                </button>
+              </span>
+            </div>
+          ) : (
+            <>
+              <p className="flow-locked-hint">
+                Pick the clip whose motion gets performed — a GRAB from the
+                Library (⤓ grabs YouTube/X with a m:ss trim), or upload a
+                local file.
+              </p>
+              <div className="chips-row" style={{ flexWrap: "wrap" }}>
+                {libClips.slice(0, 6).map((c) => (
+                  <button
+                    key={c.jobId}
+                    className="spec-chip"
+                    title={c.note ?? c.prompt}
+                    onClick={() => {
+                      const label =
+                        (c.note ?? c.prompt ?? c.jobId).slice(0, 60) || c.jobId;
+                      patchFlow(flow.id, {
+                        refClip: { url: c.videoUrl!, label },
+                      });
+                      preview({
+                        kind: "video",
+                        src: c.videoUrl!,
+                        aspect: flow.aspect,
+                        label: "MOVES reference",
+                      });
+                    }}
+                  >
+                    {(c.note ?? c.prompt ?? c.jobId).slice(0, 34) || c.jobId}
+                  </button>
+                ))}
+                <button
+                  className="spec-chip"
+                  disabled={uploadBusy}
+                  onClick={() => refFileRef.current?.click()}
+                >
+                  {uploadBusy ? "UPLOADING…" : "↥ Upload a video"}
+                </button>
+                <input
+                  ref={refFileRef}
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void uploadRefClip(f);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* ── STILL / LOOK stage ──────────────────────── */}
       <section className={`flow-stage ${confirmedImg ? "locked" : ""}`}>
         <div className="flow-stage-head">
           <span className="spec-head">
-            STAGE 1 · STILL — THE LOOK {confirmedImg ? "· CONFIRMED ✓" : ""}
+            {isTransfer ? "STAGE 2 · IMAGE" : "STAGE 1 · STILL"} — THE LOOK{" "}
+            {confirmedImg ? "· CONFIRMED ✓" : ""}
           </span>
         </div>
 
@@ -799,12 +1068,22 @@ export function FlowPanel({
         )}
       </section>
 
-      {/* ── Stage 2 · MOTION ────────────────────────── */}
-      <section className={`flow-stage ${confirmedImg ? "" : "disabled"}`}>
+      {/* ── MOTION stage ────────────────────────────── */}
+      <section
+        className={`flow-stage ${
+          confirmedImg && (!isTransfer || flow.refClip) ? "" : "disabled"
+        }`}
+      >
         <div className="flow-stage-head">
-          <span className="spec-head">STAGE 2 · MOTION — MAKE IT MOVE</span>
+          <span className="spec-head">
+            {isTransfer
+              ? "STAGE 3 · MOTION — PERFORM THE MOVES"
+              : "STAGE 2 · MOTION — MAKE IT MOVE"}
+          </span>
           <span className="flow-engine mono">
-            recommended: Kling 3.0 (most natural motion per dollar)
+            {isTransfer
+              ? "Seedance 2.0 — the clip-reading model (role mixing unverified until a first real run)"
+              : "recommended: Kling 3.0 (most natural motion per dollar)"}
           </span>
         </div>
 
@@ -818,10 +1097,10 @@ export function FlowPanel({
                 patchFlow(flow.id, { motionModelKey: e.target.value })
               }
             >
-              {MOTION_MODELS.map((m) => (
+              {(isTransfer ? TRANSFER_MODELS : MOTION_MODELS).map((m) => (
                 <option key={m.key} value={m.key}>
                   {m.short}
-                  {m.key === "kling" ? " ★" : ""}
+                  {!isTransfer && m.key === "kling" ? " ★" : ""}
                 </option>
               ))}
             </select>
@@ -873,7 +1152,7 @@ export function FlowPanel({
           </label>
         </div>
 
-        {confirmedImg ? (
+        {confirmedImg && (!isTransfer || flow.refClip) ? (
           <>
             <div className="flow-gen-row">
               <textarea
@@ -903,14 +1182,18 @@ export function FlowPanel({
                   onClick={() =>
                     patchFlow(flow.id, {
                       motionPrompt: randomFrom(
-                        MOTION_PRESETS,
+                        isTransfer ? TRANSFER_PRESETS : MOTION_PRESETS,
                         flow.motionPrompt,
                       ),
                     })
                   }
-                  title="Fill with a random motion draft — edit from there"
+                  title={
+                    isTransfer
+                      ? "Cycle transfer templates — plain vs green-screen composite"
+                      : "Fill with a random motion draft — edit from there"
+                  }
                 >
-                  🎲 Random
+                  🎲 {isTransfer ? "Template" : "Random"}
                 </button>
               </div>
             </div>
@@ -958,8 +1241,9 @@ export function FlowPanel({
           </>
         ) : (
           <p className="flow-locked-hint">
-            Confirm a look in Stage 1 first — then iterate motion here as
-            many times as you want without touching the still.
+            {isTransfer
+              ? "Set the MOVES reference (Stage 1) and confirm a look (Stage 2) — then generate the transfer here, iterating direction and staging without touching either."
+              : "Confirm a look in Stage 1 first — then iterate motion here as many times as you want without touching the still."}
           </p>
         )}
       </section>
