@@ -12,6 +12,7 @@ import {
   estimateModelCost,
   resolveModel,
   effectiveSeconds,
+  readsClip,
   type ProviderName,
   type AspectRatio,
   type Resolution,
@@ -586,7 +587,7 @@ export default function Home() {
    *  `key-open` class adds matching margin so the column scrolls instead. */
   const keyPopoverOpen =
     (keyMissing && !keyPanelHidden) ||
-    (model.key === "seedance-2" &&
+    (readsClip(model.key) &&
       attach?.kind === "video" &&
       Boolean(attach.videoBase64) &&
       keysLoaded &&
@@ -1536,7 +1537,7 @@ export default function Home() {
       // NOT beat-copied (except Seedance 2.0, which reads the clip
       // itself). Don't port the transcription; just SAY it in the stepper.
       const transferNote =
-        bundle?.drivingVideo && model.key !== "seedance-2"
+        bundle?.drivingVideo && !readsClip(model.key)
           ? "Video reference: the LOOK carries over, but on this model SPEC mode does not beat-copy its motion — put the timing you want in the cut board. (Seedance 2.0 reads the clip's motion directly; the classic non-SPEC flow transcribes it.)"
           : null;
       const call = (mode: "check" | "assemble") =>
@@ -1711,7 +1712,7 @@ export default function Home() {
           // Seedance 2.0 reads the WHOLE reference clip — same rule as
           // the classic flow.
           drivingVideo:
-            model.key === "seedance-2" ? bundle?.drivingVideo : undefined,
+            readsClip(model.key) ? bundle?.drivingVideo : undefined,
         }),
       });
       const body = await res.json();
@@ -1978,7 +1979,7 @@ export default function Home() {
     // model's primary image is affected.
     const lastSnap =
       !manual && !selChar && !selSetting && !ctxIds.length && continuity &&
-      model.key !== "seedance-2"
+      !readsClip(model.key)
         ? [...turns].reverse().find((t) => t.snapshot)?.snapshot
         : undefined;
     const [charImgRaw, settingImg] =
@@ -2055,7 +2056,7 @@ export default function Home() {
       keysLoaded &&
       Boolean(keys["GEMINI_API_KEY"]) &&
       manual?.kind === "video" &&
-      model.key !== "seedance-2";
+      !readsClip(model.key);
     if (specVideoBypass) {
       setError(
         "SPEC skipped for this take — the attached video runs through the classic flow so its motion gets beat-copied. (Seedance 2.0 keeps SPEC; it reads the clip itself.)",
@@ -2267,7 +2268,7 @@ export default function Home() {
           // Seedance 2.0 reads the WHOLE reference clip (motion + audio) —
           // send the actual video, not just the extracted frames.
           drivingVideo:
-            model.key === "seedance-2" &&
+            readsClip(model.key) &&
             manual?.kind === "video" &&
             manual.videoBase64
               ? {
@@ -2783,7 +2784,7 @@ export default function Home() {
       // send auto-bypasses SPEC (classic transfer flow) — that's a money
       // path, so it must NOT skip the confirm.
       const videoBypass =
-        attach?.kind === "video" && model.key !== "seedance-2";
+        attach?.kind === "video" && !readsClip(model.key);
       if (specMode && hasGemini && draft.trim() && !videoBypass)
         return void send();
       if (!hasGemini && !specDeclined && draft.trim()) return void send();
@@ -2800,7 +2801,7 @@ export default function Home() {
     pins: ctxIds.length,
     text: Boolean(draft.trim()),
     mixNote: attach?.kind === "video" ? refMixSummary(refMix) : undefined,
-    fullVideoRef: model.key === "seedance-2" && Boolean(attach?.videoBase64),
+    fullVideoRef: readsClip(model.key) && Boolean(attach?.videoBase64),
   });
 
   /* ── render ────────────────────────────────────── */
@@ -4476,7 +4477,7 @@ export default function Home() {
                 <select
                   aria-label="Continuity"
                   title={
-                    model.key === "seedance-2"
+                    readsClip(model.key)
                       ? "Continuity: normally auto-attaches a frame from the last take so the next one continues the scene — but Seedance 2.0 rejects real-person image inputs, so it's skipped for this model. For continuity on 2.0, attach the last take from the Library as a video reference instead."
                       : "Continuity: after a take finishes, a mid-video frame is captured and auto-attached to the next take as its image reference, so the scene and person carry over. A manual attachment always wins over it."
                   }
@@ -4484,7 +4485,7 @@ export default function Home() {
                   onChange={(e) => setContinuity(e.target.value === "on")}
                 >
                   <option value="on">
-                    {model.key === "seedance-2" ? "CONT N/A" : "CONT ON"}
+                    {readsClip(model.key) ? "CONT N/A" : "CONT ON"}
                   </option>
                   <option value="off">CONT OFF</option>
                 </select>
@@ -4568,7 +4569,7 @@ export default function Home() {
 
             {/* Seedance 2.0 + video reference needs a public URL host — teach
                 the one extra credential inline, same UX as provider keys. */}
-            {model.key === "seedance-2" &&
+            {readsClip(model.key) &&
               attach?.kind === "video" &&
               Boolean(attach.videoBase64) &&
               keysLoaded &&

@@ -9,6 +9,7 @@ import {
   resolveModel,
   effectiveSeconds,
   estimateModelCost,
+  readsClip,
   type AspectRatio,
   type ProviderName,
   type Resolution,
@@ -172,7 +173,7 @@ const newFlow = (n: number, sessionId?: string, kind: FlowKind = "look"): Flow =
 const MOTION_MODELS = MODELS.filter((m) => !m.transferOnly);
 /** Models that READ a reference clip (motion+audio). Seedance 2.0 today;
  *  Kling Motion Control slots in here when its adapter lands. */
-const TRANSFER_MODELS = MODELS.filter((m) => m.key === "seedance-2");
+const TRANSFER_MODELS = MODELS.filter((m) => readsClip(m.key));
 
 const storedPw = (): string | null => {
   try {
@@ -626,6 +627,29 @@ export function FlowPanel({
         });
         if (!r.ok) throw new Error();
         const blob = await r.blob();
+        // ModelArk r2v hard-caps the reference video at 15.2s (verified
+        // live 2026-07-15: content[2] rejection) — catch it before the
+        // upload instead of after.
+        const dur = await new Promise<number>((res) => {
+          const v = document.createElement("video");
+          v.preload = "metadata";
+          v.onloadedmetadata = () => {
+            URL.revokeObjectURL(v.src);
+            res(v.duration);
+          };
+          v.onerror = () => {
+            URL.revokeObjectURL(v.src);
+            res(0);
+          };
+          v.src = URL.createObjectURL(blob);
+        });
+        if (dur > 15.2) {
+          setError(
+            `The MOVES reference is ${Math.round(dur)}s — Seedance reads at most 15s of reference. Trim the beat you want with GRAB (Library ⤓, m:ss trim like 0:05 → 0:18) and pick the trimmed clip here.`,
+          );
+          preview(lastShown.current);
+          return;
+        }
         const b64 = await new Promise<string>((res, rej) => {
           const fr = new FileReader();
           fr.onload = () => res(String(fr.result).split(",")[1] ?? "");
@@ -882,7 +906,7 @@ export function FlowPanel({
           <p className="flow-locked-hint">
             {flow.refClip
               ? "Click another to switch, click the selected one to replay it in the frame."
-              : "Pick the clip whose motion gets performed — a GRAB from the Library (⤓ grabs YouTube/X with a m:ss trim), or upload a local file."}
+              : "Pick the clip whose motion gets performed — ≤15s (Seedance's reference cap). GRAB from the Library (⤓ pulls YouTube/X with a m:ss trim), or upload a local file."}
           </p>
           {/* candidates STAY visible after picking — the chosen one
               highlights (▶ + sel), so with many similar references it's
@@ -1159,7 +1183,7 @@ export function FlowPanel({
           </span>
           <span className="flow-engine mono">
             {isTransfer
-              ? "Seedance 2.0 — the clip-reading model (role mixing unverified until a first real run)"
+              ? "Seedance 2.0 family — reference ≤15s; Fast ≈25% cheaper for iteration"
               : "recommended: Kling 3.0 (most natural motion per dollar)"}
           </span>
         </div>

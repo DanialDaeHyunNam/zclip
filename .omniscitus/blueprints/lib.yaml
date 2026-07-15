@@ -1,15 +1,18 @@
 version: 1
-updated: 2026-07-15T08:30:49.329Z
+updated: 2026-07-15T09:18:00.570Z
 
 files:
   "lib/config.ts":
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-13T02:19:23.676Z
-    change_count: 18
+    last_modified: 2026-07-15T09:18:00.570Z
+    change_count: 19
     purpose: "The switchboard: PROVIDERS adapters + MODELS catalog (model≠adapter), pricing, duration rules (effectiveSeconds), cost estimates, key allowlist"
     change_log:
+      - date: 2026-07-15T09:18:00.570Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T02:19:23.676Z
         action: edit
         source: "claude:Danial Nam"

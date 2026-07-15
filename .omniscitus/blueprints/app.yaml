@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T09:08:48.243Z
+updated: 2026-07-15T09:18:48.481Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -2510,10 +2510,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-15T09:08:48.243Z
-    change_count: 53
+    last_modified: 2026-07-15T09:18:48.481Z
+    change_count: 55
     purpose: "FLOW method panel (embedded in the studio): still→motion pipeline — look generate/upload/EDIT with confirm gate, motion iteration via i2v, presets, session-scoped flows, shared-Library interop, Character-card export"
     change_log:
+      - date: 2026-07-15T09:18:48.481Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T09:18:46.157Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T09:08:48.243Z
         action: edit
         source: "claude:Danial Nam"

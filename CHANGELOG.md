@@ -5,6 +5,24 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.6.4 — 2026-07-15
+
+### Added
+- **Seedance 2.0 Fast** (`dreamina-seedance-2-0-fast-260128`) joins the
+  picker — same clip-reading family, ~25% cheaper (est. $0.08/s 720p) —
+  and is selectable in transfer flows: iterate on Fast, finish on 2.0.
+  All Seedance-2 gates (SPEC keep, continuity skip, reference pairing)
+  now key off the family, not the single model.
+
+### Fixed
+- Transfer flows check the MOVES reference length BEFORE uploading:
+  ModelArk r2v caps the reference at 15.2s (confirmed live — the
+  content[2] rejection), so an over-long clip now gets a clear "trim the
+  beat with GRAB (m:ss)" error instead of a provider parameter dump.
+  Notably, that same live error confirmed the reference_image +
+  reference_video pairing is ACCEPTED — role mixing is no longer
+  unverified.
+
 ## 0.6.3 — 2026-07-15
 
 ### Fixed

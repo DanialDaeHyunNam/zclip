@@ -307,7 +307,24 @@ export const MODELS: ModelEntry[] = [
     quality: 3,
     speed: 1,
   }),
+  variant({
+    key: "seedance-2-fast",
+    short: "Seedance 2.0 Fast",
+    provider: "seedance",
+    modelId: "dreamina-seedance-2-0-fast-260128",
+    tagline: "Same clip-reading tricks, ~25% cheaper — iterate here, finish on 2.0",
+    // ≈$3.3/M tokens with video input (ModelArk resource packs) — estimate
+    price: { "720p": 0.08, "1080p": 0.17 },
+    quality: 2,
+    speed: 2,
+  }),
 ];
+
+/** Seedance 2.0 family — the models that READ a reference clip
+ *  (reference-to-video). Gates transfer flows, SPEC keep/bypass, the
+ *  continuity skip, and the reference_image+reference_video pairing. */
+export const readsClip = (modelKey: string): boolean =>
+  modelKey.startsWith("seedance-2");
 
 /** Company chips, in the order they appear (companies with ≥1 model). */
 export const COMPANIES: string[] = MODELS.reduce<string[]>((acc, m) => {
