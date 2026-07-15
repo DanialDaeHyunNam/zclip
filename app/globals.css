@@ -1081,6 +1081,22 @@ button {
   color: var(--fg);
   margin-bottom: 10px;
 }
+.turn-user-wrap {
+  margin-bottom: 10px;
+}
+.turn-user-wrap .turn-user {
+  margin-bottom: 4px;
+}
+.turn-user.clamp3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.turn-user-more {
+  font-size: 11px;
+}
 
 .turn-prompt {
   margin-bottom: 10px;
@@ -5426,6 +5442,29 @@ button {
   flex: none;
 }
 
+/* ORIGINAL / SENT segmented toggle for refined chat takes */
+.prompt-toggle {
+  display: inline-flex;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.prompt-toggle button {
+  background: none;
+  border: 0;
+  color: var(--faint);
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.prompt-toggle button.on {
+  background: rgba(111, 220, 255, 0.16);
+  color: var(--accent);
+}
+
 /* default: 3-line clamp; Full view opens the whole thing in a modal */
 .spec-final-body.clamp3 {
   display: -webkit-box;
@@ -5671,14 +5710,23 @@ button {
 
 .flow-thumbs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* horizontal carousel — saves vertical space */
   gap: 10px;
   margin-top: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+.flow-thumbs > * {
+  scroll-snap-align: start;
 }
 
 .flow-thumb {
   position: relative;
-  width: 132px;
+  width: 96px;
+  flex: 0 0 auto; /* don't shrink in the carousel */
   aspect-ratio: 9 / 16;
   border: 1px solid var(--hair);
   border-radius: var(--r-sm);
@@ -5699,6 +5747,67 @@ button {
 .flow-thumb.sel {
   border-color: var(--accent);
   box-shadow: 0 0 16px rgba(111, 220, 255, 0.18);
+}
+
+/* bottom progress bar — sticky to the viewport bottom while the flow panel
+   is on screen, so the steps + ANIMATE are always reachable on this long page */
+.flow-actionbar {
+  position: sticky;
+  bottom: 12px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 12px 16px;
+  border: 1px solid rgba(111, 220, 255, 0.35);
+  border-radius: var(--r-pill);
+  background: rgba(10, 14, 18, 0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+.flow-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  flex-wrap: wrap;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+.flow-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+.flow-step.done {
+  color: var(--accent);
+}
+.flow-step.opt {
+  opacity: 0.7;
+}
+.flow-step-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 9px;
+}
+.flow-step.done .flow-step-dot {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+.flow-animate-btn {
+  flex: none;
+  white-space: nowrap;
 }
 
 .flow-thumb-tag {

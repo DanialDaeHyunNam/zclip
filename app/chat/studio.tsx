@@ -490,6 +490,12 @@ export default function Home() {
   const [method, setMethod] = useState<"chat" | "flow">("chat");
   const [flowPreview, setFlowPreview] = useState<FlowPreview | null>(null);
   const [specMode, setSpecMode] = useState(false);
+  /** Refine = let Gemini rewrite your message into the video prompt. OFF by
+   *  default (owner call 2026-07-16: a crafted prompt should go VERBATIM, not
+   *  get silently rewritten). Persisted. When off, your typed text is sent
+   *  exactly; attachments/context still compose via refine when there's no
+   *  typed text to send as-is. */
+  const [refineOn, setRefineOn] = useState(false);
   const [specBusy, setSpecBusy] = useState<"check" | "assemble" | null>(null);
   /** The in-composer interview stepper (null = normal composer). */
   const [specFlow, setSpecFlow] = useState<SpecFlowState | null>(null);
@@ -508,6 +514,9 @@ export default function Home() {
     setCopiedTurn(id);
     setTimeout(() => setCopiedTurn((c) => (c === id ? null : c)), 1500);
   }, []);
+  /** Per-refined-take view: "orig" (what you typed) vs "sent" (the refined
+   *  prompt actually generated). Default shows what was sent. */
+  const [promptMode, setPromptMode] = useState<Record<string, "orig" | "sent">>({});
   /** Gemini-key onboarding modal. draft = the send it interrupted
    *  ("" ⇒ opened from the SPEC button, nothing pending); flowId claims
    *  the parked reference bundle for that send. */
@@ -884,6 +893,7 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated) return;
     setSpecDeclined(store.get(SPEC_DECLINED_KEY) === "1");
+    setRefineOn(store.get("hooklab.refine") === "1");
   }, [hydrated]);
 
   /** Sessions that used the FLOW method — ⇶ badge in the sidebar.
@@ -2221,6 +2231,11 @@ export default function Home() {
       let prompt: string;
       if (!text && starterText && !manual && !ctxTurns.length) {
         prompt = starterText; // the visible base, exactly as shown/edited
+      } else if (!refineOn && text.trim()) {
+        // Refine OFF (default): send exactly what you typed. Attachments and
+        // context still ride along (primaryImage/drivingVideo), but the words
+        // are yours, untouched.
+        prompt = text.trim();
       } else {
         const r = await fetch("/api/refine", {
           method: "POST",
@@ -3299,47 +3314,77 @@ export default function Home() {
                 {t.imageThumb && (
                   <img className="turn-img" src={t.imageThumb} alt="reference" />
                 )}
-                {/* A verbatim / "run as typed" take has userText === prompt —
-                    showing both is the same text twice. Drop the top echo and
-                    let the prompt box (with Copy + Full view) stand alone. */}
-                {t.userText.trim() !== (t.prompt ?? "").trim() && (
-                  <div className="turn-user">{t.userText}</div>
-                )}
-                {t.prompt ? (
-                  /* Every take's prompt: clamped to 3 lines, with Copy and a
-                     full-view modal. Spec takes keep their accent styling. */
-                  <div
-                    className={`spec-final ${t.fromSpec ? "" : "plain-prompt"}`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="spec-final-head">
-                      <span>
-                        {t.fromSpec ? "SPEC PROMPT" : "PROMPT"} · TAKE{" "}
-                        {takeNo(i)} · {t.prompt.length} CHARS
-                      </span>
-                      <span className="spec-final-actions">
-                        <button
-                          className="link-btn"
-                          onClick={() => copyPrompt(t.id, t.prompt!)}
-                        >
-                          {copiedTurn === t.id ? "✓ Copied" : "⧉ Copy"}
-                        </button>
-                        <button
-                          className="link-btn"
-                          onClick={() =>
-                            setPromptView({
-                              title: `${t.fromSpec ? "Spec prompt" : "Prompt"} · Take ${takeNo(i)}`,
-                              text: t.prompt!,
-                            })
-                          }
-                        >
-                          ⤢ Full view
-                        </button>
-                      </span>
+                {(() => {
+                  // No prompt yet (refining / pending) → just show what the
+                  // user typed.
+                  if (!t.prompt) {
+                    return t.userText ? (
+                      <div className="turn-user">{t.userText}</div>
+                    ) : null;
+                  }
+                  // A refined take differs from what was typed — one box with
+                  // an ORIGINAL / SENT toggle so both are visible without
+                  // duplicating. Verbatim/spec takes just show the prompt.
+                  const refined = t.userText.trim() !== t.prompt.trim();
+                  const mode = promptMode[t.id] ?? "sent";
+                  const shown = refined && mode === "orig" ? t.userText : t.prompt;
+                  return (
+                    <div
+                      className={`spec-final ${t.fromSpec ? "" : "plain-prompt"}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="spec-final-head">
+                        {refined ? (
+                          <span className="prompt-toggle">
+                            <button
+                              className={mode === "orig" ? "on" : ""}
+                              onClick={() =>
+                                setPromptMode((m) => ({ ...m, [t.id]: "orig" }))
+                              }
+                            >
+                              ORIGINAL
+                            </button>
+                            <button
+                              className={mode === "sent" ? "on" : ""}
+                              onClick={() =>
+                                setPromptMode((m) => ({ ...m, [t.id]: "sent" }))
+                              }
+                            >
+                              SENT
+                            </button>
+                          </span>
+                        ) : (
+                          <span>
+                            {t.fromSpec ? "SPEC PROMPT" : "PROMPT"} · TAKE{" "}
+                            {takeNo(i)} · {t.prompt.length} CHARS
+                          </span>
+                        )}
+                        <span className="spec-final-actions">
+                          <button
+                            className="link-btn"
+                            onClick={() => copyPrompt(t.id, shown)}
+                          >
+                            {copiedTurn === t.id ? "✓ Copied" : "⧉ Copy"}
+                          </button>
+                          <button
+                            className="link-btn"
+                            onClick={() =>
+                              setPromptView({
+                                title: refined
+                                  ? `${mode === "orig" ? "Original message" : "Sent prompt"} · Take ${takeNo(i)}`
+                                  : `${t.fromSpec ? "Spec prompt" : "Prompt"} · Take ${takeNo(i)}`,
+                                text: shown,
+                              })
+                            }
+                          >
+                            ⤢ Full view
+                          </button>
+                        </span>
+                      </div>
+                      <p className="spec-final-body clamp3">{shown}</p>
                     </div>
-                    <p className="spec-final-body clamp3">{t.prompt}</p>
-                  </div>
-                ) : null}
+                  );
+                })()}
                 <div className="turn-status">
                   <span className={`dot ${
                     t.status === "done" ? "done" : t.status === "error" ? "fault" : "live"
@@ -4243,6 +4288,21 @@ export default function Home() {
                 }}
               />
               <span className="turn-spacer" />
+              <button
+                className={`spec-toggle ${refineOn ? "on" : ""}`}
+                onClick={() => {
+                  const next = !refineOn;
+                  setRefineOn(next);
+                  store.set("hooklab.refine", next ? "1" : "0");
+                }}
+                title={
+                  refineOn
+                    ? "Refine ON — Gemini rewrites your message into a fuller video prompt before generating. Click to send your text verbatim instead."
+                    : "Refine OFF — your message is sent to the video model exactly as typed. Click to let Gemini expand it first."
+                }
+              >
+                REFINE
+              </button>
               <button
                 className={`spec-toggle ${specMode ? "on" : ""}`}
                 onClick={() => {

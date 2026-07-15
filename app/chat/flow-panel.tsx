@@ -361,6 +361,22 @@ export function FlowPanel({
   // Motion is generatable when: look flow has a confirmed still, OR transfer
   // flow has its MOVES clip (the identity look is optional there).
   const canAnimate = isTransfer ? Boolean(flow?.refClip) : Boolean(confirmedImg);
+  const motionReady = Boolean(flow?.motionPrompt.trim());
+  const animateReady = canAnimate && motionReady;
+  // Bottom progress bar steps for the current pipeline. `required` gates the
+  // ANIMATE button; optional steps show state but don't block.
+  const flowSteps = flow
+    ? isTransfer
+      ? [
+          { label: "MOVES", done: Boolean(flow.refClip), required: true },
+          { label: "IMAGE", done: confirmedImgs.length > 0, required: false },
+          { label: "PROMPT", done: motionReady, required: true },
+        ]
+      : [
+          { label: "STILL", done: Boolean(confirmedImg), required: true },
+          { label: "MOTION", done: motionReady, required: true },
+        ]
+    : [];
 
   /** Reuse a look's GENERATION PROMPT as the character description, instead
    *  of sending the image (which Seedance's real-person filter blocks). The
@@ -1011,7 +1027,29 @@ export function FlowPanel({
     return () => clearInterval(tick);
   }, [flows, hydrated, headers, patchAttempt, onPreview]);
 
-  if (!hydrated || !flow) return <div className="flow-panel" />;
+  // Never a mysterious blank: if there's no active flow (transient, or a
+  // corrupted hot-reload state), show a real Start button instead of an
+  // empty div so the user can always begin.
+  if (!hydrated) return <div className="flow-panel" />;
+  if (!flow) {
+    return (
+      <div className="flow-panel fade">
+        <div className="flow-empty-start">
+          <p className="flow-sub">Start a flow to generate here.</p>
+          <button
+            className="btn-primary"
+            onClick={() => {
+              const f = newFlow(visibleFlows.length + 1, sessionId ?? undefined);
+              setFlows((fs) => [...fs, f]);
+              setFlowId(f.id);
+            }}
+          >
+            ＋ New flow
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flow-panel fade">
@@ -1662,6 +1700,44 @@ export function FlowPanel({
           </div>
         </div>
       )}
+
+      {/* Bottom progress bar — pinned to the viewport so on this long page
+          the steps + ANIMATE are always reachable. Each step lights when
+          satisfied; ANIMATE enables when the required ones are done. */}
+      <div className="flow-actionbar">
+        <div className="flow-steps">
+          {flowSteps.map((s, i) => (
+            <span
+              key={s.label}
+              className={`flow-step ${s.done ? "done" : ""} ${
+                s.required ? "" : "opt"
+              }`}
+            >
+              <span className="flow-step-dot">{s.done ? "✓" : i + 1}</span>
+              {s.label}
+              {!s.required && " (opt)"}
+            </span>
+          ))}
+        </div>
+        <button
+          className="btn-primary flow-animate-btn"
+          disabled={!animateReady}
+          onClick={() => void generateMotion()}
+          title={
+            animateReady
+              ? undefined
+              : isTransfer
+                ? "Set a MOVES reference and write the prompt first"
+                : "Confirm a look and write the motion prompt first"
+          }
+        >
+          ANIMATE
+          {animateReady && motionCost && fmtCost(motionCost)
+            ? ` · ${fmtCost(motionCost)}`
+            : ""}{" "}
+          →
+        </button>
+      </div>
     </div>
   );
 }

@@ -5,6 +5,29 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.8.0 — 2026-07-16
+
+### Added
+- **Refine is now a toggle, OFF by default.** Chat used to silently rewrite
+  your message through Gemini before generating — a crafted prompt got
+  mangled. Now your text is sent VERBATIM unless you turn REFINE on (for
+  conversational "make her smile" iteration). SPEC is still the separate
+  build-a-detailed-prompt path.
+- **Refined takes get an ORIGINAL / SENT toggle** — one box switches between
+  what you typed and what was actually generated, instead of showing both.
+- **FLOW bottom progress bar.** A pinned bar tracks the pipeline
+  (MOVES → IMAGE → PROMPT for transfer, STILL → MOTION for look); each step
+  lights when satisfied and ANIMATE (with its cost) enables when the
+  required ones are done — reachable without scrolling on the long page.
+- **FLOW look thumbnails are a horizontal carousel** now, not a tall grid —
+  they stop eating vertical space.
+- FLOW never shows a mystery blank: with no active flow it offers a
+  ＋ New flow button instead of an empty panel.
+
+### Fixed
+- A long pasted chat message clamps to 3 lines with an explicit ⤢ Full view
+  button (clicking the message no longer pops a modal by accident).
+
 ## 0.7.5 — 2026-07-15
 
 ### Fixed
