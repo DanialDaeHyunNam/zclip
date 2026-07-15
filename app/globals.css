@@ -656,11 +656,10 @@ textarea:focus {
 .stub-note a {
   color: var(--accent);
   text-decoration: none;
-  border-bottom: 1px solid rgba(111, 220, 255, 0.3);
 }
 
 .stub-note a:hover {
-  border-bottom-color: var(--accent);
+  color: var(--fg);
 }
 
 .param-value {
@@ -2147,7 +2146,6 @@ button {
 .key-hint a {
   color: var(--accent);
   text-decoration: none;
-  border-bottom: 1px solid rgba(111, 220, 255, 0.3);
 }
 
 .key-msg {
@@ -3239,7 +3237,6 @@ button {
 .ld-footer a {
   color: var(--accent);
   text-decoration: none;
-  border-bottom: 1px solid rgba(111, 220, 255, 0.3);
 }
 
 .ld-step a {
@@ -4387,7 +4384,6 @@ button {
 }
 .rlg-fine a {
   color: var(--dim);
-  border-bottom: 1px solid var(--hair);
 }
 .rlg-fine a:hover {
   color: var(--accent);

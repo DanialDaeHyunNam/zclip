@@ -5,6 +5,13 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.5.2 — 2026-07-15
+
+### Fixed
+- The last underlines are gone: several links drew a 1px `border-bottom`
+  as a pseudo-underline (key panel, install guide, stub notes) — removed;
+  hover now shifts color instead.
+
 ## 0.5.1 — 2026-07-15
 
 ### Added
