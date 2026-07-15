@@ -3329,26 +3329,28 @@ export default function Home() {
                   const mode = promptMode[t.id] ?? "sent";
                   const shown = refined && mode === "orig" ? t.userText : t.prompt;
                   return (
-                    <div
-                      className={`spec-final ${t.fromSpec ? "" : "plain-prompt"}`}
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    /* No stopPropagation on the box: clicking the prompt body
+                       selects the take (bubbles to the turn). Only the
+                       controls below stop it. */
+                    <div className={`spec-final ${t.fromSpec ? "" : "plain-prompt"}`}>
                       <div className="spec-final-head">
                         {refined ? (
                           <span className="prompt-toggle">
                             <button
                               className={mode === "orig" ? "on" : ""}
-                              onClick={() =>
-                                setPromptMode((m) => ({ ...m, [t.id]: "orig" }))
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPromptMode((m) => ({ ...m, [t.id]: "orig" }));
+                              }}
                             >
                               ORIGINAL
                             </button>
                             <button
                               className={mode === "sent" ? "on" : ""}
-                              onClick={() =>
-                                setPromptMode((m) => ({ ...m, [t.id]: "sent" }))
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPromptMode((m) => ({ ...m, [t.id]: "sent" }));
+                              }}
                             >
                               SENT
                             </button>
@@ -3362,20 +3364,24 @@ export default function Home() {
                         <span className="spec-final-actions">
                           <button
                             className="link-btn"
-                            onClick={() => copyPrompt(t.id, shown)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyPrompt(t.id, shown);
+                            }}
                           >
                             {copiedTurn === t.id ? "✓ Copied" : "⧉ Copy"}
                           </button>
                           <button
                             className="link-btn"
-                            onClick={() =>
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setPromptView({
                                 title: refined
                                   ? `${mode === "orig" ? "Original message" : "Sent prompt"} · Take ${takeNo(i)}`
                                   : `${t.fromSpec ? "Spec prompt" : "Prompt"} · Take ${takeNo(i)}`,
                                 text: shown,
-                              })
-                            }
+                              });
+                            }}
                           >
                             ⤢ Full view
                           </button>
