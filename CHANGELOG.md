@@ -5,6 +5,22 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.6.3 — 2026-07-15
+
+### Fixed
+- Re-picking a shared look no longer appends duplicate thumbnails — it
+  re-confirms the one already in the strip.
+- MOVES candidates stay visible after picking, with the live one
+  highlighted (▶) — with several similar references it's always clear
+  which is set. Chip labels drop the shared "Reference · " prefix so the
+  distinctive part survives truncation.
+
+### Changed
+- Transfer templates restructured into guardrails + a marked "Acting:"
+  line — the line you're MEANT to edit ("← direct the performance here";
+  the marker is stripped before the prompt is sent). Taller textarea for
+  the multi-line template.
+
 ## 0.6.2 — 2026-07-15
 
 ### Added

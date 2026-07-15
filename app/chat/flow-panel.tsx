@@ -143,8 +143,8 @@ interface Flow {
  *  camera lock + wardrobe hold are what keep motion transfer usable; the
  *  green-screen variant generates pre-keyed footage for compositing. */
 const TRANSFER_PRESETS = [
-  "Reproduce the reference video's body motion beat-for-beat on the same timeline. The camera stays completely fixed — every framing change comes from the dancer stepping toward or away from the lens; do NOT move, zoom or reframe the camera. The subject is the person from the reference image, outfit and hair held identical in every frame. Lively natural facial expressions throughout. Avoid: camera drift, face morphing, distorted hands, extra people, text, watermark.",
-  "Reproduce the reference video's motion one-to-one. Locked camera — no zoom, pan or pull-back. The subject is the person from the reference image, outfit held identical in every frame. Every pixel around the subject is one flat solid green (#00FF00), a pure 2D color fill edge to edge, as if already keyed out — no green-screen studio set, no floor shadows, no wall-floor seam, no green cast on the subject, crisp silhouette edges. Avoid: camera movement, gradients in the green, reflections, extra people, text, watermark.",
+  "Reproduce the reference video's body motion beat-for-beat on the same timeline. The camera stays completely fixed — every framing change comes from the dancer stepping toward or away from the lens; do NOT move, zoom or reframe the camera. The subject is the person from the reference image, outfit and hair held identical in every frame.\nActing: lively natural facial expressions throughout — playful energy, eyes to the lens. (← direct the performance here)\nAvoid: camera drift, face morphing, distorted hands, extra people, text, watermark.",
+  "Reproduce the reference video's motion one-to-one. Locked camera — no zoom, pan or pull-back. The subject is the person from the reference image, outfit held identical in every frame. Every pixel around the subject is one flat solid green (#00FF00), a pure 2D color fill edge to edge, as if already keyed out — no green-screen studio set, no floor shadows, no wall-floor seam, no green cast on the subject, crisp silhouette edges.\nActing: confident and playful, eyes to the lens. (← direct the performance here)\nAvoid: camera movement, gradients in the green, reflections, extra people, text, watermark.",
 ];
 
 const newFlow = (n: number, sessionId?: string, kind: FlowKind = "look"): Flow => ({
@@ -272,19 +272,26 @@ export function FlowPanel({
   })();
 
   /** Import a shared look as this flow's confirmed still — it lands in
-   *  the attempts strip too, so unconfirm/change works as usual. */
+   *  the attempts strip too, so unconfirm/change works as usual. Re-picking
+   *  a look that's already an attempt CONFIRMS the existing one instead of
+   *  appending a duplicate thumbnail. */
   const useSharedLook = (look: { image: string; label: string }) => {
     if (!flow) return;
-    const attempt: FlowImageAttempt = {
-      id: `i${Date.now()}`,
-      prompt: `(shared · ${look.label})`,
-      image: look.image,
-      createdAt: Date.now(),
-    };
-    patchFlow(flow.id, (f) => ({
-      imgAttempts: [...f.imgAttempts, attempt],
-      confirmedImgId: attempt.id,
-    }));
+    const existing = flow.imgAttempts.find((a) => a.image === look.image);
+    if (existing) {
+      patchFlow(flow.id, { confirmedImgId: existing.id });
+    } else {
+      const attempt: FlowImageAttempt = {
+        id: `i${Date.now()}`,
+        prompt: `(shared · ${look.label})`,
+        image: look.image,
+        createdAt: Date.now(),
+      };
+      patchFlow(flow.id, (f) => ({
+        imgAttempts: [...f.imgAttempts, attempt],
+        confirmedImgId: attempt.id,
+      }));
+    }
     preview({
       kind: "image",
       src: look.image,
@@ -646,7 +653,9 @@ export function FlowPanel({
         method: "POST",
         headers: headers(m.envVar),
         body: JSON.stringify({
-          prompt: flow.motionPrompt,
+          // the template's "(← direct the performance here)" marker is a
+          // note to the USER — never send it to the model
+          prompt: flow.motionPrompt.replace(/\s*\(← direct the performance here\)/g, ""),
           provider: m.provider,
           modelId: m.modelId,
           aspectRatio: flow.aspect,
@@ -870,82 +879,72 @@ export function FlowPanel({
               tip: depth-render references carry pure motion, zero identity bleed
             </span>
           </div>
-          {flow.refClip ? (
-            <div className="chips-row">
-              <span className="sel-chip fade">
-                ▶ {flow.refClip.label}
+          <p className="flow-locked-hint">
+            {flow.refClip
+              ? "Click another to switch, click the selected one to replay it in the frame."
+              : "Pick the clip whose motion gets performed — a GRAB from the Library (⤓ grabs YouTube/X with a m:ss trim), or upload a local file."}
+          </p>
+          {/* candidates STAY visible after picking — the chosen one
+              highlights (▶ + sel), so with many similar references it's
+              always obvious which is live */}
+          <div className="chips-row" style={{ flexWrap: "wrap", paddingTop: 8 }}>
+            {(() => {
+              // Top 6, but the selected clip always stays in view even if
+              // it has scrolled out of the recency window.
+              const shown = libClips.slice(0, 6);
+              const sel = flow.refClip
+                ? libClips.find((c) => c.videoUrl === flow.refClip!.url)
+                : null;
+              return sel && !shown.includes(sel) ? [sel, ...shown.slice(0, 5)] : shown;
+            })().map((c) => {
+              const raw = (c.note ?? c.prompt ?? c.jobId) || c.jobId;
+              // Every Library note starts "Reference · " — drop the shared
+              // prefix so the distinctive part survives truncation.
+              const label = raw.replace(/^Reference · /, "");
+              const isSel = flow.refClip?.url === c.videoUrl;
+              return (
                 <button
-                  className="link-btn"
-                  onClick={() =>
+                  key={c.jobId}
+                  className={`spec-chip ${isSel ? "sel" : ""}`}
+                  title={raw}
+                  onClick={() => {
+                    if (!isSel) {
+                      patchFlow(flow.id, {
+                        refClip: { url: c.videoUrl!, label: label.slice(0, 60) },
+                      });
+                    }
                     preview({
                       kind: "video",
-                      src: flow.refClip!.url,
+                      src: c.videoUrl!,
                       aspect: flow.aspect,
                       label: "MOVES reference",
-                    })
-                  }
-                >
-                  view
-                </button>
-                <button
-                  className="link-btn danger"
-                  onClick={() => patchFlow(flow.id, { refClip: null })}
-                >
-                  ✕ change
-                </button>
-              </span>
-            </div>
-          ) : (
-            <>
-              <p className="flow-locked-hint">
-                Pick the clip whose motion gets performed — a GRAB from the
-                Library (⤓ grabs YouTube/X with a m:ss trim), or upload a
-                local file.
-              </p>
-              <div className="chips-row" style={{ flexWrap: "wrap", paddingTop: 8 }}>
-                {libClips.slice(0, 6).map((c) => (
-                  <button
-                    key={c.jobId}
-                    className="spec-chip"
-                    title={c.note ?? c.prompt}
-                    onClick={() => {
-                      const label =
-                        (c.note ?? c.prompt ?? c.jobId).slice(0, 60) || c.jobId;
-                      patchFlow(flow.id, {
-                        refClip: { url: c.videoUrl!, label },
-                      });
-                      preview({
-                        kind: "video",
-                        src: c.videoUrl!,
-                        aspect: flow.aspect,
-                        label: "MOVES reference",
-                      });
-                    }}
-                  >
-                    {(c.note ?? c.prompt ?? c.jobId).slice(0, 34) || c.jobId}
-                  </button>
-                ))}
-                <button
-                  className="spec-chip"
-                  disabled={uploadBusy}
-                  onClick={() => refFileRef.current?.click()}
-                >
-                  {uploadBusy ? "UPLOADING…" : "↥ Upload a video"}
-                </button>
-                <input
-                  ref={refFileRef}
-                  type="file"
-                  accept="video/mp4,video/webm,video/quicktime"
-                  hidden
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void uploadRefClip(f);
-                    e.target.value = "";
+                    });
                   }}
-                />
-              </div>
-            </>
-          )}
+                >
+                  {isSel ? "▶ " : ""}
+                  {label.slice(0, 34)}
+                </button>
+              );
+            })}
+            <button
+              className="spec-chip"
+              disabled={uploadBusy}
+              onClick={() => refFileRef.current?.click()}
+            >
+              {uploadBusy ? "UPLOADING…" : "↥ Upload a video"}
+            </button>
+            <input
+              ref={refFileRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void uploadRefClip(f);
+                e.target.value = "";
+              }}
+            />
+          </div>
         </section>
       )}
 
@@ -1234,7 +1233,7 @@ export function FlowPanel({
           <>
             <div className="flow-gen-row">
               <textarea
-                rows={2}
+                rows={isTransfer ? 7 : 2}
                 value={flow.motionPrompt}
                 onChange={(e) =>
                   patchFlow(flow.id, { motionPrompt: e.target.value })
