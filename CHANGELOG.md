@@ -5,6 +5,11 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.6.1 — 2026-07-15
+
+### Fixed
+- MOVES reference chips get breathing room above the first row.
+
 ## 0.6.0 — 2026-07-15
 
 ### Added

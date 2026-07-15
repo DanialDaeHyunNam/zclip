@@ -849,7 +849,7 @@ export function FlowPanel({
                 Library (⤓ grabs YouTube/X with a m:ss trim), or upload a
                 local file.
               </p>
-              <div className="chips-row" style={{ flexWrap: "wrap" }}>
+              <div className="chips-row" style={{ flexWrap: "wrap", paddingTop: 8 }}>
                 {libClips.slice(0, 6).map((c) => (
                   <button
                     key={c.jobId}
