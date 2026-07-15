@@ -5,6 +5,19 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.7.2 — 2026-07-15
+
+### Added
+- Clicking Animate scrolls to the top so the rendering preview is in view.
+
+### Changed
+- Seedance's "real person" safety rejection is now explained, not dumped:
+  it blocks photoreal faces (even AI-generated ones), so transfer flows
+  want a STYLIZED look (illustrated / anime / 3DCG) — the error and the
+  IMAGE-stage hint both say so, and point photoreal identity work at
+  Runway Act-Two. The 15s reference rejection gets the same plain-language
+  treatment.
+
 ## 0.7.1 — 2026-07-15
 
 ### Added

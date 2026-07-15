@@ -196,6 +196,20 @@ const splitDataUrl = (d: string): { base64: string; mimeType: string } => {
     : { mimeType: "image/jpeg", base64: d };
 };
 
+/** Turn a raw provider error into something actionable. Seedance's safety
+ *  filter blocks photoreal identity images — even AI-generated ones — so
+ *  the transfer flow's whole premise (a look as a reference_image) trips it.
+ *  Say what's happening and how to get around it. */
+const humanizeError = (raw: string): string => {
+  if (/real person|may contain real/i.test(raw)) {
+    return "Seedance's safety filter blocked this look for looking like a real person — it does this even to AI-generated photoreal faces. Transfer works with a STYLIZED look (illustrated / anime / 3DCG toon), not photoreal. Regenerate the look in that style (or use such a Character card) and try again. For photoreal identity, Runway Act-Two (chat method) is the path.";
+  }
+  if (/15\.2|duration.*less than|content\[2\]/i.test(raw)) {
+    return "The reference clip is too long — Seedance reads at most 15s. Trim it to a beat above (m:ss) and retry.";
+  }
+  return raw;
+};
+
 /** "6:30" → 390, "1:02:05" → 3725, "95.5" → 95.5; "" → null; bad → NaN. */
 const parseClock = (raw: string): number | null => {
   const t = raw.trim();
@@ -751,6 +765,10 @@ export function FlowPanel({
     if (flow.kind === "transfer" && !flow.refClip) return;
     setArmed(null);
     setError(null);
+    // Jump to the top so the rendering preview (left frame) is in view.
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
     const m = resolveModel(flow.motionModelKey);
     const { base64, mimeType } = splitDataUrl(confirmedImg.image);
     // Every confirmed look, in order — multi-subject transfer sends them all.
@@ -842,7 +860,7 @@ export function FlowPanel({
       });
       const b = await r.json();
       if (!r.ok) {
-        setError(b.error ?? "Submit failed");
+        setError(humanizeError(b.error ?? "Submit failed"));
         preview(lastShown.current); // un-stick the busy frame
         return;
       }
@@ -899,7 +917,7 @@ export function FlowPanel({
             if (!r.ok || b.state === "error" || b.state === "failed") {
               patchAttempt(f.id, a.id, {
                 status: "error",
-                error: b.error ?? "Render failed",
+                error: humanizeError(b.error ?? "Render failed"),
               });
               preview(lastShown.current); // un-stick the busy frame
               return;
@@ -1170,7 +1188,7 @@ export function FlowPanel({
           </span>
           {isTransfer && (
             <span className="flow-engine mono">
-              one look per person in the clip — click to select several
+              one look per person — click to select several · use a STYLIZED look (Seedance blocks photoreal faces)
             </span>
           )}
         </div>
