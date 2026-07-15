@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T14:42:48.187Z
+updated: 2026-07-15T14:49:01.084Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -1141,10 +1141,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T14:42:20.085Z
-    change_count: 332
+    last_modified: 2026-07-15T14:49:01.084Z
+    change_count: 333
     purpose: "The entire studio UI (one big client component): chat thread, rewind, persistent sessions sidebar, spend popover, starter carousels + Library pill, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-15T14:49:01.084Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T14:42:20.085Z
         action: edit
         source: "claude:Danial Nam"

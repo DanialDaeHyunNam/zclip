@@ -3299,7 +3299,12 @@ export default function Home() {
                 {t.imageThumb && (
                   <img className="turn-img" src={t.imageThumb} alt="reference" />
                 )}
-                <div className="turn-user">{t.userText}</div>
+                {/* A verbatim / "run as typed" take has userText === prompt —
+                    showing both is the same text twice. Drop the top echo and
+                    let the prompt box (with Copy + Full view) stand alone. */}
+                {t.userText.trim() !== (t.prompt ?? "").trim() && (
+                  <div className="turn-user">{t.userText}</div>
+                )}
                 {t.prompt ? (
                   /* Every take's prompt: clamped to 3 lines, with Copy and a
                      full-view modal. Spec takes keep their accent styling. */

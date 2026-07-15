@@ -5,6 +5,14 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.7.5 — 2026-07-15
+
+### Fixed
+- A "run as typed" / verbatim take no longer shows its prompt twice (once
+  as the message echo, once as the prompt box) — when they're identical the
+  top echo is dropped and the prompt box (with Copy + Full view) stands
+  alone.
+
 ## 0.7.4 — 2026-07-15
 
 ### Changed
