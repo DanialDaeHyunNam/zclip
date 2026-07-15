@@ -27,9 +27,12 @@ function XIcon() {
 
 type Diff = { n: string; title: string; body: string; big?: boolean };
 type Step = { n: string; tag: string; title: string; body: string; link?: { href: string; label: string } };
+type DiffRow = { label: string; browser: string; local: string };
 type Copy = {
   navFeatures: string; navWorkflow: string; launch: string; runLocal: string;
-  tryWeb: string; trackNote: string;
+  tryWeb: string; trackQ: string;
+  diffTitle: string; diffBrowserH: string; diffLocalH: string;
+  diffRows: DiffRow[]; diffVerdict: string; diffInstall: string; diffTry: string;
   badge: string; h1a: string; h1b: string;
   leadStrong: string; lead1: string; lead2: string; star: string;
   whyTitle: string; bigTag: string; diffs: Diff[];
@@ -47,8 +50,35 @@ const COPY: Record<Lang, Copy> = {
     launch: "Launch Studio",
     runLocal: "Run it locally",
     tryWeb: "Try it in the browser",
-    trackNote:
-      "Two honest ways to run it. In the browser: your keys stay in this browser and pass through the server only while a request runs — never stored there. Installed locally: keys never leave your machine, every take is vaulted to disk forever, and everything unlocks. Local is the better home; the browser is the fastest taste.",
+    trackQ: "What's the difference between running it locally or in the browser?",
+    diffTitle: "Local vs browser — the honest comparison",
+    diffBrowserH: "🌐 In the browser",
+    diffLocalH: "💻 Installed locally",
+    diffRows: [
+      {
+        label: "Your API keys",
+        browser: "Stay in this browser (localStorage) and pass through the server only while a request runs — never stored or logged there.",
+        local: "Never leave your machine (.env.local). Nothing to trust but your own computer.",
+      },
+      {
+        label: "Your takes",
+        browser: "Live in this browser only. Providers delete their files within days — download what you want to keep.",
+        local: "Every take is vaulted to disk automatically, forever. Rewind, reuse, re-reference any time.",
+      },
+      {
+        label: "Features",
+        browser: "No GRAB (reference by URL) · no reference-video Seedance · Act-Two capped at ~4.5MB clips.",
+        local: "Everything unlocks — GRAB, the clip vault, reference-video Seedance, Act-Two up to 16MB.",
+      },
+      {
+        label: "Setup",
+        browser: "Zero. Paste a key, generate in 30 seconds.",
+        local: "One copy-paste install (macOS / Windows guide, ~3 minutes).",
+      },
+    ],
+    diffVerdict: "Local is the better home — more private, more capable. The browser is the fastest taste.",
+    diffInstall: "Install locally",
+    diffTry: "Try in the browser",
     badge: "Open-source AI UGC hook studio",
     h1a: "UGC reaction hooks,",
     h1b: "typed, not filmed.",
@@ -89,8 +119,35 @@ const COPY: Record<Lang, Copy> = {
     launch: "스튜디오 열기",
     runLocal: "로컬로 실행",
     tryWeb: "브라우저에서 써보기",
-    trackNote:
-      "정직한 두 가지 실행 방식. 브라우저에서는: 키가 이 브라우저에만 저장되고, 요청이 처리되는 동안에만 서버를 경유합니다 — 서버에 저장되지 않습니다. 로컬 설치에서는: 키가 내 컴퓨터 밖으로 나가지 않고, 모든 테이크가 디스크에 영구 보관되며, 모든 기능이 열립니다. 진짜 집은 로컬 — 브라우저는 가장 빠른 맛보기입니다.",
+    trackQ: "로컬 실행과 브라우저 실행, 뭐가 다른가요?",
+    diffTitle: "로컬 vs 브라우저 — 정직한 비교",
+    diffBrowserH: "🌐 브라우저에서",
+    diffLocalH: "💻 로컬 설치",
+    diffRows: [
+      {
+        label: "API 키",
+        browser: "이 브라우저(localStorage)에만 저장되고, 요청이 처리되는 동안에만 서버를 경유합니다 — 서버에 저장·기록되지 않습니다.",
+        local: "내 컴퓨터 밖으로 나가지 않습니다(.env.local). 믿을 것은 내 컴퓨터뿐.",
+      },
+      {
+        label: "테이크",
+        browser: "이 브라우저에만 남습니다. 제공자는 며칠 안에 파일을 지우니, 남길 것은 다운로드하세요.",
+        local: "모든 테이크가 디스크에 자동으로, 영구히 보관됩니다. 언제든 되감고 재사용.",
+      },
+      {
+        label: "기능",
+        browser: "GRAB(URL 참조) 없음 · 참조영상 Seedance 없음 · Act-Two는 ~4.5MB까지.",
+        local: "전부 열립니다 — GRAB, 클립 볼트, 참조영상 Seedance, Act-Two 16MB.",
+      },
+      {
+        label: "시작",
+        browser: "설치 0. 키 붙여넣고 30초 만에 생성.",
+        local: "복사-붙여넣기 설치 한 번 (macOS/Windows 가이드, 약 3분).",
+      },
+    ],
+    diffVerdict: "진짜 집은 로컬입니다 — 더 프라이빗하고 더 강력합니다. 브라우저는 가장 빠른 맛보기.",
+    diffInstall: "로컬로 설치",
+    diffTry: "브라우저에서 써보기",
     badge: "오픈소스 AI UGC 훅 스튜디오",
     h1a: "UGC 리액션 훅,",
     h1b: "찍지 말고, 입력하세요.",
@@ -134,6 +191,8 @@ function LandingInner({ cloud }: { cloud: boolean }) {
   // guide as a POPUP in place (the public site stays the about page). Locally
   // it's a normal link to the working studio.
   const [installOpen, setInstallOpen] = useState(false);
+  // Local-vs-browser comparison modal (cloud only — locally there's no fork).
+  const [diffOpen, setDiffOpen] = useState(false);
   const studioLabel = cloud ? t.runLocal : t.launch;
   const openStudio = () => setInstallOpen(true);
 
@@ -201,7 +260,15 @@ function LandingInner({ cloud }: { cloud: boolean }) {
             <span className="ld-star-icon">★</span> {t.star}
           </a>
         </div>
-        {cloud && <p className="ld-track-note">{t.trackNote}</p>}
+        {cloud && (
+          <button
+            type="button"
+            className="ld-track-note ld-diff-q"
+            onClick={() => setDiffOpen(true)}
+          >
+            {t.trackQ}
+          </button>
+        )}
         <DemoReel />
       </header>
 
@@ -325,6 +392,67 @@ function LandingInner({ cloud }: { cloud: boolean }) {
 
       {cloud && (
         <InstallModal open={installOpen} onClose={() => setInstallOpen(false)} gated />
+      )}
+
+      {cloud && diffOpen && (
+        <div
+          className="rlg-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.diffTitle}
+          onClick={() => setDiffOpen(false)}
+        >
+          <div
+            className="rlg-modal-card ld-diff-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="rlg-modal-head">
+              <span className="label">{t.diffTitle}</span>
+              <button
+                type="button"
+                className="rlg-modal-close"
+                onClick={() => setDiffOpen(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="rlg-modal-body">
+              <div className="ld-diff-grid">
+                <span className="ld-diff-corner" aria-hidden />
+                <span className="ld-diff-col-h">{t.diffBrowserH}</span>
+                <span className="ld-diff-col-h ld-diff-col-h-local">
+                  {t.diffLocalH}
+                </span>
+                {t.diffRows.map((r) => (
+                  <Fragment key={r.label}>
+                    <span className="ld-diff-row-h">{r.label}</span>
+                    <span className="ld-diff-cell">{r.browser}</span>
+                    <span className="ld-diff-cell ld-diff-cell-local">
+                      {r.local}
+                    </span>
+                  </Fragment>
+                ))}
+              </div>
+              <p className="ld-diff-verdict">{t.diffVerdict}</p>
+              <div className="rlg-cta-row">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    setDiffOpen(false);
+                    setInstallOpen(true);
+                  }}
+                >
+                  {t.diffInstall} →
+                </button>
+                <Link className="btn-ghost" href="/chat">
+                  {t.diffTry} →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

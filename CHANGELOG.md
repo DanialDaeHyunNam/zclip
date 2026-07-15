@@ -5,6 +5,23 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.5.1 — 2026-07-15
+
+### Added
+- **Local vs browser comparison modal** on the landing: the paragraph under
+  the CTAs is now a one-line question — "What's the difference between
+  running it locally or in the browser?" — that opens a clean side-by-side
+  table (keys / takes / features / setup, EN·KO) with install and
+  try-in-browser CTAs.
+
+### Fixed
+- Hosted "Browser mode" banner: ✕ now dismisses it permanently (it used to
+  return on every reload).
+- Links no longer underline anywhere — affordance comes from color/hover.
+- The "API key required" popover no longer clips at the bottom of the
+  page (or hides under the hosted banner): while it's open the settings
+  column reserves matching scroll room.
+
 ## 0.5.0 — 2026-07-15
 
 ### Added

@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-14T16:07:47.788Z
+updated: 2026-07-15T01:40:17.463Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -456,10 +456,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-14T16:03:12.751Z
-    change_count: 71
+    last_modified: 2026-07-15T01:40:17.463Z
+    change_count: 75
     purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
+      - date: 2026-07-15T01:40:17.463Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:38:47.832Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:37:49.372Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:36:50.674Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T16:03:12.751Z
         action: edit
         source: "claude:Danial Nam"
@@ -999,10 +1011,28 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-14T16:02:45.555Z
-    change_count: 18
+    last_modified: 2026-07-15T01:40:01.820Z
+    change_count: 24
     purpose: "The bilingual (EN/한국어) landing/about page body (client), wrapped by the app/page.tsx server shell"
     change_log:
+      - date: 2026-07-15T01:40:01.820Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:39:36.280Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:39:34.273Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:39:27.153Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:39:16.451Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:39:08.893Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T16:02:45.555Z
         action: edit
         source: "claude:Danial Nam"
@@ -1072,10 +1102,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-14T16:01:42.465Z
-    change_count: 323
+    last_modified: 2026-07-15T01:37:40.754Z
+    change_count: 327
     purpose: "The entire studio UI (one big client component): chat thread, rewind, persistent sessions sidebar, spend popover, starter carousels + Library pill, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-15T01:37:40.754Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:37:39.223Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:37:04.723Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:37:02.704Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T16:01:42.465Z
         action: edit
         source: "claude:Danial Nam"

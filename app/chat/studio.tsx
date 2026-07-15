@@ -386,9 +386,22 @@ export default function Home() {
   const updatable = !hosted && hasUpdate;
   const [showUpdate, setShowUpdate] = useState(false);
   const [updDismissed, setUpdDismissed] = useState(false);
-  // Hosted "browser mode" banner — session-dismissible, honest by default
-  // (docs/HOSTED.md §1): hosted works for real, local is the better home.
-  const [hostedNoteHidden, setHostedNoteHidden] = useState(false);
+  // Hosted "browser mode" banner — honest by default (docs/HOSTED.md §1):
+  // hosted works for real, local is the better home. ✕ dismisses it FOREVER
+  // (plain localStorage — hosted-only UI, the file store never sees it).
+  const [hostedNoteHidden, setHostedNoteHidden] = useState(
+    () =>
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem("hooklab.hostedNoteDismissed") === "1",
+  );
+  const dismissHostedNote = () => {
+    setHostedNoteHidden(true);
+    try {
+      localStorage.setItem("hooklab.hostedNoteDismissed", "1");
+    } catch {
+      /* quota — session-only dismissal is fine */
+    }
+  };
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [draft, setDraft] = useState("");
@@ -546,6 +559,18 @@ export default function Home() {
     providerId === "runway" && runwaySecs != null ? runwaySecs : duration,
   );
   const keyMissing = keysLoaded && !keys[model.envVar];
+  /** A key popover is absolutely positioned below .panel-controls, so its
+   *  height never enters the layout — without reserved space it clips at
+   *  the page bottom (and hides under the fixed hosted banner). The
+   *  `key-open` class adds matching margin so the column scrolls instead. */
+  const keyPopoverOpen =
+    (keyMissing && !keyPanelHidden) ||
+    (model.key === "seedance-2" &&
+      attach?.kind === "video" &&
+      Boolean(attach.videoBase64) &&
+      keysLoaded &&
+      !keys.BLOB_READ_WRITE_TOKEN &&
+      !blobPanelHidden);
 
   const pwHeaders = useCallback(
     (base: Record<string, string> = {}): Record<string, string> =>
@@ -2977,7 +3002,7 @@ export default function Home() {
           <button
             type="button"
             className="update-banner-x"
-            onClick={() => setHostedNoteHidden(true)}
+            onClick={dismissHostedNote}
             aria-label="Dismiss"
           >
             ✕
@@ -4344,7 +4369,7 @@ export default function Home() {
           {/* next-take settings — one compact strip (chat method only;
               the flow panel carries its own params) */}
           <div
-            className="panel-controls"
+            className={`panel-controls${keyPopoverOpen ? " key-open" : ""}`}
             style={method === "flow" ? { display: "none" } : undefined}
           >
             <div className="settings-strip">

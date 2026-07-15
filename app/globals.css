@@ -35,6 +35,13 @@ body {
   padding-left: 52px; /* left session rail */
 }
 
+/* Links never underline anywhere (owner call 2026-07-15) — affordance
+   comes from color/hover, not decoration. */
+a,
+a:hover {
+  text-decoration: none;
+}
+
 /* ── ambient backdrop: faint starfield + one soft glow ── */
 
 body::before {
@@ -2073,6 +2080,14 @@ button {
   margin-bottom: 0;
 }
 
+/* Reserve scroll room while a key popover is open — it's absolutely
+   positioned, so without this it contributes no height and clips at the
+   page bottom / under the fixed hosted banner. Sized for the tallest
+   variant (the hosted pass-through disclosure) + the banner's height. */
+.panel-controls.key-open {
+  margin-bottom: 420px;
+}
+
 .key-popover-close {
   opacity: 1;
   top: 12px;
@@ -2958,8 +2973,10 @@ button {
   font-size: 12px;
 }
 
-/* Two-track honesty note under the cloud CTA pair (docs/HOSTED.md §1). */
+/* Two-track question under the cloud CTA pair → opens the comparison
+   modal (docs/HOSTED.md §1). Styled as quiet text, not a button. */
 .ld-track-note {
+  display: block;
   max-width: 560px;
   margin: -10px auto 26px;
   font-size: 12.5px;
@@ -2967,6 +2984,81 @@ button {
   line-height: 1.7;
   color: rgba(255, 255, 255, 0.55);
   text-align: center;
+}
+.ld-diff-q {
+  background: none;
+  border: 0;
+  font-family: var(--font-sans), sans-serif;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+.ld-diff-q::after {
+  content: " ↗";
+  color: var(--accent);
+}
+.ld-diff-q:hover {
+  color: var(--fg);
+}
+
+/* Local-vs-browser comparison modal */
+.ld-diff-card {
+  max-width: 720px;
+}
+.ld-diff-grid {
+  display: grid;
+  grid-template-columns: 92px 1fr 1fr;
+  gap: 1px;
+  background: var(--hair); /* the 1px gap reads as hairline rules */
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+.ld-diff-grid > * {
+  background: #0b0b0d;
+  padding: 12px 14px;
+}
+.ld-diff-col-h {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.ld-diff-col-h-local {
+  color: var(--accent);
+}
+.ld-diff-row-h {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  align-content: center;
+}
+.ld-diff-cell {
+  font-size: 12.5px;
+  font-weight: 300;
+  line-height: 1.65;
+  color: var(--dim);
+}
+.ld-diff-cell-local {
+  color: var(--fg);
+  background: rgba(111, 220, 255, 0.04);
+}
+.ld-diff-verdict {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--fg);
+  text-align: center;
+  margin-bottom: 16px;
+}
+@media (max-width: 640px) {
+  .ld-diff-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ld-diff-corner,
+  .ld-diff-row-h {
+    display: none;
+  }
 }
 
 /* Star CTA — the only reward for a free tool, so make it glow gold. */
@@ -4490,6 +4582,11 @@ button {
   padding: 10px 16px;
   cursor: pointer;
   white-space: nowrap;
+  /* the hosted variant is an <a> — no anchor underline in the pill */
+  text-decoration: none;
+}
+.update-banner-main:hover {
+  text-decoration: none;
 }
 .update-banner-main b {
   color: var(--accent);

@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-14T16:11:01.461Z
+updated: 2026-07-15T01:40:46.593Z
 
 files:
   "README.md":
@@ -211,10 +211,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-14T16:11:01.461Z
-    change_count: 16
+    last_modified: 2026-07-15T01:40:46.593Z
+    change_count: 18
     purpose: "Per-release notes (Added/Changed/Fixed) surfaced via the version chip; every release bumps it (the update prompt depends on it)"
     change_log:
+      - date: 2026-07-15T01:40:46.593Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T01:38:14.171Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T16:11:01.461Z
         action: edit
         source: "claude:Danial Nam"
