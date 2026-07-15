@@ -5,6 +5,22 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.8.4 — 2026-07-16
+
+### Fixed
+- FLOW progress bar no longer forces a horizontal scroll or clips ANIMATE —
+  it's portaled to <body> so `position: fixed` is truly viewport-relative
+  (a transformed ancestor was shifting it off-screen), and sized with
+  left/right insets instead of viewport units.
+- A selected look shows ONLY as the compact chip up top now — the big
+  CONFIRMED thumbnail below is gone (the candidate strip lists just the
+  UNselected generations).
+
+### Changed
+- Each selected transfer look offers both paths on its chip: it rides as the
+  IMAGE by default, or ↳ text sends the prompt that made it (skipping the
+  real-person filter).
+
 ## 0.8.3 — 2026-07-16
 
 ### Changed

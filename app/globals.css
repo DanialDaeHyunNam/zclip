@@ -5756,11 +5756,13 @@ button {
 /* bottom progress bar — sticky to the viewport bottom while the flow panel
    is on screen, so the steps + ANIMATE are always reachable on this long page */
 .flow-actionbar {
-  position: fixed; /* always afloat, even when its natural spot is scrolled away */
+  position: fixed; /* portaled to <body> — viewport-relative, always afloat */
   bottom: 22px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(760px, calc(100vw - 100px));
+  left: 24px;
+  right: 24px;
+  max-width: 720px;
+  margin: 0 auto; /* center within the left/right insets, no vw overflow */
+  box-sizing: border-box;
   z-index: 60;
   display: flex;
   align-items: center;
@@ -5852,6 +5854,22 @@ button {
   transition: color 0.2s ease;
 }
 .flow-sel-x:hover {
+  color: var(--accent);
+}
+.flow-sel-text {
+  background: none;
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-pill);
+  color: var(--dim);
+  cursor: pointer;
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.flow-sel-text:hover {
+  border-color: var(--accent);
   color: var(--accent);
 }
 

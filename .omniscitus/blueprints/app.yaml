@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T15:23:45.726Z
+updated: 2026-07-15T15:31:44.100Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -465,10 +465,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-15T15:23:45.726Z
-    change_count: 86
+    last_modified: 2026-07-15T15:31:44.100Z
+    change_count: 88
     purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
+      - date: 2026-07-15T15:31:44.100Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T15:31:26.963Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T15:23:45.726Z
         action: edit
         source: "claude:Danial Nam"
@@ -2588,10 +2594,25 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-15T15:23:31.684Z
-    change_count: 92
+    last_modified: 2026-07-15T15:31:07.433Z
+    change_count: 97
     purpose: "FLOW method panel (embedded in the studio): still→motion pipeline — look generate/upload/EDIT with confirm gate, motion iteration via i2v, presets, session-scoped flows, shared-Library interop, Character-card export"
     change_log:
+      - date: 2026-07-15T15:31:07.433Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T15:30:56.709Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T15:30:11.346Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T15:30:03.508Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-15T15:29:36.590Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T15:23:31.684Z
         action: edit
         source: "claude:Danial Nam"

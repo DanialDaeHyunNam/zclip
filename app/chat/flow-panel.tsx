@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   MODELS,
   PROVIDERS,
@@ -254,6 +255,9 @@ export function FlowPanel({
   const [trimFrom, setTrimFrom] = useState("");
   const [trimTo, setTrimTo] = useState("");
   const [trimBusy, setTrimBusy] = useState(false);
+  // Portal target (document.body) is only available after mount.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   /* flows scoped to the current session (legacy flows show everywhere) */
   const visibleFlows = flows.filter(
@@ -1307,27 +1311,41 @@ export function FlowPanel({
           </>
         )}
 
-        {/* Selected looks as compact removable chips (avatar + label + ✕),
-            so a picked look shows here instead of a big thumbnail below. */}
+        {/* Selected looks as compact removable chips — a picked look shows
+            ONLY here, never as a big thumbnail below. Transfer flows: each
+            chip can go as the IMAGE (default) or ↳ its TEXT (the prompt that
+            made it, avoiding the real-person filter). */}
         {confirmedImgs.length > 0 && (
           <div className="flow-selected-chips">
-            {confirmedImgs.map((a, n) => (
-              <span key={a.id} className="flow-sel-chip">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={a.image} alt="" />
-                {isTransfer && confirmedImgs.length > 1 ? `#${n + 1} · ` : ""}
-                {a.prompt.startsWith("(")
-                  ? "look"
-                  : a.prompt.slice(0, 22)}
-                <button
-                  className="flow-sel-x"
-                  title="Remove from selection"
-                  onClick={() => toggleConfirm(a.id)}
-                >
-                  ✕
-                </button>
-              </span>
-            ))}
+            {confirmedImgs.map((a, n) => {
+              const hasText =
+                a.prompt.trim().length >= 12 &&
+                !/^\((uploaded|shared)/.test(a.prompt.trim());
+              return (
+                <span key={a.id} className="flow-sel-chip">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.image} alt="" />
+                  {isTransfer && confirmedImgs.length > 1 ? `#${n + 1} · ` : ""}
+                  {a.prompt.startsWith("(") ? "look" : a.prompt.slice(0, 20)}
+                  {isTransfer && hasText && (
+                    <button
+                      className="flow-sel-text"
+                      title="Use this look's PROMPT as text (avoids Seedance's real-person filter) instead of the image"
+                      onClick={() => useLookAsText(a)}
+                    >
+                      ↳ text
+                    </button>
+                  )}
+                  <button
+                    className="flow-sel-x"
+                    title="Remove from selection"
+                    onClick={() => toggleConfirm(a.id)}
+                  >
+                    ✕
+                  </button>
+                </span>
+              );
+            })}
           </div>
         )}
 
@@ -1428,33 +1446,25 @@ export function FlowPanel({
           </>
         )}
 
-        {flow.imgAttempts.length > 0 && (
+        {/* Candidate generated looks — SELECTED ones live in the chip tray
+            above, so only unselected candidates show here (never duplicated). */}
+        {flow.imgAttempts.some((a) => !confirmedIds.includes(a.id)) && (
           <div className="flow-thumbs">
-            {flow.imgAttempts.map((a) => {
-              const order = confirmedIds.indexOf(a.id); // -1 if unselected
-              const sel = order >= 0;
-              return (
+            {flow.imgAttempts
+              .filter((a) => !confirmedIds.includes(a.id))
+              .map((a) => (
                 <button
                   key={a.id}
-                  className={`flow-thumb ${sel ? "sel" : ""}`}
+                  className="flow-thumb"
                   onClick={() => toggleConfirm(a.id)}
                   title={
-                    sel
-                      ? "Selected — click to remove"
-                      : isTransfer
-                        ? "Click to add this person to the transfer"
-                        : "Click to CONFIRM this look"
+                    isTransfer
+                      ? "Click to add this person to the transfer"
+                      : "Click to CONFIRM this look"
                   }
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={a.image} alt="" />
-                  {sel && (
-                    <span className="flow-thumb-tag">
-                      {isTransfer && confirmedIds.length > 1
-                        ? `#${order + 1}`
-                        : "CONFIRMED"}
-                    </span>
-                  )}
                   <span
                     role="button"
                     className="flow-thumb-edit"
@@ -1467,26 +1477,8 @@ export function FlowPanel({
                   >
                     ✎
                   </span>
-                  {/* Transfer: use this look's PROMPT as the character (text,
-                      not image) — sidesteps the real-person filter. */}
-                  {isTransfer &&
-                    a.prompt.trim().length >= 12 &&
-                    !/^\((uploaded|shared)/.test(a.prompt.trim()) && (
-                      <span
-                        role="button"
-                        className="flow-thumb-text"
-                        title="Use this look's PROMPT as the character description (text — avoids Seedance's real-person filter)"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          useLookAsText(a);
-                        }}
-                      >
-                        ↳ text
-                      </span>
-                    )}
                 </button>
-              );
-            })}
+              ))}
           </div>
         )}
 
@@ -1738,43 +1730,48 @@ export function FlowPanel({
         </div>
       )}
 
-      {/* Bottom progress bar — pinned to the viewport so on this long page
-          the steps + ANIMATE are always reachable. Each step lights when
-          satisfied; ANIMATE enables when the required ones are done. */}
-      <div className="flow-actionbar">
-        <div className="flow-steps">
-          {flowSteps.map((s, i) => (
-            <span
-              key={s.label}
-              className={`flow-step ${s.done ? "done" : ""} ${
-                s.required ? "" : "opt"
-              }`}
+      {/* Bottom progress bar — PORTALED to <body> so `position: fixed` is
+          relative to the viewport, not a transformed ancestor (which was
+          shifting it off-screen and forcing horizontal scroll). Always
+          afloat; ANIMATE enables when the required steps are done. */}
+      {mounted &&
+        createPortal(
+          <div className="flow-actionbar">
+            <div className="flow-steps">
+              {flowSteps.map((s, i) => (
+                <span
+                  key={s.label}
+                  className={`flow-step ${s.done ? "done" : ""} ${
+                    s.required ? "" : "opt"
+                  }`}
+                >
+                  <span className="flow-step-dot">{s.done ? "✓" : i + 1}</span>
+                  {s.label}
+                  {!s.required && " (opt)"}
+                </span>
+              ))}
+            </div>
+            <button
+              className="btn-primary flow-animate-btn"
+              disabled={!animateReady}
+              onClick={() => void generateMotion()}
+              title={
+                animateReady
+                  ? undefined
+                  : isTransfer
+                    ? "Set a MOVES reference and write the prompt first"
+                    : "Confirm a look and write the motion prompt first"
+              }
             >
-              <span className="flow-step-dot">{s.done ? "✓" : i + 1}</span>
-              {s.label}
-              {!s.required && " (opt)"}
-            </span>
-          ))}
-        </div>
-        <button
-          className="btn-primary flow-animate-btn"
-          disabled={!animateReady}
-          onClick={() => void generateMotion()}
-          title={
-            animateReady
-              ? undefined
-              : isTransfer
-                ? "Set a MOVES reference and write the prompt first"
-                : "Confirm a look and write the motion prompt first"
-          }
-        >
-          ANIMATE
-          {animateReady && motionCost && fmtCost(motionCost)
-            ? ` · ${fmtCost(motionCost)}`
-            : ""}{" "}
-          →
-        </button>
-      </div>
+              ANIMATE
+              {animateReady && motionCost && fmtCost(motionCost)
+                ? ` · ${fmtCost(motionCost)}`
+                : ""}{" "}
+              →
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
