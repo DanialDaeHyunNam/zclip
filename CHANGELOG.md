@@ -5,6 +5,16 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.9.1 — 2026-07-16
+
+### Added
+- FLOW: a finished take shows a ↓ Download button below the frame, same as
+  the chat method.
+
+### Fixed
+- The motion prompt is shown once now — the take card no longer repeats it
+  under the (editable, collapsed) prompt field.
+
 ## 0.9.0 — 2026-07-16
 
 ### Changed

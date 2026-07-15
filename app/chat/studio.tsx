@@ -4483,6 +4483,24 @@ export default function Home() {
             </div>
           )}
 
+          {/* FLOW method: a finished take previews as a video — same
+              download affordance as the chat method. */}
+          {method === "flow" && flowPreview?.kind === "video" && (
+            <div className="result-actions fade">
+              <button
+                className="btn-ghost"
+                onClick={() => download(flowPreview.src)}
+              >
+                ↓ Download
+              </button>
+              {hosted && (
+                <span className="frame-idle-sub">
+                  download it — providers purge files after a few days
+                </span>
+              )}
+            </div>
+          )}
+
           {/* next-take settings — one compact strip (chat method only;
               the flow panel carries its own params) */}
           <div

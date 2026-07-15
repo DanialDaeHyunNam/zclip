@@ -1760,7 +1760,8 @@ export function FlowPanel({
                         ▶ view in the frame
                       </span>
                     )}
-                    <p className="flow-take-prompt clamp3">{a.prompt}</p>
+                    {/* prompt shown once — in the editable collapsed field
+                        above — not duplicated here */}
                   </div>
                 ))}
               </div>
