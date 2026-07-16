@@ -194,6 +194,10 @@ interface StoredSession {
   /** The user renamed this session — auto-save must never overwrite the
    *  title with the first message again. */
   renamed?: boolean;
+  /** Gemini named this session from its content (auto-title toggle). Like
+   *  `renamed`, auto-save preserves it instead of falling back to the first
+   *  message — but the auto-title effect refreshes it on each new take. */
+  autoTitled?: boolean;
   /** Pinned sessions float above the rest of the sidebar list. */
   pinned?: boolean;
   turns: Turn[];
@@ -377,6 +381,87 @@ function FlowBusy({ label, since }: { label: string; since: number }) {
   );
 }
 
+/* A "?" that opens its explanation on CLICK (hover-only `title` is easy to
+ * miss). Closes on a second click or an outside click. */
+function ZInfoTip({ text, dir = "up" }: { text: string; dir?: "up" | "down" }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+  return (
+    <span className="zt-info-wrap" ref={ref}>
+      <button
+        type="button"
+        className="zt-info"
+        aria-label="What is this?"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+      >
+        ?
+      </button>
+      {open && (
+        <span
+          className={`zt-tip ${dir}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/* An explicit on/off toggle SWITCH (track + sliding knob) so it reads
+ * unmistakably as a toggle, with an optional click-tooltip `?`. The switch and
+ * the `?` are separate targets — clicking `?` never flips the switch. */
+function ZToggle({
+  on,
+  onToggle,
+  label,
+  tip,
+  tipDir = "up",
+  disabled,
+  className,
+}: {
+  on: boolean;
+  onToggle: () => void;
+  label: string;
+  tip?: string;
+  tipDir?: "up" | "down";
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`zt ${on ? "on" : ""} ${disabled ? "disabled" : ""} ${className ?? ""}`}
+    >
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={label}
+        className="zt-switch"
+        disabled={disabled}
+        onClick={onToggle}
+      >
+        <span className="zt-track">
+          <span className="zt-knob" />
+        </span>
+        <span className="zt-label">{label}</span>
+      </button>
+      {tip && <ZInfoTip text={tip} dir={tipDir} />}
+    </span>
+  );
+}
+
 /* ── page ────────────────────────────────────────── */
 
 export default function Home() {
@@ -496,6 +581,10 @@ export default function Home() {
    *  exactly; attachments/context still compose via refine when there's no
    *  typed text to send as-is. */
   const [refineOn, setRefineOn] = useState(false);
+  /** Auto-title = let Gemini rename each session to match its content on every
+   *  send, so sessions are easy to tell apart. OFF by default; needs a Gemini
+   *  key (Veo-only access isn't enough). Persisted. Cheap (~$0.00002/rename). */
+  const [autoTitleOn, setAutoTitleOn] = useState(false);
   const [specBusy, setSpecBusy] = useState<"check" | "assemble" | null>(null);
   /** The in-composer interview stepper (null = normal composer). */
   const [specFlow, setSpecFlow] = useState<SpecFlowState | null>(null);
@@ -565,6 +654,11 @@ export default function Home() {
 
   // archive + keys
   const [clips, setClips] = useState<Clip[]>([]);
+  // This-session archive: paginate by two rows. Column count is measured from
+  // the responsive grid so a "page" is always exactly two rows wide.
+  const [archivePage, setArchivePage] = useState(0);
+  const [archiveCols, setArchiveCols] = useState(6);
+  const archiveGridRef = useRef<HTMLDivElement>(null);
   const [keys, setKeys] = useState<Record<string, boolean>>({});
   const [keysLoaded, setKeysLoaded] = useState(false);
   const [keysWritable, setKeysWritable] = useState(false);
@@ -712,23 +806,44 @@ export default function Home() {
     // state and clobbers the file.
     store.hydrate().then(() => {
       if (cancelled) return;
+      const storedSessions = loadJson<StoredSession[]>(SESSIONS_KEY, []);
+      // Clips saved before `modelLabel` existed only knew their PROVIDER, so a
+      // Seedance 2.0 Mini take rendered as the provider default ("Seedance 1.0
+      // Pro"). Recover the real model from the sessions' turns, keyed by jobId.
+      const modelByJob = new Map<string, string>();
+      for (const s of storedSessions) {
+        for (const t of s.turns ?? []) {
+          if (t.jobId && t.modelLabel) modelByJob.set(t.jobId, t.modelLabel);
+        }
+      }
       // Backfill costs for clips saved before a provider's pricing landed.
       setClips(
-        loadJson<Clip[]>(GALLERY_KEY, []).map((c) =>
-          c.costUsd == null && c.provider && c.provider !== "grab" && c.durationSeconds
-            ? {
-                ...c,
-                costUsd:
-                  estimateCostUsd(
-                    c.provider,
-                    c.resolution ?? "720p",
-                    c.durationSeconds,
-                  ) ?? undefined,
-              }
-            : c,
-        ),
+        loadJson<Clip[]>(GALLERY_KEY, []).map((c) => {
+          let next = c;
+          if (
+            next.costUsd == null &&
+            next.provider &&
+            next.provider !== "grab" &&
+            next.durationSeconds
+          ) {
+            next = {
+              ...next,
+              costUsd:
+                estimateCostUsd(
+                  next.provider,
+                  next.resolution ?? "720p",
+                  next.durationSeconds,
+                ) ?? undefined,
+            };
+          }
+          const recovered = modelByJob.get(next.jobId);
+          if (!next.modelLabel && recovered) {
+            next = { ...next, modelLabel: recovered };
+          }
+          return next;
+        }),
       );
-      setSessions(loadJson<StoredSession[]>(SESSIONS_KEY, []));
+      setSessions(storedSessions);
       {
         const c = loadJson(ASSETS_KEY, {} as {
           characters?: CustomAsset[];
@@ -812,10 +927,12 @@ export default function Home() {
         next = [
           {
             id: sessionId,
-            title: existing?.renamed
-              ? existing.title
-              : turns[0].userText.slice(0, 60),
+            title:
+              existing?.renamed || existing?.autoTitled
+                ? existing.title
+                : turns[0].userText.slice(0, 60),
             renamed: existing?.renamed,
+            autoTitled: existing?.autoTitled,
             pinned: existing?.pinned,
             updatedAt: Date.now(),
             createdAt: existing
@@ -894,7 +1011,53 @@ export default function Home() {
     if (!hydrated) return;
     setSpecDeclined(store.get(SPEC_DECLINED_KEY) === "1");
     setRefineOn(store.get("hooklab.refine") === "1");
+    setAutoTitleOn(store.get("hooklab.autoTitle") === "1");
   }, [hydrated]);
+
+  /* Auto-title: when enabled (and a Gemini key exists), rename the session to
+   *  match its content on each new take. Fires once per new turn per session
+   *  (lastTitledRef), never on a manually-renamed session, and is fully
+   *  best-effort — a failure is swallowed so titling never blocks the studio. */
+  const lastTitledRef = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!hydrated || !sessionId) return;
+    if (!autoTitleOn || !keysLoaded || !keys["GEMINI_API_KEY"]) return;
+    if (!turns.length) return;
+    if (turns.length <= (lastTitledRef.current[sessionId] ?? 0)) return;
+    lastTitledRef.current[sessionId] = turns.length;
+    const sid = sessionId;
+    const messages = turns
+      .map((t) => t.userText?.trim())
+      .filter((m): m is string => Boolean(m))
+      .slice(-6);
+    if (!messages.length) return;
+    void (async () => {
+      try {
+        const r = await fetch("/api/title", {
+          method: "POST",
+          headers: keyedHeaders("GEMINI_API_KEY", {
+            "content-type": "application/json",
+          }),
+          body: JSON.stringify({ messages }),
+        });
+        if (!r.ok) return;
+        const { title } = await r.json();
+        if (typeof title !== "string" || !title.trim()) return;
+        const clean = title.trim().slice(0, 60);
+        setSessions((prev) => {
+          const next = prev.map((s) =>
+            s.id === sid && !s.renamed
+              ? { ...s, title: clean, autoTitled: true }
+              : s,
+          );
+          store.set(SESSIONS_KEY, JSON.stringify(next));
+          return next;
+        });
+      } catch {
+        /* best-effort — a failed rename leaves the first-message title */
+      }
+    })();
+  }, [turns, autoTitleOn, keysLoaded, keys, sessionId, hydrated, keyedHeaders]);
 
   /** Sessions that used the FLOW method — ⇶ badge in the sidebar.
    *  Refreshed when the sidebar opens or the method toggles. */
@@ -1013,6 +1176,7 @@ export default function Home() {
                 prompt: t.prompt ?? "",
                 note: t.userText,
                 variantLabel: t.presetLabel ?? "Chat",
+                modelLabel: t.modelLabel,
                 createdAt: t.createdAt,
                 status: "done",
                 aspectRatio: t.aspectRatio,
@@ -2714,8 +2878,47 @@ export default function Home() {
       : cssAspect(previewTurn?.aspectRatio ?? aspect);
 
   /* archive view: this session's takes below the chat (everything, grouped by
-     session, lives on the /archive page now) */
-  const sessionClips = clips.filter((c) => c.sessionId === sessionId);
+     session, lives on the /archive page now). Newest first, and capped to two
+     rows — the rest paginates so the archive never dominates the workspace. */
+  const sessionClips = clips
+    .filter((c) => c.sessionId === sessionId)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const archivePerPage = archiveCols * 2; // exactly two rows
+  const archivePageCount = Math.max(
+    1,
+    Math.ceil(sessionClips.length / archivePerPage),
+  );
+  const archivePageSafe = Math.min(archivePage, archivePageCount - 1);
+  const archivePageClips = sessionClips.slice(
+    archivePageSafe * archivePerPage,
+    (archivePageSafe + 1) * archivePerPage,
+  );
+
+  /* Measure how many columns the responsive archive grid resolves to, so a
+     "page" is always exactly two rows. Mirrors the CSS: auto-fill,
+     minmax(150px, 1fr), 22px gap. */
+  const hasSessionClips = sessionClips.length > 0;
+  useEffect(() => {
+    const el = archiveGridRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      if (!w) return;
+      setArchiveCols(Math.max(1, Math.floor((w + 22) / (150 + 22))));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [hasSessionClips]);
+  // New session → back to the first (newest) page.
+  useEffect(() => setArchivePage(0), [sessionId]);
+  // Removing clips can shrink the page count past the current page — clamp.
+  useEffect(() => {
+    if (archivePage > archivePageCount - 1) {
+      setArchivePage(Math.max(0, archivePageCount - 1));
+    }
+  }, [archivePageCount, archivePage]);
 
   /* spend rollup: archive is the ledger (append-only, survives rewinds) */
   const spend = (() => {
@@ -3076,6 +3279,31 @@ export default function Home() {
             + New
           </button>
         </div>
+        {(() => {
+          const autoTitleReady = keysLoaded && Boolean(keys["GEMINI_API_KEY"]);
+          return (
+            <div className="side-autotitle">
+              <ZToggle
+                on={autoTitleReady && autoTitleOn}
+                label="Auto-title"
+                tipDir="down"
+                disabled={!autoTitleReady}
+                onToggle={() => {
+                  const next = !autoTitleOn;
+                  setAutoTitleOn(next);
+                  store.set("hooklab.autoTitle", next ? "1" : "0");
+                }}
+                tip={
+                  !autoTitleReady
+                    ? "Auto-title needs a Gemini key (Veo-only access isn't enough). Add GEMINI_API_KEY to have sessions named by their content."
+                    : autoTitleOn
+                      ? "Auto-title ON — each send renames this session to match your prompt, so sessions are easy to tell apart (Gemini, ~$0.00002 a rename). Turn off to keep the first-message name."
+                      : "Auto-title OFF — sessions are named after their first message. Turn ON to have zclip name each session dynamically by the prompts you send — easy to distinguish, and only ~$0.00002 per rename."
+                }
+              />
+            </div>
+          );
+        })()}
         <div className="side-list">
           {sessions.length === 0 && (
             <p className="hint">Past sessions appear here automatically.</p>
@@ -3244,8 +3472,10 @@ export default function Home() {
                     </button>
                   </div>
                   <p className="archive-note">
-                    Duration × published per-second price per finished take —
-                    providers don&apos;t report billed totals.
+                    Every figure here is an <b>estimate</b> — duration ×
+                    published per-second price per finished take. No provider
+                    reports a live billed total, so check the real charge in
+                    each provider&apos;s dashboard below.
                   </p>
                   {/* THIS session only — all-sessions lives on /dashboard */}
                   <div className="spend-hero">
@@ -3282,6 +3512,27 @@ export default function Home() {
                     <p className="archive-note">
                       No spend in this session yet.
                     </p>
+                  )}
+                  {spend.currentParts.length > 0 && (
+                    <div className="spend-verify">
+                      <span className="spend-verify-label">
+                        Verify the real charge ↗
+                      </span>
+                      <div className="spend-verify-links">
+                        {spend.currentParts.map(([p]) => (
+                          <a
+                            key={p}
+                            className="spend-verify-link"
+                            href={PROVIDERS[p].dashboardUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={`Open the ${PROVIDERS[p].company} usage / billing dashboard`}
+                          >
+                            {PROVIDERS[p].company} usage
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   )}
                   <button
                     className="btn-ghost spend-all-btn"
@@ -4294,27 +4545,27 @@ export default function Home() {
                 }}
               />
               <span className="turn-spacer" />
-              <button
-                className={`spec-toggle ${refineOn ? "on" : ""}`}
-                onClick={() => {
+              <ZToggle
+                on={refineOn}
+                label="REFINE"
+                onToggle={() => {
                   const next = !refineOn;
                   setRefineOn(next);
                   store.set("hooklab.refine", next ? "1" : "0");
                 }}
-                title={
+                tip={
                   refineOn
-                    ? "Refine ON — Gemini rewrites your message into a fuller video prompt before generating. Click to send your text verbatim instead."
-                    : "Refine OFF — your message is sent to the video model exactly as typed. Click to let Gemini expand it first."
+                    ? "Auto-refine ON — a harness that rewrites your message into a fuller video prompt the zclip way (Gemini) before it generates. Keep it ON to throw a rough idea and let it improve. Turn off to send your text verbatim."
+                    : "Auto-refine OFF — your message goes to the video model exactly as typed. Turn it ON to throw rough ideas and let zclip improve them; keep it OFF when you're crafting the prompt yourself."
                 }
-              >
-                REFINE
-              </button>
-              <button
-                className={`spec-toggle ${specMode ? "on" : ""}`}
-                onClick={() => {
-                  // No Gemini key ⇒ this button is the permanent "improve
-                  // it" entry point: open the same pitch modal, even for
-                  // users who declined it before.
+              />
+              <ZToggle
+                on={specMode}
+                label="SPEC"
+                onToggle={() => {
+                  // No Gemini key ⇒ this switch is the permanent "improve it"
+                  // entry point: open the same pitch modal, even for users who
+                  // declined it before.
                   if (keysLoaded && !keys["GEMINI_API_KEY"]) {
                     setPitchMsg("");
                     setSpecPitch({ draft: "" });
@@ -4322,16 +4573,14 @@ export default function Home() {
                   }
                   setSpecMode((v) => !v);
                 }}
-                title={
+                tip={
                   keysLoaded && !keys["GEMINI_API_KEY"]
-                    ? "Make clips look real — add a Gemini key to unlock the guided spec interview"
+                    ? "Make clips look real — add a Gemini key to unlock the guided spec interview."
                     : specMode
-                      ? "SPEC on — a few quick questions build a detailed photoreal prompt before money is spent. Click to turn off."
+                      ? "SPEC on — a few quick questions build a detailed photoreal prompt before money is spent. Turn off to skip it."
                       : "Recommended — SPEC asks a few quick questions and builds a far more detailed, realistic take."
                 }
-              >
-                SPEC
-              </button>
+              />
               <button className="btn-primary send-btn" onClick={sendGuarded} disabled={!canSend}>
                 {starterReady && !draft.trim() ? "Start" : "Send"}
               </button>
@@ -4765,18 +5014,45 @@ export default function Home() {
             {clips.length > 0 ? " — the ▦ icon in the rail has everything" : ""}.
           </p>
         ) : (
-          <div className="gallery-grid">
-            {sessionClips.map((c) => (
-              <ClipCardView
-                key={c.jobId}
-                clip={c}
-                withPw={videoSrc}
-                onDownload={download}
-                onRemove={removeClip}
-                onUse={useClipAsRef}
-              />
-            ))}
-          </div>
+          <>
+            <div className="gallery-grid" ref={archiveGridRef}>
+              {archivePageClips.map((c) => (
+                <ClipCardView
+                  key={c.jobId}
+                  clip={c}
+                  withPw={videoSrc}
+                  onDownload={download}
+                  onRemove={removeClip}
+                  onUse={useClipAsRef}
+                />
+              ))}
+            </div>
+            {archivePageCount > 1 && (
+              <div className="archive-pager">
+                <button
+                  className="link-btn"
+                  disabled={archivePageSafe === 0}
+                  onClick={() => setArchivePage((p) => Math.max(0, p - 1))}
+                >
+                  ← Newer
+                </button>
+                <span className="archive-pager-count mono">
+                  {archivePageSafe + 1} / {archivePageCount}
+                </span>
+                <button
+                  className="link-btn"
+                  disabled={archivePageSafe >= archivePageCount - 1}
+                  onClick={() =>
+                    setArchivePage((p) =>
+                      Math.min(archivePageCount - 1, p + 1),
+                    )
+                  }
+                >
+                  Older →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
       </div>

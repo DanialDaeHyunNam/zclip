@@ -42,7 +42,9 @@ export function ClipCardView({
           <span>
             {clip.provider === "grab"
               ? "GRAB"
-              : PROVIDERS[clip.provider]?.label ?? clip.provider}{" "}
+              : clip.modelLabel ??
+                PROVIDERS[clip.provider]?.label ??
+                clip.provider}{" "}
             · {clip.variantLabel}
           </span>
           <span>{clip.provider === "grab" ? "" : fmtCost(clip.costUsd) ?? ""}</span>

@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T08:37:49.862Z
+updated: 2026-07-16T05:02:01.832Z
 
 files:
   "README.md":
@@ -69,10 +69,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T08:37:49.862Z
-    change_count: 17
+    last_modified: 2026-07-16T05:02:01.832Z
+    change_count: 18
     purpose: "Agent handoff notes: architecture, commands, provider facts (incl. Act-Two), design system, verification patterns"
     change_log:
+      - date: 2026-07-16T05:02:01.832Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T08:37:49.862Z
         action: edit
         source: "claude:Danial Nam"
@@ -214,10 +217,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T01:40:46.593Z
-    change_count: 18
+    last_modified: 2026-07-16T05:01:31.246Z
+    change_count: 19
     purpose: "Per-release notes (Added/Changed/Fixed) surfaced via the version chip; every release bumps it (the update prompt depends on it)"
     change_log:
+      - date: 2026-07-16T05:01:31.246Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T01:40:46.593Z
         action: edit
         source: "claude:Danial Nam"

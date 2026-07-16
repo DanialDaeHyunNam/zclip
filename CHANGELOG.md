@@ -5,6 +5,41 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.10.0 — 2026-07-16
+
+### Added
+- FLOW is now a step-by-step WIZARD: one stage at a time with segmented step
+  chips (jump anywhere), manual ← Prev / Next → navigation gated on each
+  required step, a minimal STEP n/N + dot progress indicator, and the primary
+  action inline on each step ("▶ Animate" / "↻ Animate again" with the cost).
+  The floating ANIMATE bar is retired.
+- Take history stacks chat-style below the wizard on every step — click a
+  take to replay it in the OUTPUT frame.
+- Auto-title (sessions sidebar): an opt-in toggle that renames each session
+  to match its prompts via Gemini Flash (~$0.00002 a rename; needs
+  GEMINI_API_KEY; manual renames are never overwritten). New `/api/title`.
+- Spend popover now links each provider's usage/billing dashboard ("Verify
+  the real charge ↗") — every in-app figure is an estimate, and the popover
+  now says so explicitly.
+
+### Changed
+- REFINE, SPEC, and Auto-title are explicit toggle SWITCHES (track + sliding
+  knob) with a click-to-open "?" tooltip, so on/off state is unmistakable.
+- Flow tabs sit in a single row that scrolls horizontally, newest first,
+  with ＋ New flow pinned at the far left; the selected flow's stages live
+  in a visually distinct workspace surface with a uniform vertical rhythm.
+- This-session archive is newest-first and capped at two rows, with a
+  Newer/Older pager for the rest.
+
+### Fixed
+- Flows no longer leak across sessions: flows created before a session id
+  existed (or by older builds) were visible in EVERY session; they now bind
+  to the active session, and new flows always carry a real session id.
+- Archive cards show the ACTUAL model that generated the clip (e.g.
+  "Seedance 2.0 Mini"), not the provider's default label ("Seedance 1.0
+  Pro") — including a boot-time backfill that recovers the true model for
+  already-archived clips from the session history.
+
 ## 0.9.3 — 2026-07-16
 
 ### Changed

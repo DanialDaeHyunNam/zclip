@@ -145,7 +145,8 @@ neither the prompt nor the emoji even on a healthy deploy).
       the workflow demo (studio render frame left blank by owner's request).
 - [x] Library intro (chip or page): generated takes pile in / URL-grab / uploads.
 - [ ] Seedance adapter still unverified; Sora input_reference res-match untested live.
-- [ ] Direct upload INTO the Library needs a server persist endpoint (offered, not built).
+- [x] Direct upload INTO the Library needs a server persist endpoint — BUILT as
+      `app/api/clips` POST multipart (dev-only) with the v0.6.0 transfer flow.
 
 ## Notes
 Deployed: https://zclip.vercel.app · releases: github.com/DanialDaeHyunNam/zclip/releases.

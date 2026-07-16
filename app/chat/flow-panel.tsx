@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   MODELS,
   PROVIDERS,
@@ -277,15 +276,14 @@ export function FlowPanel({
   const [trimBusy, setTrimBusy] = useState(false);
   // In-flight guard so a double-click can't fire two takes.
   const firingRef = useRef(false);
-  // Portal target (document.body) is only available after mount.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  // After ANIMATE fires, hide the floating bar until the user edits any
-  // input again (owner call: "animate 후 미노출, 수정하면 다시 준비").
+  // Legacy hint retained by the ANIMATE handlers below; harmless with the
+  // wizard's inline action (the floating bar was removed).
   const [barHidden, setBarHidden] = useState(false);
   // Long motion prompt collapses to a read-only 3-line view after a take is
   // sent; ✎ Edit flips it back to a textarea.
   const [motionEditing, setMotionEditing] = useState(false);
+  // Wizard: which step (index into flowSteps) is showing. One stage at a time.
+  const [stepIdx, setStepIdx] = useState(0);
 
   /* flows scoped to the current session (legacy flows show everywhere) */
   const visibleFlows = flows.filter(
@@ -293,19 +291,34 @@ export function FlowPanel({
   );
   const flow = visibleFlows.find((f) => f.id === flowId) ?? null;
 
-  /* keep the selection inside the current session's flows */
+  /* keep the selection inside the current session's flows. Wait for a REAL
+   *  session id before auto-creating — creating with "" (studio not yet
+   *  hydrated) would orphan the flow into every session. */
   useEffect(() => {
-    if (flow || !hydrated) return;
+    if (flow || !hydrated || !sessionId) return;
     const last = visibleFlows[visibleFlows.length - 1];
     if (last) {
       setFlowId(last.id);
     } else {
-      const f = newFlow(1, sessionId ?? undefined);
+      const f = newFlow(1, sessionId);
       setFlows((fs) => [...fs, f]);
       setFlowId(f.id);
     }
     setEditFrom(null);
   }, [sessionId, flow, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Bind orphan flows to the current session. Flows made by an older build
+   *  (no scoping) or before the session id was known carry no sessionId and
+   *  used to leak into EVERY session; stamp them onto the active session the
+   *  first time we have a real id. Self-limiting — once bound, none remain. */
+  useEffect(() => {
+    if (!hydrated || !sessionId) return;
+    setFlows((fs) =>
+      fs.some((f) => !f.sessionId)
+        ? fs.map((f) => (f.sessionId ? f : { ...f, sessionId }))
+        : fs,
+    );
+  }, [hydrated, sessionId]);
   const isTransfer = flow?.kind === "transfer";
 
   /** Looks already made elsewhere, offered for reuse in THIS flow's look
@@ -450,20 +463,42 @@ export function FlowPanel({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flow?.id]);
-  // Bottom progress bar steps for the current pipeline. `required` gates the
-  // ANIMATE button; optional steps show state but don't block.
-  const flowSteps = flow
+  const hasTake = Boolean(
+    flow?.motionAttempts.some((a) => a.status === "done"),
+  );
+  // Wizard steps for the current pipeline. `stage` maps each step to its render
+  // section; `required` gates advancing past it; `done` drives the ✓ chip.
+  const flowSteps: {
+    label: string;
+    stage: "moves" | "look" | "motion";
+    done: boolean;
+    required: boolean;
+  }[] = flow
     ? isTransfer
       ? [
-          { label: "MOVES", done: Boolean(flow.refClip), required: true },
-          { label: "IMAGE", done: confirmedImgs.length > 0, required: false },
-          { label: "PROMPT", done: motionReady, required: true },
+          { label: "MOVES", stage: "moves", done: Boolean(flow.refClip), required: true },
+          { label: "IMAGE", stage: "look", done: confirmedImgs.length > 0, required: false },
+          { label: "MOTION", stage: "motion", done: hasTake, required: true },
         ]
       : [
-          { label: "STILL", done: Boolean(confirmedImg), required: true },
-          { label: "MOTION", done: motionReady, required: true },
+          { label: "STILL", stage: "look", done: Boolean(confirmedImg), required: true },
+          { label: "MOTION", stage: "motion", done: hasTake, required: true },
         ]
     : [];
+  // Clamp the wizard index and resolve the active stage to render.
+  const activeStepIdx = Math.min(
+    Math.max(0, stepIdx),
+    Math.max(0, flowSteps.length - 1),
+  );
+  const activeStage = flowSteps[activeStepIdx]?.stage ?? "look";
+  // On switching/creating a flow, land on the first unfinished REQUIRED step
+  // (or the last step when everything's done, so you're on Motion to iterate).
+  useEffect(() => {
+    if (!flow) return;
+    const todo = flowSteps.findIndex((s) => s.required && !s.done);
+    setStepIdx(todo === -1 ? Math.max(0, flowSteps.length - 1) : todo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flow?.id]);
 
   /** Flip a selected look between IMAGE mode (rides as a reference_image)
    *  and TEXT mode (its generation prompt is sent as the character
@@ -571,12 +606,12 @@ export function FlowPanel({
           setFlows(migrated);
           setFlowId(migrated[migrated.length - 1].id);
         } else {
-          const f = newFlow(1);
+          const f = newFlow(1, sessionId || undefined);
           setFlows([f]);
           setFlowId(f.id);
         }
       } catch {
-        const f = newFlow(1);
+        const f = newFlow(1, sessionId || undefined);
         setFlows([f]);
         setFlowId(f.id);
       }
@@ -795,7 +830,7 @@ export function FlowPanel({
       if (!r.ok) throw new Error(b.error ?? "Upload failed");
       const clip: Clip = {
         jobId: b.name,
-        sessionId: sessionId ?? undefined,
+        sessionId: sessionId || undefined,
         provider: "grab",
         prompt: file.name,
         note: `Reference · uploaded · ${file.name}`,
@@ -856,7 +891,7 @@ export function FlowPanel({
       const label = `${flow.refClip.label.replace(/ · .*$/, "")} · ${trimFrom}–${trimTo}`;
       const clip: Clip = {
         jobId: b.name,
-        sessionId: sessionId ?? undefined,
+        sessionId: sessionId || undefined,
         provider: "grab",
         prompt: label,
         note: `Reference · trimmed · ${label}`,
@@ -1121,7 +1156,8 @@ export function FlowPanel({
                     provider: a.provider as Clip["provider"],
                     prompt: a.prompt,
                     note: `Flow · ${f.title}`,
-                    variantLabel: a.modelLabel,
+                    variantLabel: "Flow",
+                    modelLabel: a.modelLabel,
                     createdAt: a.createdAt,
                     status: "done",
                     aspectRatio: a.aspectRatio,
@@ -1158,7 +1194,7 @@ export function FlowPanel({
           <button
             className="btn-primary"
             onClick={() => {
-              const f = newFlow(visibleFlows.length + 1, sessionId ?? undefined);
+              const f = newFlow(visibleFlows.length + 1, sessionId || undefined);
               setFlows((fs) => [...fs, f]);
               setFlowId(f.id);
             }}
@@ -1172,8 +1208,16 @@ export function FlowPanel({
 
   return (
     <div className="flow-panel fade">
+      {/* current session's flows — single row, scrolls horizontally on
+          overflow; ＋ New flow stays pinned at the far left. */}
       <div className="flow-tabs">
-        {visibleFlows.map((f) => (
+        <button
+          className="spec-chip flow-new"
+          onClick={() => setNewPick((v) => !v)}
+        >
+          ＋ New flow
+        </button>
+        {[...visibleFlows].reverse().map((f) => (
           <button
             key={f.id}
             className={`spec-chip ${f.id === flowId ? "sel" : ""}`}
@@ -1193,9 +1237,6 @@ export function FlowPanel({
             </span>
           </button>
         ))}
-        <button className="spec-chip" onClick={() => setNewPick((v) => !v)}>
-          ＋ New flow
-        </button>
       </div>
       {newPick && (
         <div className="flow-kind-pick fade">
@@ -1235,7 +1276,7 @@ export function FlowPanel({
                 const n =
                   visibleFlows.filter((f) => (f.kind ?? "look") === opt.kind)
                     .length + 1;
-                const f = newFlow(n, sessionId ?? undefined, opt.kind);
+                const f = newFlow(n, sessionId || undefined, opt.kind);
                 setFlows((fs) => [...fs, f]);
                 setFlowId(f.id);
               }}
@@ -1246,16 +1287,29 @@ export function FlowPanel({
           ))}
         </div>
       )}
-      <p className="flow-sub">
-        {isTransfer
-          ? "Lock the MOVES (a reference video) and the LOOK once — then iterate the TRANSFER forever. Motion copies beat-for-beat; identity comes from your look."
-          : "Confirm the LOOK once, then iterate the MOTION forever — the still never re-rolls. Finished takes land in the Library; a confirmed still can become a Character card."}
-      </p>
+      {/* the working surface for the selected flow — a distinct workbench,
+          visually set apart from the flow-tab carousel above */}
+      <div className="flow-workspace">
+      {/* wizard step chips (segmented tabs) — click to jump between stages */}
+      <div className="wiz-steps">
+        {flowSteps.map((s, i) => (
+          <button
+            key={s.stage}
+            type="button"
+            className={`wiz-step ${i === activeStepIdx ? "cur" : ""} ${s.done ? "done" : ""}`}
+            onClick={() => setStepIdx(i)}
+          >
+            <span className="wiz-step-n">{s.done ? "✓" : i + 1}</span>
+            {s.label}
+            {!s.required && <span className="wiz-step-opt">opt</span>}
+          </button>
+        ))}
+      </div>
 
-      {error && <div className="error-box fade" style={{ marginBottom: 20 }}>{error}</div>}
+      {error && <div className="error-box fade">{error}</div>}
 
-      {/* ── Stage 1 · MOVES (transfer flows only) ───── */}
-      {isTransfer && (
+      {/* ── MOVES stage (transfer flows only) ───── */}
+      {activeStage === "moves" && (
         <section className={`flow-stage ${flow.refClip ? "locked" : ""}`}>
           <div className="flow-stage-head">
             <span className="spec-head">
@@ -1371,6 +1425,7 @@ export function FlowPanel({
       {/* ── STILL / LOOK stage ──────────────────────── */}
       {/* Transfer flows stay OPEN after confirming — you may add a second
           person's look. Look flows collapse to locked on the single confirm. */}
+      {activeStage === "look" && (
       <section className={`flow-stage ${confirmedImg && !isTransfer ? "locked" : ""}`}>
         <div className="flow-stage-head">
           <span className="spec-head">
@@ -1612,8 +1667,10 @@ export function FlowPanel({
           </div>
         )}
       </section>
+      )}
 
       {/* ── MOTION stage ────────────────────────────── */}
+      {activeStage === "motion" && (
       <section className={`flow-stage ${canAnimate ? "" : "disabled"}`}>
         <div className="flow-stage-head">
           <span className="spec-head">
@@ -1751,48 +1808,6 @@ export function FlowPanel({
               </div>
             </div>
             )}
-
-            {flow.motionAttempts.length > 0 && (
-              <div className="flow-takes">
-                {flow.motionAttempts.map((a) => (
-                  <div
-                    key={a.id}
-                    className="flow-take"
-                    onClick={() =>
-                      a.videoUrl &&
-                      preview({
-                        kind: "video",
-                        src: a.videoUrl,
-                        aspect: a.aspectRatio,
-                        label: `${a.modelLabel} · take`,
-                      })
-                    }
-                  >
-                    <div className="spec-head">
-                      {a.modelLabel.toUpperCase()} · {a.durationSeconds}s ·{" "}
-                      {a.status.toUpperCase()}
-                      {fmtCost(a.costUsd) ? ` · ${fmtCost(a.costUsd)}` : ""}
-                    </div>
-                    {a.status === "pending" && (
-                      <div className="spec-busy">
-                        <span className="dot live" /> RENDERING — lands in the
-                        Library automatically
-                      </div>
-                    )}
-                    {a.status === "error" && (
-                      <div className="turn-error">{a.error}</div>
-                    )}
-                    {a.videoUrl && (
-                      <span className="flow-take-view mono">
-                        ▶ view in the frame
-                      </span>
-                    )}
-                    {/* prompt shown once — in the editable collapsed field
-                        above — not duplicated here */}
-                  </div>
-                ))}
-              </div>
-            )}
           </>
         ) : (
           <p className="flow-locked-hint">
@@ -1802,6 +1817,120 @@ export function FlowPanel({
           </p>
         )}
       </section>
+      )}
+
+      {/* minimal step progress — below the stage, not competing with the chips */}
+      <div className="wiz-progress">
+        <span className="wiz-progress-label">
+          STEP {activeStepIdx + 1} / {flowSteps.length}
+        </span>
+        <div className="wiz-dots">
+          {flowSteps.map((s, i) => (
+            <span
+              key={s.stage}
+              className={`wiz-dot ${i === activeStepIdx ? "cur" : ""} ${s.done ? "done" : ""}`}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* wizard nav footer — manual prev/next; Animate lives on the motion step */}
+      <div className="wiz-nav">
+        <button
+          type="button"
+          className="btn-ghost wiz-prev"
+          disabled={activeStepIdx === 0}
+          onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
+        >
+          ← 이전
+        </button>
+        {activeStage === "motion" ? (
+          <button
+            className="btn-primary wiz-animate"
+            disabled={!animateReady || rendering}
+            onClick={() => void generateMotion()}
+            title={
+              animateReady
+                ? undefined
+                : isTransfer
+                  ? "Set a MOVES reference and write the prompt first"
+                  : "Confirm a look and write the motion prompt first"
+            }
+          >
+            {rendering
+              ? "Rendering…"
+              : hasTake
+                ? "↻ Animate again"
+                : "▶ Animate"}
+            {!rendering && animateReady && motionCost && fmtCost(motionCost)
+              ? ` — ${fmtCost(motionCost)}`
+              : ""}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn-primary wiz-next"
+            disabled={
+              Boolean(flowSteps[activeStepIdx]?.required) &&
+              !flowSteps[activeStepIdx]?.done
+            }
+            onClick={() =>
+              setStepIdx((i) => Math.min(flowSteps.length - 1, i + 1))
+            }
+          >
+            다음 →
+          </button>
+        )}
+      </div>
+
+      {/* Take history — stacks chat-style below the wizard, visible on any
+          step. Newest first; click a take to replay it in the shared frame. */}
+      {flow.motionAttempts.length > 0 && (
+        <div className="flow-history">
+          <span className="flow-history-label">
+            Takes · {flow.motionAttempts.length}
+          </span>
+          <div className="flow-takes">
+            {flow.motionAttempts.map((a) => (
+              <div
+                key={a.id}
+                className={`flow-take ${a.videoUrl ? "playable" : ""}`}
+                onClick={() =>
+                  a.videoUrl &&
+                  preview({
+                    kind: "video",
+                    src: a.videoUrl,
+                    aspect: a.aspectRatio,
+                    label: `${a.modelLabel} · take`,
+                  })
+                }
+              >
+                <div className="spec-head">
+                  {a.modelLabel.toUpperCase()} · {a.durationSeconds}s ·{" "}
+                  {a.status.toUpperCase()}
+                  {fmtCost(a.costUsd) ? ` · ${fmtCost(a.costUsd)}` : ""}
+                </div>
+                {a.status === "pending" && (
+                  <div className="spec-busy">
+                    <span className="dot live" /> RENDERING — lands in the
+                    Library automatically
+                  </div>
+                )}
+                {a.status === "error" && (
+                  <div className="turn-error">{a.error}</div>
+                )}
+                {a.videoUrl && (
+                  <span className="flow-take-view mono">
+                    ▶ view in the frame
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      </div>
+      {/* /flow-workspace */}
 
       {/* delete-flow confirmation (owner call: modal, not two-click) */}
       {delAsk && (
@@ -1845,50 +1974,6 @@ export function FlowPanel({
         </div>
       )}
 
-      {/* Bottom progress bar — PORTALED to <body> so `position: fixed` is
-          relative to the viewport, not a transformed ancestor (which was
-          shifting it off-screen and forcing horizontal scroll). Always
-          afloat; ANIMATE enables when the required steps are done. */}
-      {mounted &&
-        !barHidden &&
-        !rendering &&
-        createPortal(
-          <div className={`flow-actionbar ${sideOpen ? "with-side" : ""}`}>
-            <div className="flow-steps">
-              {flowSteps.map((s, i) => (
-                <span
-                  key={s.label}
-                  className={`flow-step ${s.done ? "done" : ""} ${
-                    s.required ? "" : "opt"
-                  }`}
-                >
-                  <span className="flow-step-dot">{s.done ? "✓" : i + 1}</span>
-                  {s.label}
-                  {!s.required && " (opt)"}
-                </span>
-              ))}
-            </div>
-            <button
-              className="btn-primary flow-animate-btn"
-              disabled={!animateReady}
-              onClick={() => void generateMotion()}
-              title={
-                animateReady
-                  ? undefined
-                  : isTransfer
-                    ? "Set a MOVES reference and write the prompt first"
-                    : "Confirm a look and write the motion prompt first"
-              }
-            >
-              ANIMATE
-              {animateReady && motionCost && fmtCost(motionCost)
-                ? ` · ${fmtCost(motionCost)}`
-                : ""}{" "}
-              →
-            </button>
-          </div>,
-          document.body,
-        )}
     </div>
   );
 }

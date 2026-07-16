@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-15T16:07:07.088Z
+updated: 2026-07-16T04:35:21.581Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -465,10 +465,64 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-15T15:47:27.913Z
-    change_count: 92
+    last_modified: 2026-07-16T04:28:20.864Z
+    change_count: 110
     purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
+      - date: 2026-07-16T04:28:20.864Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:23:33.274Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:23:29.122Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:23:24.976Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:23:20.681Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:23:09.694Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:23:05.057Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:15:24.444Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:14:40.762Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:31:37.967Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:29:09.728Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:21:52.781Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:21:22.201Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:21:09.335Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:20:50.075Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:07:22.264Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:05:04.710Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T02:57:26.531Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T15:47:27.913Z
         action: edit
         source: "claude:Danial Nam"
@@ -1183,10 +1237,67 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T15:51:32.794Z
-    change_count: 344
+    last_modified: 2026-07-16T04:35:21.581Z
+    change_count: 363
     purpose: "The entire studio UI (one big client component): chat thread, rewind, persistent sessions sidebar, spend popover, starter carousels + Library pill, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-16T04:35:21.581Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:33:49.317Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:33:07.701Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:32:58.581Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:32:39.501Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:20:26.862Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:20:22.251Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:20:14.010Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:19:40.242Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:19:20.470Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:19:03.018Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:07:05.455Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:06:58.163Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:04:47.216Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:04:29.067Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:04:11.646Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:04:02.697Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:03:57.537Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T02:57:20.088Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T15:51:32.794Z
         action: edit
         source: "claude:Danial Nam"
@@ -2316,10 +2427,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-08
-    last_modified: 2026-07-08T02:50:53.113Z
-    change_count: 1
+    last_modified: 2026-07-16T04:32:34.126Z
+    change_count: 2
     purpose: "Shared ClipCardView — one archive/library clip card (thumb video, meta, download/remove/use-as-reference); used by the studio strip and the /archive page"
     change_log:
+      - date: 2026-07-16T04:32:34.126Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-08T02:50:53.113Z
         action: write
         source: "claude:Danial Nam"
@@ -2612,10 +2726,79 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-15T16:07:07.088Z
-    change_count: 127
+    last_modified: 2026-07-16T04:32:45.205Z
+    change_count: 150
     purpose: "FLOW method panel (embedded in the studio): still→motion pipeline — look generate/upload/EDIT with confirm gate, motion iteration via i2v, presets, session-scoped flows, shared-Library interop, Character-card export"
     change_log:
+      - date: 2026-07-16T04:32:45.205Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:27:50.132Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:27:44.821Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:27:30.009Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:23:38.216Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:14:27.424Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:14:09.693Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T04:13:58.367Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:31:10.622Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:30:56.281Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:28:40.602Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:28:30.712Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:27:59.483Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:27:50.419Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:27:34.568Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:27:29.522Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:27:23.729Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:27:18.821Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:27:07.556Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:26:55.490Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:00:48.014Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:00:29.236Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:00:12.889Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T16:07:07.088Z
         action: edit
         source: "claude:Danial Nam"
@@ -2995,5 +3178,16 @@ files:
         action: edit
         source: "claude:Danial Nam"
       - date: 2026-07-13T02:37:54.474Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/api/title/route.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-16
+    last_modified: 2026-07-16T03:05:21.485Z
+    change_count: 1
+    purpose: "Auto session titles via Gemini Flash — names a session (2-5 words) from its recent prompts; gated by the sidebar Auto-title toggle, ~$0.00002/call"
+    change_log:
+      - date: 2026-07-16T03:05:21.485Z
         action: write
         source: "claude:Danial Nam"

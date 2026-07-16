@@ -239,6 +239,13 @@ body::before {
   margin-bottom: 14px;
 }
 
+/* Auto-title toggle — sits under the sessions header, governs AI session names */
+.side-autotitle {
+  padding: 0 0 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--hair);
+}
+
 .side-list {
   display: flex;
   flex-direction: column;
@@ -2195,6 +2202,24 @@ button {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 22px;
+}
+
+/* this-session archive pager — the grid is capped at two rows */
+.archive-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 18px;
+}
+.archive-pager-count {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--dim);
+}
+.archive-pager .link-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .card {
@@ -5063,33 +5088,126 @@ button {
 
 /* ── Video Prompt Spec Gate (composer toggle + thread cards) ────────── */
 
-.spec-toggle {
+/* ── ZToggle: explicit on/off switch (track + sliding knob) + click "?" ──
+   Used by REFINE / SPEC (composer foot) and Auto-title (sidebar). */
+.zt {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.zt-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
   font-family: var(--font-mono), monospace;
   font-size: 9.5px;
   letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--dim);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: color 0.3s ease;
+}
+.zt-switch:hover:not(:disabled) {
+  color: var(--fg);
+}
+.zt.on .zt-switch {
+  color: var(--accent);
+}
+.zt.disabled .zt-switch {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.zt-track {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 15px;
   border-radius: var(--r-pill);
-  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+.zt-knob {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--dim);
+  transition:
+    transform 0.25s ease,
+    background 0.3s ease;
+}
+.zt.on .zt-track {
+  background: rgba(111, 220, 255, 0.18);
+  border-color: rgba(111, 220, 255, 0.5);
+  box-shadow: 0 0 12px rgba(111, 220, 255, 0.15);
+}
+.zt.on .zt-knob {
+  transform: translateX(11px);
+  background: var(--accent);
+}
+
+/* the "?" info affordance — vertically centered, opens a tooltip on click */
+.zt-info-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.zt-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: none;
+  color: var(--dim);
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  line-height: 1;
   cursor: pointer;
   transition:
     color 0.3s ease,
-    border-color 0.3s ease,
-    background 0.3s ease,
-    box-shadow 0.3s ease;
+    border-color 0.3s ease;
 }
-
-.spec-toggle:hover {
-  border-color: rgba(255, 255, 255, 0.32);
+.zt-info:hover {
   color: var(--fg);
+  border-color: rgba(255, 255, 255, 0.45);
 }
-
-.spec-toggle.on {
-  color: var(--accent);
-  border-color: rgba(111, 220, 255, 0.45);
-  background: rgba(111, 220, 255, 0.07);
-  box-shadow: 0 0 14px rgba(111, 220, 255, 0.12);
+.zt-tip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  max-width: 62vw;
+  z-index: 40;
+  background: #0b0b0d;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+.zt-tip.up {
+  bottom: calc(100% + 8px);
+}
+.zt-tip.down {
+  top: calc(100% + 8px);
 }
 
 .spec-card {
@@ -5600,9 +5718,28 @@ button {
 
 .flow-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* single row — scrolls horizontally on overflow */
   gap: 8px;
   align-items: center;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 4px; /* room for the thin scrollbar */
+}
+.flow-tabs::-webkit-scrollbar {
+  height: 5px;
+}
+.flow-tabs::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+}
+.flow-tabs .spec-chip {
+  flex: none; /* don't shrink — keep each flow chip readable, scroll instead */
+}
+.flow-tabs .flow-new {
+  position: sticky; /* pin ＋ New flow at the far left while the rest scrolls */
+  left: 0;
+  z-index: 1;
+  background: #000;
 }
 
 .flow-sub {
@@ -5644,12 +5781,24 @@ button {
   color: var(--dim);
 }
 
+/* the workbench: the selected flow's working area, a raised surface clearly
+   set apart from the flow-tab carousel above (this panel IS the workspace). */
+.flow-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* same rhythm as the panel, now scoped to the workbench */
+  padding: 20px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
 .flow-stage {
   border: 1px solid var(--hair);
   border-radius: var(--r-lg);
-  background: rgba(255, 255, 255, 0.015);
+  background: rgba(0, 0, 0, 0.25);
   padding: 18px 20px;
-  margin-bottom: 18px;
   transition: border-color 0.3s ease, opacity 0.3s ease;
 }
 
@@ -5755,50 +5904,47 @@ button {
 
 /* bottom progress bar — sticky to the viewport bottom while the flow panel
    is on screen, so the steps + ANIMATE are always reachable on this long page */
-.flow-actionbar {
-  position: fixed; /* portaled to <body> — viewport-relative, always afloat */
-  bottom: 22px;
-  left: 76px; /* clear the 52px rail + gap; centers in the content area */
-  right: 24px;
-  max-width: 720px;
-  margin: 0 auto; /* center within the left/right insets, no vw overflow */
-  box-sizing: border-box;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 16px;
-  border: 1px solid rgba(111, 220, 255, 0.35);
-  border-radius: var(--r-pill);
-  background: rgba(10, 14, 18, 0.94);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
-}
-.flow-steps {
+/* ── FLOW wizard: step-chip strip + prev/next footer ─────────────────── */
+.wiz-steps {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
   flex-wrap: wrap;
-  font-family: var(--font-mono), monospace;
-  font-size: 10px;
-  letter-spacing: 0.1em;
 }
-.flow-step {
+/* Segmented tabs — SOLID fill (like the 요약/나 control), deliberately
+   distinct from the outlined flow-tab pills above so the two rows don't blur. */
+.wiz-step {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: var(--faint);
+  gap: 7px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--dim);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color 0.3s ease,
+    background 0.3s ease;
 }
-.flow-step.done {
+.wiz-step:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--fg);
+}
+.wiz-step.done:not(.cur) {
+  background: rgba(111, 220, 255, 0.12);
   color: var(--accent);
 }
-.flow-step.opt {
-  opacity: 0.7;
+.wiz-step.cur {
+  background: var(--accent);
+  color: #001018;
+  box-shadow: 0 0 16px rgba(111, 220, 255, 0.25);
 }
-.flow-step-dot {
+.wiz-step-n {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5808,28 +5954,78 @@ button {
   border: 1px solid currentColor;
   font-size: 9px;
 }
-.flow-step.done .flow-step-dot {
+.wiz-step.done:not(.cur) .wiz-step-n {
   background: var(--accent);
-  color: #000;
+  color: #001018;
   border-color: var(--accent);
 }
-/* side panel (292px) open → center in the space to the right of it */
-.flow-actionbar.with-side {
-  left: 368px;
+.wiz-step.cur .wiz-step-n {
+  background: rgba(0, 16, 24, 0.25);
+  border-color: transparent;
+  color: #001018;
 }
-@media (max-width: 900px) {
-  .flow-actionbar,
-  .flow-actionbar.with-side {
-    left: 16px;
-    right: 16px;
-  }
+.wiz-step-opt {
+  opacity: 0.6;
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
 }
 
-.flow-animate-btn {
+/* minimal step progress (below the stage) — count + dots, Image-56 style */
+.wiz-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wiz-progress-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.wiz-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wiz-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  transition:
+    width 0.25s ease,
+    background 0.3s ease;
+}
+.wiz-dot.done {
+  background: rgba(111, 220, 255, 0.5);
+}
+.wiz-dot.cur {
+  width: 20px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+
+.wiz-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.wiz-prev {
+  flex: none;
+}
+.wiz-next,
+.wiz-animate {
   flex: none;
   width: auto; /* override .btn-primary width:100% */
-  padding: 14px 30px;
+  padding: 12px 28px;
   white-space: nowrap;
+}
+.wiz-prev:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 /* compact "selected look" chips (avatar + label + ✕) */
@@ -6029,7 +6225,8 @@ button {
 .flow-panel {
   display: flex;
   flex-direction: column;
-  padding: 12px 0 96px; /* clear the fixed action bar */
+  gap: 16px; /* single uniform vertical rhythm between wizard blocks */
+  padding: 4px 0 64px;
   overflow-y: auto;
   min-height: 0;
   flex: 1;
@@ -6041,8 +6238,30 @@ button {
   color: var(--accent);
 }
 
-.flow-take {
+.flow-take.playable {
   cursor: pointer;
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease;
+}
+.flow-take.playable:hover {
+  border-color: rgba(111, 220, 255, 0.35);
+  background: rgba(111, 220, 255, 0.04);
+}
+
+/* persistent take history under the wizard (chat-style stack) */
+.flow-history {
+  padding-top: 16px;
+  border-top: 1px solid var(--hair);
+}
+.flow-history-label {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 4px;
 }
 
 /* empty-state copy inside the frame — breathe, don't touch the borders */
@@ -6059,6 +6278,44 @@ button {
   font-family: var(--font-mono), monospace;
   font-size: 10px;
   letter-spacing: 0.12em;
+}
+
+/* per-provider "verify the real charge" dashboard links in the spend popover */
+.spend-verify {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hair);
+}
+.spend-verify-label {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
+.spend-verify-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.spend-verify-link {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 3px 9px;
+  border: 1px solid rgba(111, 220, 255, 0.28);
+  border-radius: var(--r-pill);
+  transition:
+    border-color 0.3s ease,
+    background 0.3s ease;
+}
+.spend-verify-link:hover {
+  border-color: rgba(111, 220, 255, 0.55);
+  background: rgba(111, 220, 255, 0.07);
 }
 
 /* flow thumb: pencil = edit-from-this-look */

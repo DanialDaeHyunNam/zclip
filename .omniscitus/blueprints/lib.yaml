@@ -1,15 +1,36 @@
 version: 1
-updated: 2026-07-15T09:35:19.541Z
+updated: 2026-07-16T04:32:28.839Z
 
 files:
   "lib/config.ts":
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T09:33:28.331Z
-    change_count: 21
+    last_modified: 2026-07-16T03:06:44.728Z
+    change_count: 28
     purpose: "The switchboard: PROVIDERS adapters + MODELS catalog (model≠adapter), pricing, duration rules (effectiveSeconds), cost estimates, key allowlist"
     change_log:
+      - date: 2026-07-16T03:06:44.728Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:06:37.217Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:06:32.301Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:06:26.916Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:06:22.657Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:06:17.482Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T03:06:11.015Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T09:33:28.331Z
         action: edit
         source: "claude:Danial Nam"
@@ -351,10 +372,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-08
-    last_modified: 2026-07-10T02:03:15.133Z
-    change_count: 2
+    last_modified: 2026-07-16T04:32:28.839Z
+    change_count: 3
     purpose: "Shared Clip type + hooklab.* storage keys + fmtCost/cssAspect helpers, used by the studio, the /archive page, and ClipCardView"
     change_log:
+      - date: 2026-07-16T04:32:28.839Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T02:03:15.133Z
         action: edit
         source: "claude:Danial Nam"
