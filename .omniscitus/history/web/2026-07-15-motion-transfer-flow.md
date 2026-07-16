@@ -67,8 +67,8 @@ chat refine 토글(기본 OFF). v0.6.0~v0.9.3 (2026-07-15~16).
       TRANSFER flow 모델 선택지에 Seedance와 나란히 추가. [[flow-method-kling]]
 - [ ] Seedance role 페어링 **실제 성공 영상** 1회(스타일라이즈드 룩 or
       depth 참조로) — 지금까지 검증·필터 거절만, 완성 결과물 미확인
-- [ ] 오너 dev 서버(:3333) 재시작 안내 — 누적 핫리로드로 stale, 오늘 코드
-      반영 안 될 수 있음(배너 "now v0.4.0")
+- [x] 오너 dev 서버(:3333) 재시작 — 완료: 7/16 현재 :3333 /api/version이
+      0.10.0 반환(재시작 없이는 env 인라인 버전이 못 바뀜)
 - [ ] Higgsfield motion_control로 댄스+캐릭터 품질 데모(ZCLIP 무접촉, MCP)
 
 ## Notes

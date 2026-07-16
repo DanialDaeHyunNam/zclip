@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   PROVIDERS,
   DEFAULT_MODEL_KEY,
@@ -210,6 +210,38 @@ const sessionCreatedAt = (s: StoredSession): number =>
 const sessionOrder = (a: StoredSession, b: StoredSession): number =>
   Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
   sessionCreatedAt(b) - sessionCreatedAt(a);
+
+/** Sessions with real FLOW work (attempts, a MOVES reference, or a typed
+ *  look prompt). A session is chat, flow, or BOTH — flow work keeps it in
+ *  the sidebar exactly like chat turns do, so the empty-placeholder prunes
+ *  below must never drop a flow-only session. Read fresh from the store at
+ *  prune time (the FlowPanel writes `hooklab.flows` synchronously on every
+ *  change); the auto-created empty flow every session gets does NOT count. */
+const flowWorkSessionIds = (): Set<string> => {
+  try {
+    const flows = JSON.parse(store.get("hooklab.flows") ?? "[]") as {
+      sessionId?: string;
+      imgAttempts?: unknown[];
+      motionAttempts?: unknown[];
+      refClip?: unknown;
+      imgPrompt?: string;
+    }[];
+    return new Set(
+      flows
+        .filter(
+          (f) =>
+            f.imgAttempts?.length ||
+            f.motionAttempts?.length ||
+            f.refClip ||
+            f.imgPrompt?.trim(),
+        )
+        .map((f) => f.sessionId)
+        .filter((x): x is string => Boolean(x)),
+    );
+  } catch {
+    return new Set();
+  }
+};
 
 const PinGlyph = () => (
   <svg
@@ -863,13 +895,17 @@ export default function Home() {
       store.set(SESSION_ID_KEY, sid);
       setSessionId(sid);
       // A reload mid-refine/submit can't be resumed (no jobId yet) — mark it.
-      setTurns(
-        loadJson<Turn[]>(THREAD_KEY, []).map((t) =>
-          (t.status === "refining" || t.status === "pending") && !t.jobId
-            ? { ...t, status: "error" as const, error: "Interrupted by reload — send again" }
-            : t,
-        ),
+      const restoredTurns = loadJson<Turn[]>(THREAD_KEY, []).map((t) =>
+        (t.status === "refining" || t.status === "pending") && !t.jobId
+          ? { ...t, status: "error" as const, error: "Interrupted by reload — send again" }
+          : t,
       );
+      setTurns(restoredTurns);
+      // A session is chat, flow, or both — chat wins the default view; a
+      // flow-only session opens straight onto its flows.
+      if (!restoredTurns.length && flowWorkSessionIds().has(sid)) {
+        setMethod("flow");
+      }
       // Persistence is loaded — save effects may now run.
       setHydrated(true);
 
@@ -1014,22 +1050,52 @@ export default function Home() {
     setAutoTitleOn(store.get("hooklab.autoTitle") === "1");
   }, [hydrated]);
 
+  /* FLOW work in the current session, reported up by the FlowPanel (attempt
+   *  prompts only — typing doesn't count). Feeds auto-title below, so a
+   *  flow-only session gets named too: the title reads chat AND flow.
+   *  The digest carries its session id — child effects run BEFORE parent
+   *  effects, so a parent-side "clear on session change" would wipe the
+   *  fresh report; tagging + filtering instead makes order irrelevant. */
+  const [flowDigest, setFlowDigest] = useState<{
+    sid: string;
+    msgs: string[];
+  } | null>(null);
+  const onFlowDigest = useCallback((sid: string, msgs: string[]) => {
+    // identity-stable when unchanged — flow keystrokes must not re-render us
+    setFlowDigest((prev) =>
+      prev &&
+      prev.sid === sid &&
+      prev.msgs.length === msgs.length &&
+      prev.msgs.every((m, i) => m === msgs[i])
+        ? prev
+        : { sid, msgs },
+    );
+  }, []);
+  const flowTitleMsgs = useMemo(
+    () => (flowDigest && flowDigest.sid === sessionId ? flowDigest.msgs : []),
+    [flowDigest, sessionId],
+  );
+
   /* Auto-title: when enabled (and a Gemini key exists), rename the session to
-   *  match its content on each new take. Fires once per new turn per session
+   *  match its content on each new take — chat turns AND flow work both count
+   *  (a session is chat, flow, or both). Fires once per new item per session
    *  (lastTitledRef), never on a manually-renamed session, and is fully
    *  best-effort — a failure is swallowed so titling never blocks the studio. */
   const lastTitledRef = useRef<Record<string, number>>({});
   useEffect(() => {
     if (!hydrated || !sessionId) return;
     if (!autoTitleOn || !keysLoaded || !keys["GEMINI_API_KEY"]) return;
-    if (!turns.length) return;
-    if (turns.length <= (lastTitledRef.current[sessionId] ?? 0)) return;
-    lastTitledRef.current[sessionId] = turns.length;
+    const total = turns.length + flowTitleMsgs.length;
+    if (!total) return;
+    if (total <= (lastTitledRef.current[sessionId] ?? 0)) return;
+    lastTitledRef.current[sessionId] = total;
     const sid = sessionId;
-    const messages = turns
-      .map((t) => t.userText?.trim())
-      .filter((m): m is string => Boolean(m))
-      .slice(-6);
+    const messages = [
+      ...turns
+        .map((t) => t.userText?.trim())
+        .filter((m): m is string => Boolean(m)),
+      ...flowTitleMsgs,
+    ].slice(-6);
     if (!messages.length) return;
     void (async () => {
       try {
@@ -1057,7 +1123,7 @@ export default function Home() {
         /* best-effort — a failed rename leaves the first-message title */
       }
     })();
-  }, [turns, autoTitleOn, keysLoaded, keys, sessionId, hydrated, keyedHeaders]);
+  }, [turns, flowTitleMsgs, autoTitleOn, keysLoaded, keys, sessionId, hydrated, keyedHeaders]);
 
   /** Sessions that used the FLOW method — ⇶ badge in the sidebar.
    *  Refreshed when the sidebar opens or the method toggles. */
@@ -2517,9 +2583,10 @@ export default function Home() {
   /** Current thread is already auto-saved — just move to a fresh id. */
   const newSession = () => {
     if (busyTurn) return;
-    // Already on a fresh, empty session — a second + New would only stack
-    // empty "New session" entries in the sidebar.
-    if (!turns.length) return;
+    // Already on a fresh, empty session (no chat turns AND no flow work) —
+    // a second + New would only stack empty "New session" entries.
+    const flowIds = flowWorkSessionIds();
+    if (!turns.length && !flowIds.has(sessionId)) return;
     const nid = `s${Date.now()}`;
     store.set(SESSION_ID_KEY, nid);
     setSessionId(nid);
@@ -2543,8 +2610,11 @@ export default function Home() {
           createdAt: Date.now(),
           turns: [],
         },
-        // …and sweep any stale never-sent placeholders while we're at it.
-        ...prev.filter((s) => s.id !== nid && s.turns.length > 0),
+        // …and sweep any stale never-sent placeholders while we're at it
+        // (flow work counts as sent — a session is chat, flow, or both).
+        ...prev.filter(
+          (s) => s.id !== nid && (s.turns.length > 0 || flowIds.has(s.id)),
+        ),
       ].slice(0, MAX_SESSIONS);
       store.set(SESSIONS_KEY, JSON.stringify(next));
       return next;
@@ -2635,11 +2705,17 @@ export default function Home() {
     setSelectedId(null);
     setCtxIds([]);
     setError(null);
-    // Walking away from a session where nothing was ever SENT (no turns —
-    // a turn exists once a prompt is sent, even if it errored) drops its
+    const flowIds = flowWorkSessionIds();
+    // Default view per session: chat wins when it has any turns; a
+    // flow-only session opens straight onto its flows.
+    setMethod(found.turns.length ? "chat" : flowIds.has(id) ? "flow" : "chat");
+    // Walking away from a session where nothing was ever SENT (no chat
+    // turns AND no flow work — a session is chat, flow, or both) drops its
     // "New session" placeholder: an untouched session isn't worth keeping.
     setSessions((prev) => {
-      const next = prev.filter((s) => s.turns.length > 0 || s.id === id);
+      const next = prev.filter(
+        (s) => s.turns.length > 0 || flowIds.has(s.id) || s.id === id,
+      );
       if (next.length !== prev.length) {
         store.set(SESSIONS_KEY, JSON.stringify(next));
       }
@@ -3297,8 +3373,8 @@ export default function Home() {
                   !autoTitleReady
                     ? "Auto-title needs a Gemini key (Veo-only access isn't enough). Add GEMINI_API_KEY to have sessions named by their content."
                     : autoTitleOn
-                      ? "Auto-title ON — each send renames this session to match your prompt, so sessions are easy to tell apart (Gemini, ~$0.00002 a rename). Turn off to keep the first-message name."
-                      : "Auto-title OFF — sessions are named after their first message. Turn ON to have zclip name each session dynamically by the prompts you send — easy to distinguish, and only ~$0.00002 per rename."
+                      ? "Auto-title ON — each chat send or flow generation renames this session to match your work (chat and flow both count; Gemini, ~$0.00002 a rename). Turn off to keep the first-message name."
+                      : "Auto-title OFF — sessions are named after their first chat message (flow-only sessions stay 'New session'). Turn ON to have zclip name each session by the prompts you send — chat or flow — for ~$0.00002 per rename."
                 }
               />
             </div>
@@ -3548,7 +3624,12 @@ export default function Home() {
           </div>
 
           {method === "flow" && (
-            <FlowPanel onPreview={setFlowPreview} sessionId={sessionId} sideOpen={sideOpen} />
+            <FlowPanel
+              onPreview={setFlowPreview}
+              sessionId={sessionId}
+              sideOpen={sideOpen}
+              onDigest={onFlowDigest}
+            />
           )}
 
           <div className="thread" ref={threadRef}>

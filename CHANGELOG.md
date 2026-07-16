@@ -5,6 +5,38 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.11.0 — 2026-07-16
+
+### Added
+- Library: generated look images from the FLOW method now show alongside
+  videos, with ALL / VIDEO / PHOTO filter chips. Looks are read straight
+  from their flows (a look lives and dies with its flow) and each card
+  offers a Download.
+- FLOW: the ＋ New flow kind picker has a Cancel button — opened by
+  mistake, close it without creating anything.
+- FLOW: finished/errored takes in the history carry a ✕ — prune the list
+  without touching the Library (a finished take stays vaulted; the spend
+  ledger is unaffected).
+
+### Changed
+- A session is now chat, flow, or BOTH: sessions with only flow work no
+  longer vanish from the sidebar, ＋ New works from a flow-only session,
+  and opening a session lands on the right view (chat wins when it has
+  turns; a flow-only session opens straight onto FLOW).
+- Auto-title reads flow work too — generating a look or firing a motion
+  take names the session just like a chat send (chat and flow prompts are
+  blended into one title).
+- FLOW pick carousel: a selected look STAYS visible with a ✓ CONFIRMED /
+  SELECTED badge (click again to unselect) instead of vanishing into the
+  chip tray; new looks land at the LEFT end, newest first, and the
+  carousel auto-scrolls to reveal them.
+
+### Fixed
+- Entering a flow-only session no longer shows an empty "Start a flow"
+  panel: the session's most recent flow is auto-selected. Selection is now
+  derived with a fallback (stale ids can't blank the panel), immune to
+  remounts and effect timing.
+
 ## 0.10.0 — 2026-07-16
 
 ### Added

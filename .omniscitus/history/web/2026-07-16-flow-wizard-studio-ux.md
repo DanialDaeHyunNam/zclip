@@ -71,16 +71,17 @@ v0.9.3 → v0.10.0 (2026-07-16).
 어댑터=여러 모델" 구조에선 provider 기본값 폴백이 조용히 거짓말을 한다.
 
 ## Pending
-- [ ] 릴리스 v0.10.0 — **PR #4 오픈됨(OPEN)**. 머지 후 tag + gh release +
-      Vercel 재배포 필수(안 하면 로컬 카피 업데이트 배너 영원히 안 뜸)
+- [x] 릴리스 v0.10.0 — PR #4 머지 + tag v0.10.0 + gh release 완료
+      (2026-07-16 오후, [[session-flow-unification]] 세션). 프로드 배포는
+      같은 날 v0.11.0으로 직행(0.9.3→0.11.0 — 업데이트 배너 정상 발화)
 - [ ] provider 503/529 humanize 한 줄 — "일시 과부하, 잠시 후 재시도 or
       모델 바꿔 Retry" (v0.9.3 credit/safety 케이스와 같은 패턴; 오너에게
       제안만 한 상태, 미결정)
-- [ ] CLAUDE.md의 flow 설명이 구 UI(플로팅 바·전 스테이지 노출) 기준 —
-      릴리스 때 마법사 구조로 갱신
+- [x] CLAUDE.md의 flow 설명 마법사 구조로 갱신 — 완료 (CLAUDE.md:73
+      "Since v0.10.0 the panel is a step WIZARD" 절, 릴리스 커밋에 포함)
 - [ ] Auto-title이 세션 열람 시에도 1회 발화(신규 take만으로 제한하려면
       lastTitledRef를 로드 시점 시딩 — 원라인)
-- [ ] 오너 dev 서버(:3333) 재시작 — v0.4.0 부팅 잔존(env 인라인)
+- [x] 오너 dev 서버(:3333) 재시작 — 완료: 7/16 :3333 /api/version = 0.10.0
 - [ ] 아카이브 modelLabel 백필은 세션 히스토리(최대 20개)에 남은 클립만
       복구 — 그보다 오래된 클립은 provider 기본 라벨 유지
 
