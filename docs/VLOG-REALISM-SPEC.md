@@ -5,9 +5,47 @@ Companion to [VIDEO-PROMPT-SPEC.md](./VIDEO-PROMPT-SPEC.md). That doc covers the
 narrower, harder problem we actually chase: **an 8-second talking vlog clip that a
 scrolling viewer accepts as a real person filming their real life.**
 
-Everything here is field-derived — 2026-07-15, ~16 takes across Grok Imagine,
-Veo 3.1, Seedance 2.0, plus a frame-by-frame teardown of a real 10-minute K-pop
-idol NYC vlog (Kazuha / LE SSERAFIM) used as the ground-truth reference.
+Everything here is field-derived — 2026-07-15/16, ~20 takes across Grok Imagine,
+Veo 3.1, Seedance 2.0, a 12-roll measurement of Grok's image step, plus a
+frame-by-frame teardown of a real 10-minute K-pop idol NYC vlog (Kazuha /
+LE SSERAFIM) used as the ground-truth reference.
+
+> **⚠️ Read §0 first.** Every Grok observation dated 2026-07-15 was made through
+> a Gemini rewrite the operator did not know was running. Conclusions from that
+> day are marked and re-scoped.
+
+## 0. The refine confound — read before trusting any 2026-07-15 result
+
+Until v0.8.0 (2026-07-16 00:08) ZCLIP's chat composer had **no verbatim path for
+typed text**:
+
+```js
+if (!text && starterText && !manual && !ctxTurns.length) {
+  prompt = starterText;             // only an untouched card-composed starter
+} else {
+  const r = await fetch("/api/refine", ...)   // ← anything you TYPED went here
+}
+```
+
+So a pasted, hand-crafted prompt never reached the video model. Gemini rewrote it
+first, under a SYSTEM prompt that mandates two things fatal to this format:
+
+- **"For 6–8s takes, write a TIMESTAMPED beat map … one beat per 1.5–2s"** — it
+  *manufactured* a cut structure no matter how hard the source said
+  "one continuous unbroken take, no cuts."
+- **"Under 900 characters."** — a 3,800-char spec was crushed to ~900. Every
+  contract below the cut line (deep focus, text rule, one-voice, gaze) simply
+  ceased to exist.
+
+**Consequences for this doc:** every Grok verdict from 2026-07-15 was a verdict
+on *Gemini's rewrite*, not on our prompt. The "Grok can't render backgrounds"
+and "Grok is below bar" claims from that day are **withdrawn** — with refine off
+(2026-07-16) Grok held background fidelity, deep focus, single-frame openings and
+color integration. See §6 for the re-scoped comparison.
+
+**Rule going forward: a crafted prompt ships VERBATIM.** Refine is for
+conversational nudges on a short draft, never for a finished spec. Before
+trusting any A/B, confirm which path the prompt actually took.
 
 ## Why
 
@@ -249,24 +287,43 @@ minimal accessories, small earrings only.
 
 ## 5. Model-specific traps (field-verified 2026-07-15)
 
-### 5.1 Grok's hidden image step is a storyboard factory
+### 5.1 Grok's hidden image step is a storyboard factory — MEASURED
 
 `lib/providers/grok.ts`: grok-imagine-video is **image-to-video only** — chat
-prompts silently generate a still first, then animate it. Feed it a
-multi-beat script with quoted dialogue and the *image* model draws the most
-plausible thing: **a subtitled 2-panel storyboard**. The video faithfully
-animates that.
+prompts silently generate a still first, then animate it. That still becomes the
+video's opening. **We never saw it** for 14 takes: the adapter fetches the URL,
+uses it, and throws it away.
 
-Evidence (n=4): every take containing an off-screen second speaker → split
-screen. The one take with a single voice → clean. Prompt-layer bans did not fix
-it; stacking more bans made it worse (see §5.2).
+Calling `/v1/images/generations` directly with our exact prompts (2026-07-16,
+$0.05/roll) settles it. Same 9:16, same everything, only the prompt body varies:
 
-Fixes, in order of reliability:
-1. **Flow mode** — confirm a single full-frame still by eye (Stage 1), then
-   animate (Stage 2). Structurally impossible to split.
-2. **Patch the adapter** — send only Scene + Character + first beat (plus
-   "single full-frame photo") to the image step, not the full script.
-3. Prompt-layer mitigations (§5.2), which help but do not guarantee.
+| variant | image-step prompt | stacked/collage |
+|---|---|---|
+| full take-15 prompt | scene + character + 3 quoted dialogue lines | **3/4** |
+| **C** — dialogue kept, every "cut"/structure word removed | same, restructured | **4/4** + **Korean subtitles burned into each panel** |
+| **B** — no quoted dialogue, action as one flowing sentence | scene + character + action | ~2/4 |
+| **A** — no dialogue at all, scene + character only | (Flow's LOOK shape) | ~1/4 |
+
+Readings:
+
+- **Quoted dialogue is the amplifier.** Variant C produced a 3-panel comic strip
+  with each line lettered under its panel — the image model drew the *script*.
+  Every burned-subtitle and phantom-cut failure traces back to this one still.
+- **Removing "cut" vocabulary does nothing.** Take 15 contained zero instances of
+  "cut" and still stacked 3/4. The word was never the trigger; the multi-beat
+  *structure* is. Grok Imagine has a strong learned affinity for split
+  compositions — people deliberately prompt it to get them.
+- **No prompt is safe.** Even dialogue-free (A) stacks ~25%. Chat mode rolls this
+  dice on every take.
+
+**The only guaranteed fix is supplying the still yourself** — `params.image`
+short-circuits the image step entirely (`grok.ts` line ~44), so frame one is the
+still you confirmed by eye. That is Flow. Trimming what the adapter sends to the
+image step is *not* a fix — it would only move 4/4 down to ~1/4.
+
+Corollary: if chat mode must stay, the honest fix is **surfacing the generated
+still** so a bad roll can be rejected before the video spend — which is Flow
+reinvented. Just use Flow.
 
 ### 5.2 Negation blindness — bans plant the thing they ban
 
@@ -275,6 +332,12 @@ Diffusion image steps weight nouns strongly and negations weakly. Writing
 *collage*, *storyboard* into the image step. Take 11 stacked the strongest bans
 yet and produced the worst result (3-panel split + burned subtitles + the friend
 rendered on screen).
+
+⚠️ **Weakened by §0**: takes 9–14 all ran through refine, so what the image step
+actually received was Gemini's rewrite, not our bans. The mechanism is real for
+diffusion models generally, and positive composition phrasing remains the house
+style — but the *evidence* here is contaminated. §5.1's 12-roll measurement is
+the clean data: dialogue structure, not ban vocabulary, drives the stacking.
 
 **Rule: for image-step models, describe the composition you want, positively.**
 
@@ -301,6 +364,13 @@ second voice makes the model either cut to them or render them in frame.
 an unheard remark — "she catches an unheard remark from her friend and nods at
 the lens". Or better, have her **ask** the friend a question — the answer lives
 off-screen in the future, dialogue feels two-way, and it doubles as an ending.
+
+⚠️ **Partly superseded by §5.1**: the n=4 correlation here (second speaker →
+split) was confounded — *any* quoted dialogue stacks the still 3–4/4, with or
+without a second speaker. The single-voice rule still stands (it removes one more
+quoted line, and the friend was rendered on-screen in take 11), but "off-screen
+speaker" was never the sole trigger. The one-voice-plus-question construction
+remains the recommendation — it survived on its own merits.
 
 ### 5.4 Moderation tiers: Veo > Grok > Higgsfield
 
@@ -333,27 +403,75 @@ It also holds cut structure and burns no subtitles with 7 dialogue lines across
 reference grade *without* the 15-section armor; the armor exists for weaker or
 stricter models.
 
-## 6. The two-tier workflow (the day's economic lesson)
+## 6. Grok vs Seedance — re-scoped after the refine confound
 
-Same prompt, two renderers, one day apart:
+The 2026-07-15 verdict ("Grok melts backgrounds, below bar, drafting only") was
+measured through Gemini's rewrite (§0) and is **withdrawn**. With refine off and
+LOOK/MOTION split (§6.1), the comparison narrows a lot. Same prompt lineage
+(take 14), Grok take 19 vs the Seedance sohowalk render:
 
-| | Grok Imagine | Seedance 2.0 |
+| | Grok Imagine (refine off) | Seedance 2.0 |
 |---|---|---|
-| Split screen | 4 takes in a row | none |
-| Background | melts / hides behind blur | drawn to the edge |
-| Skin, leather, hair | flat | material-accurate |
-| Korean dialogue | below bar | usable |
-| Cost | ~$0.64–0.80/take | 36 cr (8s 720p) · 72 cr (8s 1080p) · 135 cr (15s 1080p) |
+| Opening frame | single, clean (with Flow) | single, clean |
+| Background fidelity | **holds** — cast-iron, snow, cars to the edge | holds |
+| Deep focus / color | **holds** | holds |
+| Lens engagement | **better** (looked at camera; Seedance drifted to profile) | drifts |
+| Leather, hair, skin micro-texture | flatter | **wins** |
+| Acting aliveness, Korean delivery | weaker | **wins** |
+| Cost | ~$0.64–0.80/take | 36 cr ≈ $3.6 (8s 720p) · 72 cr (1080p) · 135 cr (15s 1080p) |
 
-14 Grok takes ≈ $10 to converge the *prompt*. One Seedance take (36 cr) then
-landed it first try. Neither is wrong — but know what you're buying:
+So the gap moved from *"structure and rendering"* to **only material texture and
+acting** — and even acting is not settled: on 2026-07-15 a single line we wrote
+("only her head and eyes move") killed the performance outright, and inverting
+one geometry cue brought it back. Some of the remaining gap may still be ours.
 
-> **Grok = grammar drafting (cheap, fast, structure only).
-> Seedance = the publishable render.**
+**Practical stance (unchanged in shape, weaker in confidence):** draft on Grok,
+publish on Seedance when texture matters — the 5× cost gap makes Grok the only
+option at 10 clips/day. But re-test before assuming Grok can't publish; the
+2026-07-15 basis for that claim no longer exists.
 
-Do not iterate on Grok to fix texture/acting/voice. Do not burn Seedance credits
-to discover that a cut board is mis-paced. When Grok structure is clean and the
-gap left is "pretty but 70%", **stop iterating and switch renderers.**
+### 6.1 LOOK / MOTION split — the biggest single structural win
+
+Feeding one combined prompt is a chat-mode habit, and it is what makes the image
+step draw a subtitled comic strip (§5.1). Split the input instead:
+
+```
+LOOK   → Character + Scene + Lighting + Skin/Makeup + ONE frozen pose.
+         NO dialogue, no "8 seconds", no "take", no beat chain.
+         → confirm the still by eye. This IS frame one.
+MOTION → camera behaviour + body motion + Facial life + Audio + the lines.
+         The still already carries identity/wardrobe/scene — don't re-describe
+         them, re-description invites reinterpretation.
+```
+
+Verified 2026-07-16: split alone fixed the opening split-screen that 15 takes of
+prompt surgery could not. **The still is the take** — everything downstream
+inherits its geometry.
+
+### 6.2 The still's gaze anchor decides camera AND performance
+
+The subtlest trap found so far. Our LOOK said *"her gaze off to her right at a
+storefront window"* while the camera sat on her **left**. Two failures fell out of
+that single line, and both looked like separate bugs:
+
+- **Monologue** — the model reverts to the still's pose, so she stared right for
+  the whole take and never returned to the lens. "Comes back to the lens when she
+  talks" loses to the anchor. Gaze ended up 0% lens, not the 30% we wanted (§2).
+- **Background swap** — the camera orbited toward whatever she was looking at, to
+  *show* it. The street she started on was replaced by storefronts mid-take. No
+  amount of "never swing away" fixed it, because her gaze kept pointing there.
+
+Fix the geometry, not the bans: anchor the still **looking into the lens,
+mid-conversation**, and keep the interesting scenery *behind* her rather than
+off to one side. Both failures vanished in one take (19). Corollary to §2: the
+30/70 gaze ratio is a *drift target*, not an anchor — anchor at the lens and let
+the model wander off it. Anchor away from the lens and it never comes back.
+
+Also: bans on camera movement are a trap in the other direction. "The camera never
+moves closer, never changes position" + "only her head and eyes move" (take 17)
+produced a tripod-locked talking head with a frozen body — dead acting. Constrain
+what the camera *attends to* ("she is the subject of every frame"), never how it
+moves, and let the whole body walk.
 
 ## 7. Format bank
 
@@ -364,12 +482,16 @@ What's worth counting is **verified recipes**.
 
 | Recipe | Camera | Actions | Script slot | Status |
 |---|---|---|---|---|
-| Night walk selfie | selfie one-take / 4-cut jump | walk · sky glance · breath · stop under lamp | hello → savor → local ask | ✅ verified (Grok 0/7) |
-| Day travel one-take | selfie one-take | walk · look around · slow to a stop | arrival → awe → 맛집 CTA | ✅ verified (Grok 4/6) |
-| **Friend-cam window shopping** | friend tracking, 3/4 from her left | browse · pocket hands · glance to lens · point at glass | thinking out loud → question to friend | ✅ **verified (Seedance, 2026-07-15)** |
+| Night walk selfie | selfie one-take / 4-cut jump | walk · sky glance · breath · stop under lamp | hello → savor → local ask | ⚠️ verified 07-15 **through refine** — re-test |
+| Day travel one-take | selfie one-take | walk · look around · slow to a stop | arrival → awe → 맛집 CTA | ⚠️ verified 07-15 **through refine** — re-test |
+| **Friend-cam window shopping** | friend tracking, 3/4 from her left | walk · pocket hands · lens-anchored chat | thinking out loud → question to friend | ✅ **verified twice** — Seedance (07-15) and Grok+Flow (07-16, take 19) |
 | Car interview | fixed 3/4 back-seat, window light pulse | thinking beat · hand gestures · look out window | Q&A, one topic | ⬜ untested |
 | Table cam | static, food POV inserts | eat · react mid-chew · prop business | food reaction | ⬜ untested |
 | Bench + drink | bench-height, turn-to-talk | sip · turn · laugh | wind-down chat | ⬜ untested |
+
+⚠️ The two "verified" selfie recipes were judged on refined output (§0) — the
+takes were good, but we don't know what prompt produced them. Re-run verbatim
+before treating them as reproducible.
 
 **New episode = pick a verified recipe, change ONE variable** (place, script, or
 wardrobe). New recipes get their own verification cycle. This minimal-delta rule
@@ -404,27 +526,37 @@ not the reference words** — write the spec from what you see.
 
 Before spending a credit:
 
+- [ ] **Refine is OFF** — the prompt ships verbatim (§0). Confirm the path, not the toggle's label.
+- [ ] **Using Flow, not chat** — LOOK confirmed by eye, then MOTION (§5.1, §6.1)
+- [ ] **LOOK has zero dialogue**, zero "8 seconds", zero "take", zero beat chain
+- [ ] **LOOK anchors her gaze into the lens**, mid-conversation; scenery behind her, not off to one side (§6.2)
 - [ ] Duration field == Format declaration == cut count
-- [ ] Dialogue ≤ ~30–36 syllables (8s); each line 8–12; no consonant clusters/glides
+- [ ] Dialogue ≤ ~30–36 syllables (8s); each line 8–12; no consonant clusters/glides — 2 lines beats 3 at 8s
 - [ ] Scene names a specific, dense, low-signage place — and it earns the dialogue
 - [ ] Deep focus contract present; bokeh only on macro cuts
 - [ ] Text rule present, phrased positively; dialogue marked AUDIO ONLY
 - [ ] One voice only (or a reaction to an unheard remark)
 - [ ] Gaze block present (lens is home base, not a stare)
-- [ ] Story through-line section present
+- [ ] MOTION constrains what the camera *attends to*, never how it moves; the whole body walks (§6.2)
 - [ ] Hands defined at every moment (one at a time; the other in a pocket)
 - [ ] Grok: ≤ 4096 chars, positive composition, no ban vocabulary
 - [ ] Veo: no "idol" label anywhere
-- [ ] Right renderer for the goal (draft vs publish)
+- [ ] Right renderer for the goal (§6)
 
 ## Pending
 
-- **UI wiring**: `lib/vlog-blocks.ts` ships the bank as pickable data
-  (VLOG_FORMATS / VLOG_MOVES / VLOG_LOOKS / VLOG_SCRIPTS + `composeVlog()`), same
-  shape as CHARACTERS/SETTINGS/FASHION in `lib/prompts.ts`. Not yet rendered in
-  the Flow/Chat carousels — next step is a MOVES-style chip row.
-- **Adapter patch**: trim what `grok.ts` sends to its image step (§5.1) — should
-  kill the split-screen class at the source for chat mode.
+- **`composeVlog()` must split into `composeLook()` + `composeMotion()`** —
+  `lib/vlog-blocks.ts` currently emits one combined prompt, which is the chat-mode
+  shape we now know is wrong (§5.1, §6.1). Same bank, two outputs. Also unlocks
+  the UI: LOOK chips and MOTION chips are separate rows.
+- **UI wiring**: render the bank in the Flow carousels once split.
+- ~~Adapter patch (trim the image-step prompt)~~ — **dropped**: measured at ~25%
+  stack even with zero dialogue (§5.1). Supplying the still is the only guarantee.
+- **Acting is the open front.** Untried Kazuha moves that target exactly the
+  remaining gap (§6): the thinking beat (gaze floats up before answering),
+  laughter breaking a sentence mid-word, unflattering moments surviving.
 - **Auto artifact QA**: extract 4 frames per take → vision check for panel
-  splits / extra arms / burned text → badge in the take list.
+  splits / extra arms / burned text → badge in the take list. Cheap now that we
+  know the failure signatures.
 - Car-interview and table-cam recipes are speculative until a take verifies them.
+- Re-run the two refine-era selfie recipes verbatim (§7).
