@@ -23,6 +23,10 @@ export interface ProviderInfo {
   envVar: string;
   docsUrl: string;
   keyUrl: string;
+  /** The provider's billing/usage console — where the REAL charge shows up.
+   *  In-app costs are per-second estimates; no provider reports a live billed
+   *  total, so the spend UI links here to verify actual usage. */
+  dashboardUrl: string;
   adapterFile: string;
   /** USD per second of output by resolution, from the provider's public
    *  pricing page. null = pricing not published clearly (shown as —). */
@@ -62,6 +66,7 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     envVar: "GEMINI_API_KEY",
     docsUrl: "https://ai.google.dev/gemini-api/docs/veo",
     keyUrl: "https://aistudio.google.com/apikey",
+    dashboardUrl: "https://aistudio.google.com/usage",
     adapterFile: "lib/providers/veo.ts",
     costPerSecondUsd: { "720p": 0.1, "1080p": 0.12 },
     chartColor: "#1E9CC9",
@@ -81,6 +86,7 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     envVar: "OPENAI_API_KEY",
     docsUrl: "https://developers.openai.com/api/docs/guides/video-generation",
     keyUrl: "https://platform.openai.com/api-keys",
+    dashboardUrl: "https://platform.openai.com/usage",
     adapterFile: "lib/providers/sora.ts",
     costPerSecondUsd: { "720p": 0.1 }, // launch pricing — verify on your account
     minSeconds: 8, // Sora bills 8s even when a shorter take is requested
@@ -101,6 +107,7 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     envVar: "XAI_API_KEY",
     docsUrl: "https://docs.x.ai/docs/guides/video-generations",
     keyUrl: "https://console.x.ai/",
+    dashboardUrl: "https://console.x.ai/",
     adapterFile: "lib/providers/grok.ts",
     costPerSecondUsd: { "720p": 0.08, "1080p": 0.08 }, // $0.08/s flat (docs.x.ai pricing)
     chartColor: "#BF7A22",
@@ -120,6 +127,7 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     envVar: "ARK_API_KEY",
     docsUrl: "https://docs.byteplus.com/en/docs/ModelArk/",
     keyUrl: "https://console.byteplus.com/",
+    dashboardUrl: "https://console.byteplus.com/ark/region:ark+ap-southeast-1/openManagement",
     adapterFile: "lib/providers/seedance.ts",
     costPerSecondUsd: null,
     chartColor: "#3AA468",
@@ -142,6 +150,7 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     envVar: "RUNWAYML_API_SECRET",
     docsUrl: "https://docs.dev.runwayml.com/guides/generate-video/",
     keyUrl: "https://dev.runwayml.com/",
+    dashboardUrl: "https://dev.runwayml.com/organization/usage",
     adapterFile: "lib/providers/runway.ts",
     costPerSecondUsd: { "720p": 0.05, "1080p": 0.05 }, // 5 credits/s × $0.01
     chartColor: "#C2477E",
@@ -162,6 +171,7 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     envVar: "KLING_API_KEY", // "ACCESS_KEY:SECRET_KEY" — adapter builds the JWT
     docsUrl: "https://kling.ai/document-api/apiReference/model/imageToVideo",
     keyUrl: "https://kling.ai/dev",
+    dashboardUrl: "https://app.klingai.com/global/dev/resource",
     adapterFile: "lib/providers/kling.ts",
     // ~6cr/s 720p, ~8cr/s 1080p at ≈$0.004/credit (2026-07 API pricing) —
     // estimates until a real billed run confirms.

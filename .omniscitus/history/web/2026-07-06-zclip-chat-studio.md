@@ -227,9 +227,10 @@ input and let the summary scroll beneath it.
 - [x] Pickers: confirm real asset images render (they do); demo video now on the
       workflow demo (owner asked to keep the studio render frame blank by default)
 - [x] Library intro: generated-takes / URL-grab / direct multimodal-upload sources
-- [ ] Direct upload INTO the Library (a real library item, not just a composer
-      drop) needs a server endpoint to persist the file + return a URL — offered,
-      not yet built; composer drag/drop is the current path
+- [x] Direct upload INTO the Library (a real library item, not just a composer
+      drop) needs a server endpoint to persist the file + return a URL — BUILT
+      with the v0.6.0 transfer flow: `app/api/clips` POST multipart writes a
+      real Library item into `.zclip-data/clips/` (dev-only, line 56)
 - [ ] ⤓ vs ▦ now sit adjacent in the rail (both open /archive) — consider
       collapsing into one entry point
 - [x] Verify Runway Act-Two end-to-end (2026-07-07: live Act-Two session produced

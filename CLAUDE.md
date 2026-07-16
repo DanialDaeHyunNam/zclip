@@ -70,9 +70,16 @@ store survives port moves); test against it with client-side checks only.
     run). Opens pre-filled with a transfer template (camera lock /
     green-screen composite variants — TRANSFER_PRESETS). refClip is a
     Library POINTER, never base64 (35MB clips must not enter the store).
-  Interop both ways: finished takes → shared gallery/clip vault
-  (Library), confirmed stills → custom Character cards. State in
-  `hooklab.flows`.
+  Since v0.10.0 the panel is a step WIZARD: one stage renders at a time
+  (`stepIdx`/`activeStage` over the `flowSteps` backbone), segmented step
+  chips jump between stages, navigation is manual ← Prev / Next → (gated
+  on required steps), and ANIMATE is inline on the motion step (the
+  floating portal bar is gone). Take history stacks below the wizard on
+  every step; clicking a take replays it in the shared OUTPUT frame via
+  `onPreview`. Flow tabs are a single-row carousel, newest first, ＋ New
+  flow pinned left. Interop both ways: finished takes → shared
+  gallery/clip vault (Library), confirmed stills → custom Character
+  cards. State in `hooklab.flows`.
 - `app/api/image` — still generation for Flow stage 1 (xAI Grok image,
   downloads the expiring provider URL server-side, returns base64).
 - `app/page.tsx` — server shell (metadata + `isCloud()`) → `app/landing-client.tsx`

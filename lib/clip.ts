@@ -13,7 +13,11 @@ export interface Clip {
   provider: ProviderName | "grab";
   prompt: string;
   note?: string;
+  /** Method the take came from ("Chat" / "Flow" / a preset name / "Reference"). */
   variantLabel: string;
+  /** The ACTUAL model's short label (e.g. "Seedance 2.0 Mini"). A provider hosts
+   *  several models, so this — not PROVIDERS[provider].label — is the truth. */
+  modelLabel?: string;
   createdAt: number;
   status: "done";
   aspectRatio: AspectRatio;
