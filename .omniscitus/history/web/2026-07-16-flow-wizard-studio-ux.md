@@ -57,6 +57,12 @@ v0.9.3 → v0.10.0 (2026-07-16).
   STEP n/N+도트, 16px 단일 리듬, .flow-workspace 서피스
 - 아카이브: 2행 페이지네이션(컬럼 실측), 최신순, modelLabel 수정+백필
 - /follow-up 부산물: 직접 업로드 pending 2건 완료 확인([[zclip-chat-studio]])
+- 릴리스: v0.10.0 범프 + CHANGELOG + CLAUDE.md 마법사 갱신 →
+  **PR #4 오픈** (release/v0.10.0, 17 files +1,349/−269)
+- 번외 — xAI 503 진단: 오너 localhost 생성 실패 신고 → 인증/모델 API는
+  200(0.3s)인데 생성 요청만 ~0.5s 즉답 503 → xAI Imagine 생성 캐파
+  로드셰딩 확정(우리 코드·이번 PR 무관). 대응: 잠시 후 재시도 or 모델
+  갈아타고 Retry(설계상 현재 선택 모델로 재실행)
 
 **Learned**: flex column 안에선 margin이 collapse되지 않고 합산된다 —
 개별 margin 대신 부모 gap 하나로 리듬을 통일하는 게 정답. auto-fill 그리드의
@@ -65,8 +71,11 @@ v0.9.3 → v0.10.0 (2026-07-16).
 어댑터=여러 모델" 구조에선 provider 기본값 폴백이 조용히 거짓말을 한다.
 
 ## Pending
-- [ ] 릴리스 v0.10.0 — PR 머지 후 tag + gh release + Vercel 재배포
-      (이 세션에서 PR까지 진행)
+- [ ] 릴리스 v0.10.0 — **PR #4 오픈됨(OPEN)**. 머지 후 tag + gh release +
+      Vercel 재배포 필수(안 하면 로컬 카피 업데이트 배너 영원히 안 뜸)
+- [ ] provider 503/529 humanize 한 줄 — "일시 과부하, 잠시 후 재시도 or
+      모델 바꿔 Retry" (v0.9.3 credit/safety 케이스와 같은 패턴; 오너에게
+      제안만 한 상태, 미결정)
 - [ ] CLAUDE.md의 flow 설명이 구 UI(플로팅 바·전 스테이지 노출) 기준 —
       릴리스 때 마법사 구조로 갱신
 - [ ] Auto-title이 세션 열람 시에도 1회 발화(신규 take만으로 제한하려면
