@@ -75,11 +75,28 @@ store survives port moves); test against it with client-side checks only.
   chips jump between stages, navigation is manual ← Prev / Next → (gated
   on required steps), and ANIMATE is inline on the motion step (the
   floating portal bar is gone). Take history stacks below the wizard on
-  every step; clicking a take replays it in the shared OUTPUT frame via
-  `onPreview`. Flow tabs are a single-row carousel, newest first, ＋ New
-  flow pinned left. Interop both ways: finished takes → shared
-  gallery/clip vault (Library), confirmed stills → custom Character
-  cards. State in `hooklab.flows`.
+  every step (✕ prunes an entry; the Library keeps the clip); clicking a
+  take replays it in the shared OUTPUT frame via `onPreview`. Flow tabs
+  are a single-row carousel, newest first, ＋ New flow pinned left (the
+  kind picker has a Cancel). The pick carousel keeps a selected look
+  visible with a ✓ badge (click again to unselect); new looks land at the
+  LEFT end and the carousel auto-scrolls to them. Interop both ways:
+  finished takes → shared gallery/clip vault (Library), confirmed stills
+  → custom Character cards; generated looks also surface READ-ONLY in the
+  Library under an ALL/VIDEO/PHOTO filter (flows stay the single source —
+  never mutate `hooklab.flows` from outside the panel). State in
+  `hooklab.flows`.
+  **A session is chat, flow, or BOTH** (v0.11.0): real flow work
+  (attempts / refClip / a typed look prompt — `flowWorkSessionIds()` in
+  studio.tsx is the one definition) keeps a session alive in the sidebar
+  exactly like chat turns, lets ＋ New proceed from a flow-only session,
+  and steers the default view on entry (chat wins when turns exist;
+  flow-only opens FLOW). Flow attempt prompts ride up via `onDigest`
+  (tagged with their session id — child effects run BEFORE parent
+  effects, so tag-and-filter, never clear-then-report) and blend into
+  session auto-titles. The selected flow is DERIVED — `find(flowId) ??
+  newest visible ?? null` — so a stale flowId can never blank the panel
+  into "Start a flow".
 - `app/api/image` — still generation for Flow stage 1 (xAI Grok image,
   downloads the expiring provider URL server-side, returns base64).
 - `app/page.tsx` — server shell (metadata + `isCloud()`) → `app/landing-client.tsx`

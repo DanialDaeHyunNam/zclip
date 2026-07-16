@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-16T04:35:21.581Z
+updated: 2026-07-16T09:12:19.406Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -465,10 +465,22 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-06
-    last_modified: 2026-07-16T04:28:20.864Z
-    change_count: 110
+    last_modified: 2026-07-16T09:12:19.406Z
+    change_count: 114
     purpose: "The full design system: starfield black theme, radius/pill tokens, chat pill, rail, overlays (archive/grab), spend popover, dashboard charts, starter carousels"
     change_log:
+      - date: 2026-07-16T09:12:19.406Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:15:03.609Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:15:01.034Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:14:57.862Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T04:28:20.864Z
         action: edit
         source: "claude:Danial Nam"
@@ -1237,10 +1249,46 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-16T04:35:21.581Z
-    change_count: 363
+    last_modified: 2026-07-16T08:56:19.017Z
+    change_count: 375
     purpose: "The entire studio UI (one big client component): chat thread, rewind, persistent sessions sidebar, spend popover, starter carousels + Library pill, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-16T08:56:19.017Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:56:07.768Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:31:56.666Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:31:19.509Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:30:34.151Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:29:35.128Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:29:32.903Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:29:25.393Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:14:47.394Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:14:44.492Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:14:41.863Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:14:31.812Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T04:35:21.581Z
         action: edit
         source: "claude:Danial Nam"
@@ -2441,10 +2489,31 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-08
-    last_modified: 2026-07-15T06:57:57.221Z
-    change_count: 21
+    last_modified: 2026-07-16T09:11:51.905Z
+    change_count: 28
     purpose: "The Library page (/archive) — all takes/GRABs grouped by session with the rail; a collapsible '+ Add reference' GRAB form; 'use as reference' hands a clip back to the studio"
     change_log:
+      - date: 2026-07-16T09:11:51.905Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T09:11:33.201Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T09:11:29.054Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T09:11:20.237Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T09:11:06.511Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T09:11:01.575Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T09:10:50.161Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T06:57:57.221Z
         action: edit
         source: "claude:Danial Nam"
@@ -2726,10 +2795,43 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-16T04:32:45.205Z
-    change_count: 150
+    last_modified: 2026-07-16T08:55:45.739Z
+    change_count: 161
     purpose: "FLOW method panel (embedded in the studio): still→motion pipeline — look generate/upload/EDIT with confirm gate, motion iteration via i2v, presets, session-scoped flows, shared-Library interop, Character-card export"
     change_log:
+      - date: 2026-07-16T08:55:45.739Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:31:29.621Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:31:27.073Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:30:10.778Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:29:57.576Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:29:47.134Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:14:11.716Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:14:01.439Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:13:52.012Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:13:35.091Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-16T08:13:19.881Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T04:32:45.205Z
         action: edit
         source: "claude:Danial Nam"

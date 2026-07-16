@@ -55,6 +55,14 @@ units:
     last_updated: 2026-07-16
     session_count: 1
     title: "FLOW 마법사 재설계 · 스튜디오 토글/비용/아카이브 UX"
+  - id: session-flow-unification
+    file: web/2026-07-16-session-flow-unification.md
+    domain: web
+    status: open
+    created: 2026-07-16
+    last_updated: 2026-07-16
+    session_count: 1
+    title: "세션=Chat|Flow 통합 · FLOW UX 폴리시 · Library 필터 (v0.11.0)"
   - id: zclip-hosted-byok
     file: web/2026-07-15-zclip-hosted-byok.md
     domain: web

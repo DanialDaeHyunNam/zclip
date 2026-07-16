@@ -58,8 +58,9 @@ mark the derived part (clip count) as an estimate to be firmed by one measured r
       Model activation for Seedance in the ap-southeast region.
 - [ ] Run ONE real 5s 720p Seedance clip → read exact tokens + cost from the ModelArk
       Usage page (firms up token/clip + the cost table).
-- [ ] Confirm the adapter endpoint / model id (`seedance-1-0-pro-250528`) / response
-      shape on that first real run; fix the adapter if the shape differs.
+- [x] Confirm the adapter endpoint / model id (`seedance-1-0-pro-250528`) / response
+      shape — a completed Seedance 1.0 Pro clip landed in the gallery 2026-07-09
+      01:38 (plus six 2.0-family clips through 07-16); adapter shape verified, no fix needed.
 - [ ] Fill `costPerSecondUsd` in `lib/config.ts` (currently `null` → cost shows "—")
       from the measured per-clip cost; drop the "unverified" note.
 

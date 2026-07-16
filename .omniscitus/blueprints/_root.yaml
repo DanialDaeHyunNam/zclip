@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-16T05:02:01.832Z
+updated: 2026-07-16T09:26:16.712Z
 
 files:
   "README.md":
@@ -69,10 +69,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-16T05:02:01.832Z
-    change_count: 18
+    last_modified: 2026-07-16T09:26:16.712Z
+    change_count: 19
     purpose: "Agent handoff notes: architecture, commands, provider facts (incl. Act-Two), design system, verification patterns"
     change_log:
+      - date: 2026-07-16T09:26:16.712Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T05:02:01.832Z
         action: edit
         source: "claude:Danial Nam"
@@ -153,10 +156,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-10T12:37:31.735Z
-    change_count: 15
+    last_modified: 2026-07-16T09:25:15.013Z
+    change_count: 16
     purpose: "Deps (next/react/typescript only) + scripts; `version` is the release source of truth, inlined as NEXT_PUBLIC_APP_VERSION by next.config"
     change_log:
+      - date: 2026-07-16T09:25:15.013Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-10T12:37:31.735Z
         action: edit
         source: "claude:Danial Nam"
@@ -217,10 +223,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-16T05:01:31.246Z
-    change_count: 19
+    last_modified: 2026-07-16T09:25:22.369Z
+    change_count: 20
     purpose: "Per-release notes (Added/Changed/Fixed) surfaced via the version chip; every release bumps it (the update prompt depends on it)"
     change_log:
+      - date: 2026-07-16T09:25:22.369Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T05:01:31.246Z
         action: edit
         source: "claude:Danial Nam"

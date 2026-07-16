@@ -241,6 +241,7 @@ export function FlowPanel({
   onPreview,
   sessionId,
   sideOpen,
+  onDigest,
 }: {
   /** Surface an image/video in the studio's shared left frame. */
   onPreview: (p: FlowPreview | null) => void;
@@ -250,6 +251,10 @@ export function FlowPanel({
   /** Sessions side-panel open? The floating action bar centers in the space
    *  to the RIGHT of it when so. */
   sideOpen: boolean;
+  /** Report this session's flow work (attempt prompts) up to the studio —
+   *  the auto-title effect blends it with chat turns to name the session.
+   *  Tagged with the session id so a stale report can never mislabel. */
+  onDigest: (sessionId: string, msgs: string[]) => void;
 }) {
   const [flows, setFlows] = useState<Flow[]>([]);
   const [flowId, setFlowId] = useState<string | null>(null);
@@ -289,23 +294,36 @@ export function FlowPanel({
   const visibleFlows = flows.filter(
     (f) => !f.sessionId || !sessionId || f.sessionId === sessionId,
   );
-  const flow = visibleFlows.find((f) => f.id === flowId) ?? null;
+  /* Selection is DERIVED with a fallback: a stale/null flowId (remount,
+   *  session switch, effect-timing gap) falls back to the session's most
+   *  recent flow instead of an empty panel — entering a flow-only session
+   *  always lands on its work, never on "Start a flow". */
+  const flow =
+    visibleFlows.find((f) => f.id === flowId) ??
+    visibleFlows[visibleFlows.length - 1] ??
+    null;
 
-  /* keep the selection inside the current session's flows. Wait for a REAL
-   *  session id before auto-creating — creating with "" (studio not yet
-   *  hydrated) would orphan the flow into every session. */
+  /* normalize flowId onto the derived selection so tab highlights and every
+   *  setFlowId-relative action agree with what's on screen */
+  useEffect(() => {
+    if (flow && flow.id !== flowId) setFlowId(flow.id);
+  }, [flow, flowId]);
+
+  /* No flow in this session at all → make one. Wait for a REAL session id
+   *  before auto-creating — creating with "" (studio not yet hydrated)
+   *  would orphan the flow into every session. */
   useEffect(() => {
     if (flow || !hydrated || !sessionId) return;
-    const last = visibleFlows[visibleFlows.length - 1];
-    if (last) {
-      setFlowId(last.id);
-    } else {
-      const f = newFlow(1, sessionId);
-      setFlows((fs) => [...fs, f]);
-      setFlowId(f.id);
-    }
+    const f = newFlow(1, sessionId);
+    setFlows((fs) => [...fs, f]);
+    setFlowId(f.id);
     setEditFrom(null);
   }, [sessionId, flow, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* switching sessions must not carry another flow's one-shot edit context */
+  useEffect(() => {
+    setEditFrom(null);
+  }, [sessionId]);
 
   /* Bind orphan flows to the current session. Flows made by an older build
    *  (no scoping) or before the session id was known carry no sessionId and
@@ -642,6 +660,41 @@ export function FlowPanel({
     if (!hydrated) return;
     store.set(FLOWS_KEY, JSON.stringify(flows));
   }, [flows, hydrated]);
+
+  /* Tell the studio what work happened in this session's flows — attempt
+   *  prompts only (typing alone doesn't count as work), oldest first, so
+   *  auto-title can name a flow-only session and blend chat + flow. */
+  useEffect(() => {
+    if (!hydrated) return;
+    const msgs: string[] = [];
+    for (const f of visibleFlows) {
+      for (const a of f.imgAttempts) {
+        const p = a.prompt.trim();
+        // "(uploaded …)" / "(shared …)" placeholders describe nothing
+        if (p && !p.startsWith("(")) msgs.push(`[look] ${p}`);
+      }
+      // motionAttempts are stored newest-first — restore chronology
+      for (const a of [...f.motionAttempts].reverse()) {
+        const p = a.prompt.trim();
+        if (p) msgs.push(`[motion] ${p}`);
+      }
+    }
+    onDigest(sessionId ?? "", msgs);
+  }, [flows, sessionId, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* A fresh look renders at the LEFT end of the pick carousel (newest
+   *  first) — scroll it into view when one lands, so it's never hidden
+   *  off the far edge. */
+  const thumbsRef = useRef<HTMLDivElement>(null);
+  const lastImgCount = useRef<{ id: string; n: number } | null>(null);
+  useEffect(() => {
+    if (!flow) return;
+    const prev = lastImgCount.current;
+    if (prev && prev.id === flow.id && flow.imgAttempts.length > prev.n) {
+      thumbsRef.current?.scrollTo({ left: 0, behavior: "smooth" });
+    }
+    lastImgCount.current = { id: flow.id, n: flow.imgAttempts.length };
+  }, [flow]);
 
   const patchFlow = useCallback(
     (id: string, p: Partial<Flow> | ((f: Flow) => Partial<Flow>)) => {
@@ -1285,6 +1338,13 @@ export function FlowPanel({
               <span className="flow-kind-desc">{opt.desc}</span>
             </button>
           ))}
+          {/* opened by mistake? close without creating anything */}
+          <button
+            className="btn-ghost flow-kind-cancel"
+            onClick={() => setNewPick(false)}
+          >
+            Cancel
+          </button>
         </div>
       )}
       {/* the working surface for the selected flow — a distinct workbench,
@@ -1444,13 +1504,12 @@ export function FlowPanel({
         </div>
 
         {/* One carousel to PICK from: this flow's own generated looks
-            (unselected) + looks reused from other flows/cards. Selected ones
-            live in the chip tray above — never duplicated as a big thumbnail. */}
+            (newest first) + looks reused from other flows/cards. A selected
+            look STAYS in the carousel with a ✓ badge (owner call — it used
+            to vanish into the chip tray); clicking it again unselects. */}
         {(() => {
           const attemptImgs = new Set(flow.imgAttempts.map((a) => a.image));
-          const pickAttempts = flow.imgAttempts.filter(
-            (a) => !confirmedIds.includes(a.id),
-          );
+          const pickAttempts = [...flow.imgAttempts].reverse();
           const pickShared = sharedLooks.filter((l) => !attemptImgs.has(l.image));
           if (!pickAttempts.length && !pickShared.length) return null;
           return (
@@ -1458,20 +1517,29 @@ export function FlowPanel({
             <p className="flow-locked-hint" style={{ marginBottom: 8 }}>
               Pick a look (or reuse one you already made):
             </p>
-            <div className="flow-thumbs" style={{ marginBottom: 14 }}>
-              {pickAttempts.map((a) => (
+            <div className="flow-thumbs" style={{ marginBottom: 14 }} ref={thumbsRef}>
+              {pickAttempts.map((a) => {
+                const isSel = confirmedIds.includes(a.id);
+                return (
                 <button
                   key={a.id}
-                  className="flow-thumb"
+                  className={`flow-thumb ${isSel ? "sel" : ""}`}
                   title={
-                    isTransfer
-                      ? "Click to add this person to the transfer"
-                      : "Click to CONFIRM this look"
+                    isSel
+                      ? "Selected — click to unselect"
+                      : isTransfer
+                        ? "Click to add this person to the transfer"
+                        : "Click to CONFIRM this look"
                   }
                   onClick={() => toggleConfirm(a.id)}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={a.image} alt="" />
+                  {isSel && (
+                    <span className="flow-thumb-badge">
+                      ✓ {isTransfer ? "SELECTED" : "CONFIRMED"}
+                    </span>
+                  )}
                   <span
                     role="button"
                     className="flow-thumb-edit"
@@ -1485,7 +1553,8 @@ export function FlowPanel({
                     ✎
                   </span>
                 </button>
-              ))}
+                );
+              })}
               {pickShared.map((l) => (
                 <button
                   key={l.image.slice(-24)}
@@ -1503,8 +1572,8 @@ export function FlowPanel({
           );
         })()}
 
-        {/* Selected looks as compact removable chips — a picked look shows
-            ONLY here, never as a big thumbnail below. Transfer flows: each
+        {/* Selected looks as compact removable chips (the thumbnail also
+            stays ✓-badged in the carousel above). Transfer flows: each
             chip can go as the IMAGE (default) or ↳ its TEXT (the prompt that
             made it, avoiding the real-person filter). */}
         {confirmedImgs.length > 0 && (
@@ -1910,6 +1979,24 @@ export function FlowPanel({
                   {a.status.toUpperCase()}
                   {fmtCost(a.costUsd) ? ` · ${fmtCost(a.costUsd)}` : ""}
                 </div>
+                {/* prune the history — a finished take stays in the Library
+                    (the spend ledger), only this list entry goes */}
+                {a.status !== "pending" && (
+                  <button
+                    className="flow-take-x"
+                    title="Remove from this list — a finished take stays in the Library"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      patchFlow(flow.id, (f) => ({
+                        motionAttempts: f.motionAttempts.filter(
+                          (x) => x.id !== a.id,
+                        ),
+                      }));
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
                 {a.status === "pending" && (
                   <div className="spec-busy">
                     <span className="dot live" /> RENDERING — lands in the

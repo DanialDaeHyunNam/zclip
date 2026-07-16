@@ -33,6 +33,28 @@ interface StoredSession {
   title: string;
 }
 
+/** A generated look image, read straight out of `hooklab.flows` — flows stay
+ *  the source of truth (no copy in the gallery), so a look lives and dies
+ *  with its flow. Uploaded/shared placeholders ("(uploaded …)") are skipped:
+ *  the library lists what ZCLIP *generated*. */
+interface PhotoItem {
+  id: string;
+  sessionId?: string;
+  image: string; // dataURL
+  prompt: string;
+  createdAt: number;
+  flowTitle: string;
+}
+
+/** Everything the library can show, video or photo, in one filterable list. */
+type LibItem = { kind: "video"; clip: Clip } | { kind: "photo"; photo: PhotoItem };
+const itemAt = (i: LibItem) =>
+  i.kind === "video" ? i.clip.createdAt : i.photo.createdAt;
+const itemSession = (i: LibItem) =>
+  (i.kind === "video" ? i.clip.sessionId : i.photo.sessionId) ?? "earlier";
+const itemKey = (i: LibItem) =>
+  i.kind === "video" ? i.clip.jobId : `photo-${i.photo.id}`;
+
 const loadJson = <T,>(key: string, fallback: T): T => {
   try {
     return JSON.parse(store.get(key) ?? "") as T;
@@ -70,6 +92,8 @@ export default function ArchivePage() {
   const hosted = useHosted();
   const [ready, setReady] = useState(false);
   const [clips, setClips] = useState<Clip[]>([]);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [filter, setFilter] = useState<"all" | "video" | "photo">("all");
   const [sessions, setSessions] = useState<StoredSession[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [pw, setPw] = useState("");
@@ -102,6 +126,34 @@ export default function ArchivePage() {
     store.hydrate().then(() => {
       if (cancelled) return;
       setClips(loadJson<Clip[]>(GALLERY_KEY, []));
+      // generated look images, read out of the flows (read-only here)
+      const flows = loadJson<
+        {
+          title?: string;
+          sessionId?: string;
+          imgAttempts?: { id: string; prompt?: string; image?: string; createdAt?: number }[];
+        }[]
+      >("hooklab.flows", []);
+      setPhotos(
+        flows.flatMap((f) =>
+          (f.imgAttempts ?? [])
+            .filter(
+              (a) =>
+                typeof a.image === "string" &&
+                a.image.startsWith("data:image/") &&
+                a.prompt?.trim() &&
+                !a.prompt.trim().startsWith("("),
+            )
+            .map((a) => ({
+              id: a.id,
+              sessionId: f.sessionId,
+              image: a.image!,
+              prompt: a.prompt!.trim(),
+              createdAt: a.createdAt ?? 0,
+              flowTitle: f.title ?? "Flow",
+            })),
+        ),
+      );
       setSessions(loadJson<StoredSession[]>(SESSIONS_KEY, []));
       setSessionId(store.get(SESSION_ID_KEY));
       setPw(store.get(PW_KEY) ?? "");
@@ -359,12 +411,33 @@ export default function ArchivePage() {
     }
   };
 
+  /** Save a generated look (a dataURL) as a file. */
+  const downloadPhoto = (p: PhotoItem) => {
+    const ext = /^data:image\/(\w+)/.exec(p.image)?.[1] ?? "png";
+    const a = document.createElement("a");
+    a.href = p.image;
+    a.download = `zclip-look-${p.createdAt || Date.now()}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+  /* videos + generated photos in one list, cut by the ALL/VIDEO/PHOTO filter,
+     grouped by owning session, newest first inside each group */
+  const items: LibItem[] = [
+    ...(filter !== "photo"
+      ? clips.map((clip) => ({ kind: "video" as const, clip }))
+      : []),
+    ...(filter !== "video"
+      ? photos.map((photo) => ({ kind: "photo" as const, photo }))
+      : []),
+  ];
   const groups = (() => {
-    const m = new Map<string, Clip[]>();
-    for (const c of clips) {
-      const k = c.sessionId ?? "earlier";
+    const m = new Map<string, LibItem[]>();
+    for (const i of items) {
+      const k = itemSession(i);
       if (!m.has(k)) m.set(k, []);
-      m.get(k)!.push(c);
+      m.get(k)!.push(i);
     }
     return [...m.entries()]
       .map(([key, list]) => ({
@@ -374,8 +447,8 @@ export default function ArchivePage() {
             ? "Current session"
             : sessions.find((s) => s.id === key)?.title ??
               (key === "earlier" ? "Earlier takes" : "Removed session"),
-        list,
-        latest: Math.max(...list.map((c) => c.createdAt)),
+        list: list.sort((a, b) => itemAt(b) - itemAt(a)),
+        latest: Math.max(...list.map(itemAt)),
       }))
       .sort((a, b) => b.latest - a.latest);
   })();
@@ -394,7 +467,9 @@ export default function ArchivePage() {
       />
       <div className="dash-page">
         <div className="archive-head">
-          <span className="label">Library · All Sessions · {clips.length}</span>
+          <span className="label">
+            Library · All Sessions · {clips.length + photos.length}
+          </span>
           <span className="session-tools">
             {!hosted && (
               <button
@@ -414,9 +489,28 @@ export default function ArchivePage() {
             </button>
           </span>
         </div>
+        {/* what's shown: everything / finished takes+references / generated looks */}
+        <div className="lib-filters">
+          {(
+            [
+              { k: "all", label: `ALL · ${clips.length + photos.length}` },
+              { k: "video", label: `VIDEO · ${clips.length}` },
+              { k: "photo", label: `PHOTO · ${photos.length}` },
+            ] as const
+          ).map((f) => (
+            <button
+              key={f.k}
+              className={`spec-chip ${filter === f.k ? "sel" : ""}`}
+              onClick={() => setFilter(f.k)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
         <p className="archive-note">
           Every finished take piles in here automatically, grouped by the
-          session it came from.{" "}
+          session it came from — generated look images from the FLOW method
+          too (a look lives inside its flow; remove it there).{" "}
           {hosted ? (
             <>
               Stored in this browser only — providers purge their files within
@@ -520,10 +614,11 @@ export default function ArchivePage() {
           </div>
         )}
 
-        {ready && clips.length === 0 && (
+        {ready && items.length === 0 && (
           <p className="hint">
-            Nothing in the library yet — finished takes land here automatically
-            {!hosted ? ", or ＋ Add a reference above" : ""}.
+            {filter === "photo"
+              ? "No generated images yet — looks made in the FLOW method land here."
+              : `Nothing in the library yet — finished takes land here automatically${!hosted ? ", or ＋ Add a reference above" : ""}.`}
           </p>
         )}
         {groups.map((g) => (
@@ -532,16 +627,46 @@ export default function ArchivePage() {
               {g.label} · {g.list.length}
             </span>
             <div className="gallery-grid">
-              {g.list.map((c) => (
-                <ClipCardView
-                  key={c.jobId}
-                  clip={c}
-                  withPw={videoSrc}
-                  onDownload={download}
-                  onRemove={removeClip}
-                  onUse={useClipAsRef}
-                />
-              ))}
+              {g.list.map((item) =>
+                item.kind === "video" ? (
+                  <ClipCardView
+                    key={itemKey(item)}
+                    clip={item.clip}
+                    withPw={videoSrc}
+                    onDownload={download}
+                    onRemove={removeClip}
+                    onUse={useClipAsRef}
+                  />
+                ) : (
+                  <div key={itemKey(item)} className="card">
+                    <div className="thumb" style={{ aspectRatio: "9 / 16" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.photo.image}
+                        alt=""
+                        className="thumb-photo"
+                      />
+                    </div>
+                    <div className="card-meta">
+                      <div className="card-row">
+                        <span>LOOK · {item.photo.flowTitle}</span>
+                        <span />
+                      </div>
+                      <p className="card-prompt" title={item.photo.prompt}>
+                        {item.photo.prompt}
+                      </p>
+                      <div className="card-actions">
+                        <button
+                          className="link-btn"
+                          onClick={() => downloadPhoto(item.photo)}
+                        >
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ),
+              )}
             </div>
           </div>
         ))}

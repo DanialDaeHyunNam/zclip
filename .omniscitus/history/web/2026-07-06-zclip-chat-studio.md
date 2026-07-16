@@ -238,7 +238,10 @@ input and let the summary scroll beneath it.
 - [ ] Verify the /api/dress outfit compositing quality on real cards
 - [ ] Optional: LivePortrait adapter as a cheaper Act-Two alternative (user asked)
 - [ ] Optional: wire Sora 2 Pro / Veo 3.1 pricing accuracy (currently estimates)
-- [ ] Verify Seedance adapter end-to-end (endpoint/model id unconfirmed)
+- [x] Verify Seedance adapter end-to-end — confirmed by real runs: completed
+      Seedance 1.0 Pro clip 2026-07-09 + six 2.0-family clips through 07-16
+      in the gallery ledger (adapter endpoint/shape work; pricing fill still
+      open in [[zclip-seedance-provider]])
 - [x] Set APP_PASSWORD before any public Vercel deploy (obsoleted by the local-first
       deploy model — cloud `/chat` renders the install guide, no public studio exists;
       only needed if a hosted studio is ever unlocked via `ZCLIP_CLOUD=0`)
