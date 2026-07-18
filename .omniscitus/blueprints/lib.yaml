@@ -1,15 +1,18 @@
 version: 1
-updated: 2026-07-16T04:32:28.839Z
+updated: 2026-07-18T14:41:59.309Z
 
 files:
   "lib/config.ts":
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-16T03:06:44.728Z
-    change_count: 28
+    last_modified: 2026-07-18T12:24:40.731Z
+    change_count: 29
     purpose: "The switchboard: PROVIDERS adapters + MODELS catalog (model≠adapter), pricing, duration rules (effectiveSeconds), cost estimates, key allowlist"
     change_log:
+      - date: 2026-07-18T12:24:40.731Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T03:06:44.728Z
         action: edit
         source: "claude:Danial Nam"
@@ -195,10 +198,25 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T09:35:19.541Z
-    change_count: 12
+    last_modified: 2026-07-18T12:38:32.930Z
+    change_count: 17
     purpose: "ByteDance Seedance adapter (unverified endpoint/model id from ModelArk docs)"
     change_log:
+      - date: 2026-07-18T12:38:32.930Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:38:29.565Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:23:37.202Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:23:32.153Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:23:23.932Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T09:35:19.541Z
         action: edit
         source: "claude:Danial Nam"
@@ -372,10 +390,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-08
-    last_modified: 2026-07-16T04:32:28.839Z
-    change_count: 3
+    last_modified: 2026-07-18T06:54:49.383Z
+    change_count: 4
     purpose: "Shared Clip type + hooklab.* storage keys + fmtCost/cssAspect helpers, used by the studio, the /archive page, and ClipCardView"
     change_log:
+      - date: 2026-07-18T06:54:49.383Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T04:32:28.839Z
         action: edit
         source: "claude:Danial Nam"
@@ -436,7 +457,7 @@ files:
         action: write
         source: "claude:Danial Nam"
   "lib/blob.ts":
-    status: active
+    status: deleted
     source: "claude:Danial Nam"
     created: 2026-07-10
     last_modified: 2026-07-10T03:11:06.056Z
@@ -573,5 +594,93 @@ files:
     purpose: "Hosted Veo/Sora playback: fetch MP4 with key header, play/cache blob: object URLs so keys never ride URLs (module-level cache, in-flight dedupe)"
     change_log:
       - date: 2026-07-14T15:54:22.983Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/depth-extract.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-18
+    last_modified: 2026-07-18T14:41:59.309Z
+    change_count: 20
+    purpose: "In-browser depth-video engine (Depth Anything V2 small/base, WebGPU/WASM, adaptive detail, WebCodecs mp4/webm) + resizeVideoToFloor upscaler — shared by /depth and the flow's auto depth pass"
+    change_log:
+      - date: 2026-07-18T14:41:59.309Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:41:53.563Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:41:41.576Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:41:39.983Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:41:30.012Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:41:23.366Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:41:18.656Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:20:56.480Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:20:52.570Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:20:30.236Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:20:28.898Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:41:12.957Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:41:10.394Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:41:06.153Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:40:17.011Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:40:00.597Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:59:42.734Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:51:18.309Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:51:14.102Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:20:57.541Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/ref-host.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-18
+    last_modified: 2026-07-18T12:39:08.966Z
+    change_count: 4
+    purpose: "Free keyless temp hosting for Seedance reference videos (uguu.se → litterbox chain) — ModelArk requires a public web url; auto-expires"
+    change_log:
+      - date: 2026-07-18T12:39:08.966Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:39:04.690Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:39:01.867Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:38:16.094Z
         action: write
         source: "claude:Danial Nam"

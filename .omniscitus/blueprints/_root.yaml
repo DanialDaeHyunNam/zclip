@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-16T09:26:16.712Z
+updated: 2026-07-18T15:14:46.675Z
 
 files:
   "README.md":
@@ -69,10 +69,46 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-16T09:26:16.712Z
-    change_count: 19
+    last_modified: 2026-07-18T15:00:22.631Z
+    change_count: 31
     purpose: "Agent handoff notes: architecture, commands, provider facts (incl. Act-Two), design system, verification patterns"
     change_log:
+      - date: 2026-07-18T15:00:22.631Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:46:24.708Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:09:18.086Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:29:30.227Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:39:28.564Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:32:30.050Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:31:55.103Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:11:15.749Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:00:25.212Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:26:08.414Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:13:40.377Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:13:35.487Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T09:26:16.712Z
         action: edit
         source: "claude:Danial Nam"
@@ -156,10 +192,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-16T09:25:15.013Z
-    change_count: 16
+    last_modified: 2026-07-18T15:14:46.675Z
+    change_count: 17
     purpose: "Deps (next/react/typescript only) + scripts; `version` is the release source of truth, inlined as NEXT_PUBLIC_APP_VERSION by next.config"
     change_log:
+      - date: 2026-07-18T15:14:46.675Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T09:25:15.013Z
         action: edit
         source: "claude:Danial Nam"
@@ -223,10 +262,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-16T09:25:22.369Z
-    change_count: 20
+    last_modified: 2026-07-18T15:14:45.691Z
+    change_count: 22
     purpose: "Per-release notes (Added/Changed/Fixed) surfaced via the version chip; every release bumps it (the update prompt depends on it)"
     change_log:
+      - date: 2026-07-18T15:14:45.691Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:14:38.909Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T09:25:22.369Z
         action: edit
         source: "claude:Danial Nam"

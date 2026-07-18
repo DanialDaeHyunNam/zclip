@@ -83,7 +83,9 @@ the key rides the poll headers too.
   self-host keeps the `.env.local` fallback. This closes the wallet-bomb
   hole where a provider key left in Vercel env would silently bill the
   owner for anonymous visitors' generations. Only owner-infrastructure env
-  vars are exempt: `BLOB_READ_WRITE_TOKEN`, `APP_PASSWORD`.
+  vars are exempt: `APP_PASSWORD`. (`BLOB_READ_WRITE_TOKEN` was retired
+  2026-07-18 — Seedance reference videos park on a free auto-expiring
+  temp host now, lib/ref-host.ts.)
 - Error paths must not leak keys (audit adapter error messages that echo
   provider responses).
 - `isCloud()` gate on `/chat` is removed. `/lab` stays 404 + gitignored

@@ -5,6 +5,60 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## 0.12.0 — 2026-07-19
+
+### Added
+- **Depth Video Extractor** (`/depth`): turn any clip into a depth-map
+  video entirely in your browser — Depth Anything V2 (Small, or Base for
+  more face detail), WebGPU with WASM fallback, adaptive expression
+  detail, temporal smoothing, exact-fps WebCodecs encoding (always ≥30fps
+  regardless of inference speed). No upload, no API key, $0. Saving hands
+  the clip straight to the studio's MOVES step.
+- **Depth pass is the transfer default**: ANIMATE on a MOVES → IMAGE →
+  MOTION flow auto-converts the reference to a depth pass first (live
+  frames in the output frame, cached per reference), then renders —
+  depth references carry pure motion and pass Seedance's real-person
+  filter. Toggleable (DEPTH REF), with +EXPRESSION local-contrast detail.
+- **Casting UX**: CAST slots grow per picked look (max 3), per-dancer 👕
+  outfit swap (image compositing or preset garments), SETTING scene
+  carousel (16 built-in scene cards + your own with photos), and a
+  side-door "Generate a look with a prompt".
+- **Identity texts, automatically**: transfer identities ride as TEXT by
+  default (photoreal reference images trip the filter — verified live);
+  every confirmed look gets a face-first description auto-distilled from
+  its card (new `/api/describe`, Gemini), editable via ✎ identity. With
+  multiple dancers the prompt enforces "different individuals, never the
+  same face twice".
+- **REF AUDIO** (default on): the reference clip's soundtrack lands on
+  the finished take via local ffmpeg — choreography follows the reference
+  1:1, so the music drops on beat. Depth references link back to their
+  original's audio; MUSIC FROM offers a listen-and-pick thumbnail
+  carousel, and finished takes can retro-mux with ♪ Add ref audio.
+- **⇆ Compare**: reference and take side by side, started together, with
+  a sound-source toggle (reference by default).
+- Seedream 4.0 look engine (same ByteDance family/key as Seedance — the
+  card previews the render); transfer flows default to it and the pick
+  carousel sorts Seedream cards first.
+- MOVES candidates and music sources render as video-thumbnail card
+  carousels; pipeline narration under the preview frame (depth % →
+  calling model → rendering).
+
+### Changed
+- **Vercel Blob is gone** — reference videos park on a free, keyless,
+  auto-expiring temp host (uguu.se, litterbox fallback) just long enough
+  for ModelArk to fetch them; the hosted ref-video wall is lifted (the
+  platform's ~4.5MB body cap is the only remaining limit). No
+  BLOB_READ_WRITE_TOKEN anywhere.
+- References under ModelArk's 409,600-pixel floor are upscale-re-encoded
+  automatically before submit (no AI, just a resize) — verified-live
+  rejections are handled before they cost anything.
+- Provider safety-filter errors now say WHICH input was blocked (a look
+  image vs the reference video) and the exact way out.
+- Flow wizard navigation is English ("← Back" / "Next →").
+
+### Removed
+- `lib/blob.ts` and the Blob token onboarding panel.
+
 ## 0.11.0 — 2026-07-16
 
 ### Added

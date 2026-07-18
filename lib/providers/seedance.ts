@@ -1,15 +1,16 @@
 import { PROVIDERS } from "@/lib/config";
-import { deleteBlobs, putTempBlob } from "@/lib/blob";
+import { hostTempRef } from "@/lib/ref-host";
 import type { VideoProvider, SubmitParams, JobStatus } from "./types";
 
 /**
  * ByteDance Seedance via BytePlus ModelArk. Two models ride this adapter:
  *   - seedance-1-0-pro: text + first-frame image (endpoint verified live 2026-07-09)
  *   - dreamina-seedance-2-0: multimodal — additionally takes a REFERENCE VIDEO
- *     (motion + audio read directly) via a video_url content item. Video
- *     inputs are URL-only, so the driving clip is parked on Vercel Blob for
- *     the job and deleted at terminal state. 2.0 shape from the ModelArk
- *     docs/tutorials — verify on first real run.
+ *     (motion + audio read directly) via a video_url content item. ModelArk
+ *     REQUIRES a public web url here (data: URLs rejected at submit —
+ *     verified live 2026-07-18), and Vercel Blob is retired (owner call,
+ *     same day), so the clip parks on a free auto-expiring temp host
+ *     (lib/ref-host: uguu.se → litterbox) just long enough for the fetch.
  *   POST /api/v3/contents/generations/tasks
  *        { model, content: [{ type:"text", text: "<prompt> --ratio 9:16 --duration 4 --resolution 720p" },
  *                           { type:"video_url", video_url:{url}, role:"reference_video" }?] }
@@ -19,11 +20,6 @@ import type { VideoProvider, SubmitParams, JobStatus } from "./types";
 
 const BASE = "https://ark.ap-southeast.bytepluses.com/api/v3";
 const TASK_ID = /^[\w-]+$/;
-
-/** taskId → temp blob URL, so status() can clean up when the job ends.
- *  In-memory is fine for a local dev tool: a restart mid-job merely orphans
- *  one small blob (deletable from the Vercel dashboard). */
-const taskBlobs = new Map<string, string>();
 
 async function readError(res: Response): Promise<string> {
   try {
@@ -72,20 +68,16 @@ export const seedance: VideoProvider = {
         });
       }
     }
-    let blobUrl: string | undefined;
     if (params.drivingVideo) {
-      // Seedance 2.0 reads the WHOLE reference clip (motion + audio) — but
-      // only by public URL, so park it on Vercel Blob for the job.
-      const bytes = Buffer.from(params.drivingVideo.base64, "base64");
-      const ext = params.drivingVideo.mimeType.includes("webm") ? "webm" : "mp4";
-      blobUrl = await putTempBlob(
-        bytes,
+      // Seedance 2.0 reads the WHOLE reference clip (motion + audio) —
+      // by public URL only, so park it on a free temp host for the job.
+      const url = await hostTempRef(
+        Buffer.from(params.drivingVideo.base64, "base64"),
         params.drivingVideo.mimeType,
-        `zclip-ref/ref.${ext}`,
       );
       content.push({
         type: "video_url",
-        video_url: { url: blobUrl },
+        video_url: { url },
         role: "reference_video",
       });
     }
@@ -101,15 +93,12 @@ export const seedance: VideoProvider = {
       }),
     });
     if (!res.ok) {
-      if (blobUrl) void deleteBlobs([blobUrl]);
       throw new Error(await readError(res));
     }
     const { id } = await res.json();
     if (typeof id !== "string" || !id) {
-      if (blobUrl) void deleteBlobs([blobUrl]);
       throw new Error("Seedance did not return a task id");
     }
-    if (blobUrl) taskBlobs.set(id, blobUrl);
     return { jobId: id };
   },
 
@@ -123,14 +112,6 @@ export const seedance: VideoProvider = {
     if (!res.ok) return { state: "error", error: await readError(res) };
 
     const task = await res.json();
-    // Terminal state → the temp reference blob (if any) is no longer needed.
-    if (task.status === "succeeded" || task.status === "failed") {
-      const blob = taskBlobs.get(jobId);
-      if (blob) {
-        taskBlobs.delete(jobId);
-        void deleteBlobs([blob]);
-      }
-    }
     if (task.status === "succeeded") {
       const url = task.content?.video_url;
       if (typeof url !== "string" || !url) {

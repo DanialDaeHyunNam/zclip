@@ -606,6 +606,32 @@ export default function Home() {
    *  one studio surface, two methods; the left frame is shared. */
   const [method, setMethod] = useState<"chat" | "flow">("chat");
   const [flowPreview, setFlowPreview] = useState<FlowPreview | null>(null);
+  /** FLOW pipeline one-liner (depth pass → model call → rendering) —
+   *  shown UNDER the shared frame, where eyes are during ANIMATE. */
+  const [flowNote, setFlowNote] = useState<string | null>(null);
+  /** COMPARE overlay — reference | take side by side, played together.
+   *  Audio comes from ONE side at a time — default the REFERENCE (owner
+   *  call: the reference carries the real song; a pre-REF-AUDIO take's
+   *  model-generated sound can be noise). */
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareAudio, setCompareAudio] = useState<"ref" | "take">("ref");
+  const compareRefA = useRef<HTMLVideoElement>(null);
+  const compareRefB = useRef<HTMLVideoElement>(null);
+  const comparePlayBoth = useCallback(() => {
+    const a = compareRefA.current;
+    const b = compareRefB.current;
+    if (!a || !b) return;
+    a.currentTime = 0;
+    b.currentTime = 0;
+    void a.play();
+    void b.play();
+  }, []);
+  // A new preview (or leaving the flow view) closes the overlay and
+  // resets the audio side to the reference.
+  useEffect(() => {
+    setCompareOpen(false);
+    setCompareAudio("ref");
+  }, [flowPreview?.src]);
   const [specMode, setSpecMode] = useState(false);
   /** Refine = let Gemini rewrite your message into the video prompt. OFF by
    *  default (owner call 2026-07-16: a crafted prompt should go VERBATIM, not
@@ -698,11 +724,6 @@ export default function Home() {
   const [keySaving, setKeySaving] = useState(false);
   const [keyMsg, setKeyMsg] = useState("");
   const [keyPanelHidden, setKeyPanelHidden] = useState(false);
-  // Vercel Blob token onboarding (Seedance 2.0 video references only)
-  const [blobInput, setBlobInput] = useState("");
-  const [blobSaving, setBlobSaving] = useState(false);
-  const [blobMsg, setBlobMsg] = useState("");
-  const [blobPanelHidden, setBlobPanelHidden] = useState(false);
   /** Turn ids pinned as context for the NEXT take. */
   const [ctxIds, setCtxIds] = useState<string[]>([]);
 
@@ -728,14 +749,7 @@ export default function Home() {
    *  height never enters the layout — without reserved space it clips at
    *  the page bottom (and hides under the fixed hosted banner). The
    *  `key-open` class adds matching margin so the column scrolls instead. */
-  const keyPopoverOpen =
-    (keyMissing && !keyPanelHidden) ||
-    (readsClip(model.key) &&
-      attach?.kind === "video" &&
-      Boolean(attach.videoBase64) &&
-      keysLoaded &&
-      !keys.BLOB_READ_WRITE_TOKEN &&
-      !blobPanelHidden);
+  const keyPopoverOpen = keyMissing && !keyPanelHidden;
 
   const pwHeaders = useCallback(
     (base: Record<string, string> = {}): Record<string, string> =>
@@ -2857,37 +2871,6 @@ export default function Home() {
     }
   };
 
-  /** Same flow as saveKey, for the Vercel Blob token — Seedance 2.0's video
-   *  references are URL-only, so the clip is parked on the USER's own Blob
-   *  store for the job (BYOK philosophy: their store, their token). */
-  const saveBlobToken = async () => {
-    if (!blobInput.trim() || blobSaving) return;
-    setBlobSaving(true);
-    setBlobMsg("");
-    try {
-      const res = await fetch("/api/keys", {
-        method: "POST",
-        headers: pwHeaders({ "content-type": "application/json" }),
-        body: JSON.stringify({
-          envVar: "BLOB_READ_WRITE_TOKEN",
-          value: blobInput.trim(),
-        }),
-      });
-      const body = await res.json();
-      if (!res.ok) {
-        setBlobMsg(body.error ?? "Could not save the token");
-      } else {
-        setBlobInput("");
-        setBlobMsg("Saved to .env.local — video references are ready.");
-        await refreshKeys();
-      }
-    } catch {
-      setBlobMsg("Network error — could not save the token.");
-    } finally {
-      setBlobSaving(false);
-    }
-  };
-
   const download = async (videoUrl: string) => {
     const a = document.createElement("a");
     const envVar =
@@ -3626,6 +3609,7 @@ export default function Home() {
           {method === "flow" && (
             <FlowPanel
               onPreview={setFlowPreview}
+              onNote={setFlowNote}
               sessionId={sessionId}
               sideOpen={sideOpen}
               onDigest={onFlowDigest}
@@ -4790,6 +4774,12 @@ export default function Home() {
             )}
           </div>
 
+          {/* FLOW pipeline narration — under the showcase, where the eyes
+              are while ANIMATE runs (depth % → calling model → rendering). */}
+          {method === "flow" && flowNote && (
+            <p className="flow-fire-note mono fade">{flowNote}</p>
+          )}
+
           {method === "chat" &&
             previewTurn?.status === "done" &&
             previewTurn.videoUrl &&
@@ -4814,7 +4804,8 @@ export default function Home() {
           )}
 
           {/* FLOW method: a finished take previews as a video — same
-              download affordance as the chat method. */}
+              download affordance as the chat method, plus COMPARE (the
+              reference and the take side by side, played together). */}
           {method === "flow" && flowPreview?.kind === "video" && (
             <div className="result-actions fade">
               <button
@@ -4823,6 +4814,15 @@ export default function Home() {
               >
                 ↓ Download
               </button>
+              {flowPreview.compareSrc && (
+                <button
+                  className="btn-ghost"
+                  onClick={() => setCompareOpen(true)}
+                  title="Play the MOVES reference and this take side by side"
+                >
+                  ⇆ Compare
+                </button>
+              )}
               {hosted && (
                 <span className="frame-idle-sub">
                   download it — providers purge files after a few days
@@ -4830,6 +4830,66 @@ export default function Home() {
               )}
             </div>
           )}
+
+          {/* COMPARE overlay — the MOVES reference and the finished take
+              side by side, started together (the field-proof view:
+              depth left, result right). */}
+          {compareOpen &&
+            flowPreview?.kind === "video" &&
+            flowPreview.compareSrc && (
+              <div className="compare-overlay fade" onClick={() => setCompareOpen(false)}>
+                <div className="compare-inner" onClick={(e) => e.stopPropagation()}>
+                  <div className="compare-panes">
+                    <figure className="compare-pane">
+                      <video
+                        ref={compareRefA}
+                        src={videoSrc(flowPreview.compareSrc)}
+                        muted={compareAudio !== "ref"}
+                        autoPlay
+                        loop
+                        playsInline
+                        controls
+                      />
+                      <figcaption className="mono">
+                        {compareAudio === "ref" ? "♪ " : ""}REFERENCE ·{" "}
+                        {(flowPreview.compareLabel ?? "moves").slice(0, 36)}
+                      </figcaption>
+                    </figure>
+                    <figure className="compare-pane">
+                      <video
+                        ref={compareRefB}
+                        src={videoSrc(flowPreview.src)}
+                        muted={compareAudio !== "take"}
+                        autoPlay
+                        loop
+                        playsInline
+                        controls
+                      />
+                      <figcaption className="mono">
+                        {compareAudio === "take" ? "♪ " : ""}TAKE · {flowPreview.label.slice(0, 36)}
+                      </figcaption>
+                    </figure>
+                  </div>
+                  <div className="compare-actions">
+                    <button className="btn-ghost" onClick={comparePlayBoth}>
+                      ⛓ Replay both
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      onClick={() =>
+                        setCompareAudio((s) => (s === "ref" ? "take" : "ref"))
+                      }
+                      title="Which side plays its sound — the other one mutes"
+                    >
+                      ♪ Sound: {compareAudio === "ref" ? "REFERENCE" : "TAKE"}
+                    </button>
+                    <button className="btn-ghost" onClick={() => setCompareOpen(false)}>
+                      ✕ Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           {/* next-take settings — one compact strip (chat method only;
               the flow panel carries its own params) */}
@@ -4994,87 +5054,6 @@ export default function Home() {
             )}
             {!keyMissing && keyMsg && <p className="key-msg fade">{keyMsg}</p>}
 
-            {/* Seedance 2.0 + video reference needs a public URL host — teach
-                the one extra credential inline, same UX as provider keys. */}
-            {readsClip(model.key) &&
-              attach?.kind === "video" &&
-              Boolean(attach.videoBase64) &&
-              keysLoaded &&
-              !keys.BLOB_READ_WRITE_TOKEN &&
-              !blobPanelHidden && (
-                <div className="stub-note key-popover fade">
-                  <button
-                    className="side-del key-popover-close"
-                    onClick={() => setBlobPanelHidden(true)}
-                    aria-label="Dismiss"
-                  >
-                    ✕
-                  </button>
-                  <span className="label">
-                    Seedance 2.0 · one more thing for video references
-                  </span>
-                  {hosted ? (
-                    <p className="key-hint">
-                      Reference-video Seedance isn&apos;t available on the
-                      hosted app — the clip has to be staged on a storage
-                      bucket, and here that would be the operator&apos;s.{" "}
-                      <a href="/install">Install ZCLIP locally ↗</a> and it
-                      stages on your own free Vercel Blob store instead.
-                      Seedance without a video reference works right here.
-                    </p>
-                  ) : (
-                  <p className="key-hint">
-                    ByteDance fetches your reference video by URL — it can&apos;t
-                    reach this machine. ZCLIP parks the clip on YOUR free Vercel
-                    Blob store just for the job, then deletes it.
-                  </p>
-                  )}
-                  {hosted ? null : keysWritable ? (
-                    <>
-                      <div className="key-row">
-                        <input
-                          type="password"
-                          value={blobInput}
-                          onChange={(e) => setBlobInput(e.target.value)}
-                          placeholder="Paste BLOB_READ_WRITE_TOKEN"
-                          aria-label="BLOB_READ_WRITE_TOKEN"
-                          onKeyDown={(e) => e.key === "Enter" && saveBlobToken()}
-                        />
-                        <button
-                          className="btn-ghost"
-                          onClick={saveBlobToken}
-                          disabled={blobSaving || !blobInput.trim()}
-                        >
-                          {blobSaving ? "Saving…" : "Save"}
-                        </button>
-                      </div>
-                      <p className="key-hint">
-                        Free Vercel account → Storage → Create Blob store →
-                        copy the token ·{" "}
-                        <a
-                          href="https://vercel.com/docs/vercel-blob"
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Guide ↗
-                        </a>
-                      </p>
-                    </>
-                  ) : (
-                    <p className="key-hint">
-                      Set <code>BLOB_READ_WRITE_TOKEN</code> in your environment ·{" "}
-                      <a
-                        href="https://vercel.com/docs/vercel-blob"
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Guide ↗
-                      </a>
-                    </p>
-                  )}
-                  {blobMsg && <p className="key-msg">{blobMsg}</p>}
-                </div>
-              )}
           </div>
         </section>
       </main>

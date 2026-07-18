@@ -8,7 +8,8 @@ original conversation.
 ## Commands
 
 ```
-bun install        # deps: next 16.2 / react 19.2 / typescript 6 only
+bun install        # deps: next 16.2 / react 19.2 / typescript 6 + client-side
+                   # @huggingface/transformers, mp4-muxer, webm-muxer (/depth)
 bun dev            # plain run = :3000 (Next default); the OWNER runs it
                    # via the root Makefile on http://localhost:3333
 bun run build      # typecheck + prod build — run after EVERY change
@@ -99,6 +100,75 @@ store survives port moves); test against it with client-side checks only.
   into "Start a flow".
 - `app/api/image` — still generation for Flow stage 1 (xAI Grok image,
   downloads the expiring provider URL server-side, returns base64).
+- **Depth pass = the transfer DEFAULT** (`lib/depth-extract.ts`, the
+  shared in-browser engine: Depth Anything V2 Small via
+  @huggingface/transformers, WebGPU w/ WASM fallback, WebCodecs → mp4
+  w/ VP9-webm ladder; output is always exactly the chosen fps because
+  timestamps are minted at i/fps regardless of inference speed). On a
+  transfer flow, ANIMATE auto-runs it: MOVES clip → depth video (live
+  frames in the OUTPUT frame, "DEPTH PASS · N%") → vault + Library →
+  render submits with the depth clip as reference_video. Why: depth refs
+  carry pure motion, zero identity → they PASS Seedance's real-person
+  filter, free. `flow.depthClip` caches per refClip.url (iterate never
+  reconverts); `flow.depthRef` (undefined=ON) is the MOTION-step toggle;
+  already-depth refs (label /^depth/) skip. Depth-pass failure refuses
+  loudly — no silent raw-clip fallback. Engine gotchas baked in: probe
+  `navigator.gpu.requestAdapter()` before picking the device (a failed
+  webgpu try poisons transformers' memoized model load); ONNX backends
+  init lazily on the FIRST inference (warm up inside the fallback try).
+- `app/depth/` — the manual/preview UI over the same engine (style
+  knobs, near=white/black, smoothing, PLAY BOTH). MOVES links to it as
+  "⬗ Depth tool" (`?src=&label=&flow=`); its Save vaults via /api/clips
+  then parks PENDING_DEPTH_KEY in PLAIN localStorage — flow-panel adopts
+  on focus (Library entry + that flow's refClip). A second tab must
+  NEVER write lib/store (full-cache flush = last-writer-wins clobber);
+  this pointer pattern is the rule for any future tool tab.
+  Transfer prompt templates are TWO sets keyed off the toggle —
+  TRANSFER_PRESETS_DEPTH (scene rebuilds — generated from DEPTH_SCENES,
+  8 matched setting+light pairs, beach = owner's field prompt; a depth
+  ref carries no world, the prompt must build it) vs
+  TRANSFER_PRESETS_RAW (camera-lock / green-screen; the clip keeps its
+  world). New transfer flows open with DEPTH[0]; toggling swaps an
+  UNTOUCHED template to the other set's lead (user edits never eaten —
+  isPresetPrompt guard); 🎲 cycles the active set only. SETTING on the
+  MOTION step is an image-card CAROUSEL (16 built-in scenes incl. the
+  starter-setting photos re-authored for dance + customs from
+  hooklab.customAssets.settings + ＋ Custom add) — a card swaps only
+  the Setting:/Light: lines in place (applyDepthScene). CAST on the
+  IMAGE step: slots GROW per picked look (max 3 ride, tail benches;
+  slot order = "first/second reference person"); 👕 per slot swaps the
+  garment (custom card/upload → /api/dress, FASHION preset → Gemini
+  text edit) and the dressed card REPLACES the slot — face+outfit stay
+  one set. The gen form collapses once the cast has anyone ("✎ Generate
+  a look with a prompt…" reopens). ANIMATE narrates via the
+  flow-fire-note line UNDER the shared left frame (depth % → "calling
+  <model>" → rendering; FlowPanel lifts it via onNote). REF AUDIO
+  (default ON, transfer): after the take vaults, /api/grab mux-audio
+  (dev-only ffmpeg) lays the reference's soundtrack over it —
+  choreography is 1:1 so it lands on beat; failures keep the take.
+  Audio lineage: a silent depth ref carries its original's url in
+  refClip.audioUrl (auto-set by the /depth handoff, or picked in the
+  MUSIC FROM thumbnail carousel — ▶ auditions, card selects);
+  audioSrcOf() is the one resolver; "♪ Add ref audio" retro-muxes done
+  takes. +EXPRESSION (default ON): unsharp detail on the depth pass so
+  faces/hands read (depthClip cache is mode-keyed). A universal
+  pre-send guard upscale-re-encodes ANY sub-409,600px reference
+  (resizeVideoToFloor, no AI) — ModelArk's r2v pixel floor, verified
+  live. Role pairing (depth reference_video + reference_image/text)
+  VERIFIED live 2026-07-18 — the first full depth transfer landed.
+  Identities: TEXT by default (photoreal reference_image trips the
+  filter even beside a depth video — verified; stylized images pass via
+  the ↳ chip). Transfer look engine defaults to Seedream 4.0 (same
+  ModelArk key/family as Seedance — the card previews the render;
+  /api/image engine "seedream", UNVERIFIED shape until first run);
+  carousel sorts Seedream cards first, badges others. >1 text identity
+  auto-appends a "different individuals, never the same face twice"
+  line. Identity text is EDITABLE per dancer (✎ id on a text-mode chip
+  → flow.textOverrides, rides verbatim); "✨ From card" = /api/describe
+  (Gemini reads the card → face-first cast description — generation
+  prompts are composition briefs and converge on one face, verified).
+  Depth detail is ADAPTIVE local-variance equalization (no halos);
+  /depth offers DA V2 Small/Base.
 - `app/page.tsx` — server shell (metadata + `isCloud()`) → `app/landing-client.tsx`
   (the bilingual EN/KO landing). Studio CTA → `/install` on cloud, `/chat` local.
 - `app/run-local-guide.tsx` — macOS/Windows local-install guide (EN/KO),
@@ -130,10 +200,16 @@ Design SSOT: `docs/HOSTED.md`. The load-bearing rules:
   query — Vercel logs full URLs, and the public copy promises "never
   logged". `?pw=` (APP_PASSWORD) in URLs is fine — that's the owner's own
   secret, pre-existing behavior.
-- **Hosted feature walls** (each one points at /install): ref-video
-  Seedance (owner Blob quota), >4.5MB Act-Two bodies (Vercel platform cap,
-  checked client-side pre-send), GRAB/vault/store/key-writer (dev-only
-  403s, unchanged).
+- **Hosted feature walls** (each one points at /install): >4.5MB Act-Two
+  bodies (Vercel platform cap, checked client-side pre-send),
+  GRAB/vault/store/key-writer (dev-only 403s, unchanged). The ref-video
+  Seedance wall is GONE (2026-07-18): no Vercel Blob anywhere (lib/blob.ts
+  deleted). ModelArk requires a PUBLIC web url for reference_video (data
+  URLs rejected at submit — verified live), so the clip parks on a free
+  keyless auto-expiring temp host (`lib/ref-host.ts`: uguu.se →
+  litterbox fallback; upload+fetch-back verified). Depth refs carry no
+  identity, which is what makes a public temp host acceptable — the
+  platform's ~4.5MB body cap is the only remaining hosted limit.
 - Landing is two-track since v0.5.0: local install = PRIMARY CTA; hosted
   studio = honest quick taste. Every hosted limit is an install touchpoint,
   never an apology (docs/HOSTED.md §1).

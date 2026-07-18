@@ -381,8 +381,6 @@ export const KEY_ENV_VARS = [
   "ARK_API_KEY",
   "RUNWAYML_API_SECRET",
   "KLING_API_KEY",
-  // Vercel Blob RW token — hosts Seedance 2.0 reference videos (URL-only input)
-  "BLOB_READ_WRITE_TOKEN",
 ] as const;
 
 /** Whitelists — the API routes validate against these, never raw client input. */

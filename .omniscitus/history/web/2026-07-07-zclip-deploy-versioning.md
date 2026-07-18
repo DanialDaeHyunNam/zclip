@@ -144,7 +144,9 @@ neither the prompt nor the emoji even on a healthy deploy).
 - [x] Pickers: confirm real asset images render (they do); real demo video now on
       the workflow demo (studio render frame left blank by owner's request).
 - [x] Library intro (chip or page): generated takes pile in / URL-grab / uploads.
-- [ ] Seedance adapter still unverified; Sora input_reference res-match untested live.
+- [ ] Sora input_reference res-match untested live (normalizeRefB64 cover-crop
+      mitigates; unconfirmed against a real Sora call). Seedance half is DONE —
+      adapter verified by real runs 2026-07-09+ ([[zclip-seedance-provider]]).
 - [x] Direct upload INTO the Library needs a server persist endpoint — BUILT as
       `app/api/clips` POST multipart (dev-only) with the v0.6.0 transfer flow.
 
