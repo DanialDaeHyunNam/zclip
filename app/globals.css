@@ -6401,3 +6401,567 @@ button {
 .side-flow-badge {
   color: var(--accent);
 }
+
+/* ── /depth — Depth Video Extractor (MOVES tool) ─────────────────── */
+
+.depth-root {
+  min-height: 100vh;
+  padding: 28px clamp(16px, 4vw, 48px) 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.depth-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.depth-brand { display: flex; flex-direction: column; gap: 2px; margin-right: 8px; }
+
+.depth-kicker {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.depth-title {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.depth-spacer { flex: 1; }
+
+.depth-chip {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-pill);
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.02);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.depth-chip-btn { cursor: pointer; }
+.depth-chip-btn:disabled { opacity: 0.35; cursor: default; }
+.depth-chip:hover:not(:disabled) { border-color: rgba(111, 220, 255, 0.4); color: var(--accent); }
+
+.depth-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(280px, 340px);
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .depth-grid { grid-template-columns: 1fr; }
+}
+
+.depth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.depth-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.depth-badge {
+  font-size: 11px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-pill);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.depth-frame {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-lg);
+  background: rgba(255, 255, 255, 0.015);
+  aspect-ratio: 9 / 14;
+  max-height: 62vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s ease;
+}
+
+.depth-frame.drag { border-color: var(--accent); }
+
+.depth-media {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.depth-placeholder {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 14px;
+  font-weight: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+}
+
+.depth-placeholder .dim { font-size: 11px; color: rgba(255, 255, 255, 0.25); }
+
+.depth-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.depth-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-lg);
+  padding: 16px;
+}
+
+.depth-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.depth-group:last-of-type { border-bottom: none; }
+
+.depth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.depth-row .label { color: rgba(255, 255, 255, 0.6); font-weight: 300; }
+
+.depth-row select {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-sm);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+  max-width: 200px;
+}
+
+.depth-row input[type="range"] { flex: 1; min-width: 80px; accent-color: var(--accent); }
+
+.depth-fixed { font-size: 11px; color: rgba(255, 255, 255, 0.75); text-align: right; }
+.depth-num { font-size: 11px; width: 34px; text-align: right; }
+
+.depth-start-row { display: flex; gap: 10px; align-items: center; }
+.depth-start { flex: 1; }
+
+.depth-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.depth-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.depth-statusline {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.depth-console {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.depth-fault { color: #ff5f56; }
+
+/* DEPTH REF toggle row on the transfer MOTION step */
+.flow-depth-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 0 12px;
+}
+
+/* CAST slots — one look per dancer on the transfer IMAGE step */
+.flow-cast {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 14px;
+}
+
+.flow-cast-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.flow-cast-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.flow-cast-slot {
+  position: relative;
+  width: 72px;
+  aspect-ratio: 9 / 16;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+
+.flow-cast-slot:hover { border-color: rgba(111, 220, 255, 0.5); }
+
+.flow-cast-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.flow-cast-slot.empty {
+  border-style: dashed;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.flow-cast-tag {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  padding: 3px 0;
+  background: rgba(0, 0, 0, 0.65);
+  color: var(--accent);
+}
+
+.flow-cast-slot.empty .flow-cast-tag {
+  position: static;
+  background: none;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.flow-cast-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 300;
+}
+
+.flow-cast-bench { opacity: 0.7; }
+
+/* Pipeline status line under the flow wizard (depth pass → model call) */
+.flow-fire-note {
+  font-size: 12px;
+  color: var(--accent);
+  padding: 10px 2px 0;
+  letter-spacing: 0.02em;
+}
+
+/* Cast slot extras — outfit button + busy overlay */
+.flow-cast-slot.busy img { opacity: 0.35; }
+
+.flow-cast-busy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+
+.flow-cast-outfit {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+  transition: transform 0.3s ease;
+}
+
+.flow-cast-outfit:hover:not(:disabled) { transform: scale(1.15); }
+
+.flow-outfit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-md);
+  padding: 12px;
+}
+
+.flow-outfit-card {
+  position: relative;
+  width: 56px;
+  aspect-ratio: 3 / 4;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.flow-outfit-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.flow-outfit-card:hover { border-color: rgba(111, 220, 255, 0.5); }
+
+/* SETTING scene carousel on the MOTION step */
+.flow-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.flow-scene-carousel {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scrollbar-width: thin;
+}
+
+.flow-scene-card {
+  position: relative;
+  flex: 0 0 auto;
+  width: 84px;
+  aspect-ratio: 9 / 14;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+
+.flow-scene-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.flow-scene-card:hover { border-color: rgba(111, 220, 255, 0.5); }
+.flow-scene-card.sel { border-color: var(--accent); }
+
+.flow-scene-card.textonly {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 6px 18px;
+}
+
+.flow-scene-card.add { border-style: dashed; }
+
+.flow-scene-desc {
+  font-size: 9px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 300;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.flow-scene-card.add .flow-scene-desc { font-size: 22px; color: rgba(255, 255, 255, 0.5); }
+
+.flow-scene-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-md);
+  padding: 12px;
+}
+
+.flow-scene-form input[type="text"] {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-sm);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+/* COMPARE overlay — reference | take, played together */
+.compare-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 4vw;
+}
+
+.compare-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  max-width: 100%;
+}
+
+.compare-panes {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.compare-pane {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.compare-pane video {
+  height: min(72vh, 760px);
+  max-width: 42vw;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #000;
+  object-fit: contain;
+}
+
+.compare-pane figcaption {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.compare-actions { display: flex; gap: 12px; }
+
+@media (max-width: 860px) {
+  .compare-panes { flex-direction: column; align-items: center; }
+  .compare-pane video { height: 38vh; max-width: 88vw; }
+}
+
+/* MUSIC FROM audio-source cards (thumbnail + audition) */
+.flow-audio-card { padding: 0; }
+
+.flow-audio-card video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.flow-audio-listen {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.flow-audio-listen:hover { background: rgba(0, 0, 0, 0.85); color: var(--accent); }
+.flow-audio-listen.live { color: var(--accent); border: 1px solid rgba(111, 220, 255, 0.5); }
+
+/* Keep carousels INSIDE their panel — a flex child's min-width:auto lets a
+   wide scroller punch through the card edge. */
+.flow-depth-row { min-width: 0; max-width: 100%; }
+.flow-scenes { min-width: 0; max-width: 100%; }
+.flow-scene-carousel { max-width: 100%; }
+.flow-cast { min-width: 0; max-width: 100%; }
+.flow-cast-row { min-width: 0; }
+
+/* Engine badge on non-Seedream look cards in transfer flows */
+.flow-thumb-engine {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.65);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Identity-text editor (transfer text-mode casting) */
+.flow-id-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid rgba(111, 220, 255, 0.25);
+  border-radius: var(--r-md);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.flow-id-editor textarea {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-sm);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+/* flow-scene-card as an anchor (Depth tool card) */
+a.flow-scene-card { text-decoration: none; color: inherit; }

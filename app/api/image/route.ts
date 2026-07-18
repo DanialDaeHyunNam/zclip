@@ -65,6 +65,37 @@ async function gptImage(prompt: string, portrait: boolean, key: string): Promise
   return { base64: b64, mimeType: "image/png" };
 }
 
+async function seedreamImage(prompt: string, portrait: boolean, key: string): Promise<Img> {
+  // ByteDance Seedream 4.0 via ModelArk — SAME account/key as Seedance, so
+  // the look card is drawn by the family that will render the video (in
+  // text-identity mode the card is a preview of the prompt; same-family
+  // previews predict the render). OpenAI-style images API per the ModelArk
+  // docs — exact size enum UNVERIFIED until the first real run; a reject
+  // surfaces loudly and bills nothing.
+  const res = await fetch(
+    "https://ark.ap-southeast.bytepluses.com/api/v3/images/generations",
+    {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: "seedream-4-0-250828",
+        prompt,
+        size: portrait ? "1080x1920" : "1920x1080",
+        watermark: false,
+      }),
+    },
+  );
+  if (!res.ok) throw new Error(await readErr(res, "Seedream"));
+  const d = (await res.json())?.data?.[0];
+  if (typeof d?.b64_json === "string" && d.b64_json) {
+    return { base64: d.b64_json, mimeType: "image/png" };
+  }
+  if (typeof d?.url === "string" && d.url.startsWith("https://")) {
+    return fromUrl(d.url);
+  }
+  throw new Error("Seedream returned no image");
+}
+
 async function geminiImage(prompt: string, key: string, ref?: Img): Promise<Img> {
   // With a reference image this becomes an EDIT: same subject, apply the
   // described change (Gemini 2.5 Flash Image is natively multimodal).
@@ -134,8 +165,17 @@ export async function POST(req: Request) {
       ? "OPENAI_API_KEY"
       : engine === "gemini"
         ? "GEMINI_API_KEY"
-        : "XAI_API_KEY";
-  const label = envVar === "GEMINI_API_KEY" ? "Gemini" : envVar === "OPENAI_API_KEY" ? "OpenAI" : "xAI";
+        : engine === "seedream"
+          ? "ARK_API_KEY"
+          : "XAI_API_KEY";
+  const label =
+    envVar === "GEMINI_API_KEY"
+      ? "Gemini"
+      : envVar === "OPENAI_API_KEY"
+        ? "OpenAI"
+        : envVar === "ARK_API_KEY"
+          ? "ModelArk"
+          : "xAI";
   const key = resolveKey(req, envVar);
   if (!key) return missingKey(envVar, label);
 
@@ -146,7 +186,9 @@ export async function POST(req: Request) {
         ? await gptImage(p, portrait, key)
         : engine === "gemini"
           ? await geminiImage(p, key)
-          : await grokImage(p, key);
+          : engine === "seedream"
+            ? await seedreamImage(p, portrait, key)
+            : await grokImage(p, key);
     if (img.base64.length > MAX_B64) {
       return Response.json(
         { error: "Generated image unexpectedly large — try again" },

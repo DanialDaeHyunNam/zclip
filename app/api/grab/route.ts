@@ -291,6 +291,63 @@ export async function POST(req: Request) {
     }
   }
 
+  // Lay one vaulted clip's AUDIO over another's VIDEO (transfer flow's
+  // "REF AUDIO": the depth pass strips the reference's music, and the take
+  // follows the choreography 1:1 — so the original soundtrack drops back
+  // on beat). Video stream copies untouched; `1:a?` maps audio only if the
+  // source has any (a silent source = a clean no-op copy).
+  if (action === "mux-audio") {
+    const resolveLocal = (src: unknown): string | null => {
+      if (typeof src !== "string") return null;
+      const gm2 = src.match(/^\/api\/grab\?f=([^&]+)/);
+      const cm2 = src.match(/^\/api\/clips\?f=([^&]+)/);
+      if (gm2) {
+        const f = decodeURIComponent(gm2[1]);
+        if (FILE_NAME.test(f)) return path.join(GRABS_DIR, f);
+      } else if (cm2) {
+        const f = decodeURIComponent(cm2[1]);
+        if (CLIP_FILE_NAME.test(f)) return path.join(CLIPS_DIR, f);
+      }
+      return null;
+    };
+    const videoPath = resolveLocal(body.video);
+    const audioPath = resolveLocal(body.audio);
+    if (!videoPath || !audioPath) {
+      return Response.json({ error: "Unsupported source" }, { status: 400 });
+    }
+    try {
+      await stat(videoPath);
+      await stat(audioPath);
+    } catch {
+      return Response.json({ error: "Source clip not found" }, { status: 404 });
+    }
+    await mkdir(CLIPS_DIR, { recursive: true });
+    const out = path.join(CLIPS_DIR, `clip-mux-${Date.now()}.mp4`);
+    try {
+      await run("ffmpeg", [
+        "-y",
+        "-i", videoPath,
+        "-i", audioPath,
+        "-map", "0:v", "-map", "1:a?",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-shortest",
+        "-movflags", "+faststart",
+        out,
+      ]);
+      const info = await stat(out);
+      const served = path.basename(out);
+      return Response.json({
+        name: served,
+        url: `/api/clips?f=${encodeURIComponent(served)}`,
+        bytes: info.size,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Audio mux failed";
+      return Response.json({ error: message }, { status: 502 });
+    }
+  }
+
   const raw = typeof body.url === "string" ? body.url.trim() : "";
   let u: URL;
   try {

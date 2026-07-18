@@ -627,6 +627,280 @@ All entries 2026-07-06 (single build session, owner: Dan).
   discriminate structural spec changes — judge structure on ≥8s
   multi-cut briefs. Null results are data; recorded in /lab journal.
 
+## 34. /depth — in-browser depth-video extractor for the transfer flow
+
+- The depth-transfer recipe (viral field workflow): real dance clip →
+  depth-map video (pure motion, zero identity — passes Seedance's
+  real-person filter, see #humanizeError) → reference_video, beside the
+  look's reference_image, prompt rebuilds the whole scene. New
+  TRANSFER_PRESETS[2] is the owner's beach-dance field prompt.
+- `/depth` (app/depth/) runs Depth Anything V2 Small ENTIRELY in the
+  browser: transformers.js v4 + WebGPU (WASM fallback), frames sampled at
+  the chosen fps, EMA temporal smoothing (kills per-frame normalization
+  flicker), WebCodecs → mp4 (H.264) with exact i/fps timestamps — the
+  ≥30fps output guarantee is an encoding property, independent of
+  inference speed. VP9/VP8+webm codec ladder for H.264-less Chromiums.
+  New deps: @huggingface/transformers, mp4-muxer, webm-muxer (all
+  client-side; model ~50MB, browser-cached after first run).
+- Two lazy-init traps found by the headless run: (1) ONNX backends init
+  on FIRST INFERENCE, not pipeline construction — warm up inside the
+  fallback try or webgpu failures escape it; (2) transformers.js
+  memoizes the model load per id, so a failed webgpu attempt POISONS the
+  wasm retry — probe `navigator.gpu.requestAdapter()` BEFORE picking the
+  device (`"gpu" in navigator` lies on headless).
+- Studio handoff WITHOUT touching lib/store from a second tab (its
+  full-cache flush would clobber the studio tab's writes): /depth vaults
+  via /api/clips then parks a pointer in plain localStorage
+  (PENDING_DEPTH_KEY); flow-panel adopts on mount/focus — Library entry +
+  auto-set as the named transfer flow's MOVES reference. MOVES stage got
+  a "⬗ Depth convert" chip that opens /depth pre-loaded with the selected
+  reference (`?src=&label=&flow=`).
+- Verified headless end-to-end on :3333: upload → WASM inference → 30
+  frames → vault; ffprobe on the vaulted file: h264, r_frame_rate=30/1,
+  nb_frames=30. Save wrote the pending pointer; studio loads clean.
+  Owner's Chrome takes the WebGPU path (untested here — headless has no
+  adapter).
+
+## 35. Depth pass is the transfer DEFAULT — ANIMATE converts, then renders
+
+- Owner call: depth conversion shouldn't be a manual side-trip — it IS the
+  transfer method. ANIMATE on a transfer flow now runs the depth pass
+  automatically: fetch MOVES clip → (15.2s check) → extractDepthVideo
+  in-browser with live depth frames pushed into the shared OUTPUT frame
+  ("DEPTH PASS · N%") → vault + Library entry → submit the render with
+  the depth clip as reference_video. The user watches depth start, then
+  the render attempt appears — exactly the requested sequence.
+- Engine extracted to `lib/depth-extract.ts` (shared by /depth page and
+  the flow): probeWebGpu + memoized pipeline + warmup fallback + codec
+  ladder + EMA + WebCodecs. /depth page is now the manual/preview tool
+  over the same engine (style knobs, PLAY BOTH).
+- `flow.depthClip` caches the conversion per refClip.url — iterating
+  motion NEVER reconverts (the pass costs ~30-90s); switching the
+  reference invalidates. `flow.depthRef` (undefined=ON) is the escape
+  hatch, a zt-switch on the MOTION step; already-depth references
+  (label /^depth/) skip the pass and disable the toggle. depthRef rides
+  inputSig so toggling re-shows the ANIMATE bar.
+- Depth-pass failure refuses loudly and does NOT submit (no silent
+  raw-clip fallback — that would re-trip the filter the pass exists to
+  dodge). Vault failure (hosted) is best-effort: the in-memory depth
+  still rides the render, it just can't be cached.
+- Verified: /depth end-to-end re-run green on the shared engine (30
+  frames → mp4, headless); studio loads clean. The full ANIMATE money
+  path stays owner-verified (never auto-triggered — CLAUDE.md rule).
+- Follow-up (owner): prompt defaults now FOLLOW the toggle — presets
+  split into TRANSFER_PRESETS_DEPTH (scene rebuilds; beach + neon
+  night) vs _RAW (camera-lock / green-screen). New transfer flows open
+  with DEPTH[0]; toggling swaps an untouched template to the other
+  set's lead (isPresetPrompt guard — user edits never eaten); 🎲 cycles
+  the active set. Also confirmed: Seedance-only is a CAPABILITY
+  boundary, not a gate — i2v models have no video-reference input at
+  all; readsClip() is the one switch, Kling Motion Control joins there
+  when its adapter lands.
+
+## 36. Transfer casting UX — SETTING scenes + CAST slots (owner direction)
+
+- The scene is the depth transfer's main creative control (a depth ref
+  brings no world), so it's now first-class: 8 DEPTH_SCENES (beach =
+  owner's field prompt, neon street, studio cyc, rooftop, festival
+  stage, school gym, poolside, subway) each a MATCHED setting+light
+  pair. SETTING chips on the MOTION step swap ONLY the prompt's
+  Setting:/Light: lines in place (user edits elsewhere survive —
+  applyDepthScene falls back to a full template rebuild if the anchor
+  lines were edited away). 🎲 cycles full scene templates.
+- CAST slots on the IMAGE step: DANCERS selector (1–3) = people in the
+  reference video; one slot per dancer, a look card = face + outfit
+  together, slot order = "first/second reference person". The first
+  castCount confirms RIDE; extras BENCH (kept, never sent — owner's
+  "front kept, tail cut" rule, non-destructive both directions).
+  Generate sends activeCast only; castCount rides inputSig.
+- "⛯ Match scene" on the look prompt bakes the picked scene's
+  setting+light into the identity card, so the look is lit for the
+  world it will dance in.
+
+## 37. Transfer UX round 2 + Vercel Blob retired (owner feedback batch)
+
+- **IMAGE step**: CAST slots now GROW per picked look (the 1/2/3 DANCERS
+  selector died — nobody would find it); max 3 ride, tail benches. The
+  generation form COLLAPSES once the cast has anyone ("✎ Generate a look
+  with a prompt…" is the explicit side door; empty cast/edit reopens it).
+- **Outfit per dancer**: 👕 on a slot opens the OUTFIT strip — custom
+  outfit cards + uploads composite via /api/dress (image+image), FASHION
+  presets go as Gemini text edits; either way the dressed card REPLACES
+  that dancer's slot, so face+garment stay one set downstream (~$0.04).
+- **SETTING carousel**: chips → image-card carousel. Built-ins grew to 16
+  scenes (8 dance scenes + the 8 starter-setting photos re-authored as
+  dance scenes so their baked jpgs double as cards); customs read from
+  hooklab.customAssets.settings; ＋ Custom saves name + setting line +
+  downscaled photo back into customAssets (flow-panel runs in the studio
+  tab, so store writes are safe) and applies immediately.
+- **Pipeline status line** (flow-fire-note): ANIMATE now narrates under
+  the wizard — "⬗ DEPTH PASS 34% · frame …" → "✓ reference ready →
+  calling Seedance 2.0 Mini — usually 60–180s" → pending-attempt line
+  while rendering. No more silent depth wait.
+- **Vercel Blob is GONE** (owner: free-tier ops filled, refuses to pay).
+  lib/blob.ts deleted. First try — inline `data:` URLs — was REFUTED
+  live within minutes: ModelArk rejects at submit ("reference_video
+  must be provided as a web url", $0 lost). Fix: `lib/ref-host.ts`, a
+  free keyless auto-expiring host chain (uguu.se primary → litterbox
+  fallback; tmpfiles.org REJECTED — its /dl/ URL serves an HTML
+  interstitial, caught by byte-count check; 0x0.st has uploads disabled).
+  uguu verified end-to-end: upload → exact-byte fetch-back. Privacy
+  stance: the default reference is a DEPTH pass — identity-free — which
+  is what makes a public temp host acceptable. Removed: blob
+  key-popover + saveBlobToken (studio), KEY_ENV_VARS entry, the hosted
+  ref-video wall in /api/generate (platform 4.5MB body cap remains).
+  Note: Hobby Blob op quotas reset with the monthly billing cycle — no
+  manual reset, and after this change it no longer matters.
+
+## 38. ModelArk r2v floor: reference ≥409,600 px (live reject #2, fixed)
+
+- The temp-host URL WORKED (ModelArk fetched and parsed the reference —
+  deep validation of the ref-host chain), then bounced on size: "video
+  pixel count … must be ≥ 409600 for dreamina-seedance-2-0-mini in
+  r2v". Our 768-long-side 9:16 depth pass is 432×768 = 331,776 px.
+- Fix: extractDepthVideo gained `minPixels` (the floor WINS over the
+  long-side cap — upscales, smooth depth data survives it); the flow's
+  auto pass runs maxSide 1024 + minPixels 480,000 (576×1024 for 9:16);
+  cached depthClips are dimension-probed on reuse and REMADE if under
+  the floor (the "cached — reused" path was re-sending the small one);
+  /depth defaults to 1024 ("Seedance-ready") and applies the same floor
+  to small sources; humanizeError translates the pixel-count reject.
+- Round 2 of the same reject: the flow's MOVES reference WAS a hand-made
+  "depth · …" Library clip (432×768), and the already-depth rule skips
+  the depth pass entirely — so the floor fix never ran. Fix: a UNIVERSAL
+  guard right before encode — probeVideoPx on the final sendBlob, and
+  anything under the floor gets `resizeVideoToFloor` (new in
+  depth-extract: pure canvas-scale re-encode, NO model — depth-of-depth
+  would destroy the data). Catches every path: hand-picked depth refs,
+  cached smalls, raw clips with DEPTH REF off (those trade audio for a
+  submit that works — WebCodecs re-encode is video-only).
+- Pipeline narration moved UNDER the shared left frame (owner call —
+  that's where eyes are during ANIMATE): FlowPanel lifts the line up via
+  a new `onNote` prop; the wizard-bottom copy is gone.
+- Both live rejects cost $0 (submit-side validation). Still unverified:
+  a Seedance run that actually ACCEPTS the pair — next Retry answers it.
+
+## 39. REF AUDIO — the reference's music lands back on the take
+
+- The depth pass strips the reference's soundtrack, but the finished
+  take follows the choreography 1:1 — so laying the ORIGINAL clip's
+  audio back over it lands on beat. New transfer toggle REF AUDIO
+  (default ON, next to DEPTH REF); disabled when the picked reference
+  is itself a depth clip (nothing to carry).
+- Server: /api/grab action "mux-audio" (dev-only ffmpeg, same guardrails
+  as trim-local): `-map 0:v -map 1:a? -c:v copy -c:a aac -shortest` →
+  clip-mux-*.mp4 in the vault. `1:a?` makes a silent audio source a
+  clean no-op. Verified end-to-end with fixtures: silent take + tone
+  clip → output probes h264 + aac.
+- Flow: the poll-done path muxes AFTER vaulting (local file required);
+  the muxed URL becomes the attempt + gallery + preview video. Any mux
+  failure keeps the silent take — a take is never lost to a nicety.
+
+## 40. COMPARE view + wizard copy fix
+
+- ⇆ Compare next to ↓ Download (flow takes only): full-screen overlay
+  with the MOVES reference and the take side by side, autostarted
+  together — the field-proof view (depth left, result right). Reference
+  pane is muted (the take carries the muxed music); ⛓ Replay both
+  resyncs to 0. FlowPreview grew compareSrc/compareLabel, attached at
+  the three take-preview sites (poll-done, history click, flow-switch
+  sync); MOVES-reference previews stay compare-less.
+- Wizard nav was the studio's last Korean copy ("← 이전" / "다음 →") —
+  now "← Back" / "Next →" (studio is English-only, CLAUDE.md rule).
+
+## 41. +EXPRESSION depth detail · audio lineage · MUSIC FROM carousel
+
+- **First fully-successful depth transfer landed** (beach, 2 dancers,
+  Seedance 2.0 Mini) — role pairing reference_video + reference_image/
+  text is now VERIFIED live, and the temp-host chain carried it.
+- **+EXPRESSION** (default ON, toggle beside DEPTH REF): unsharp local-
+  contrast on the depth map (separable box blur, detail 1.2, radius
+  ~min(W,H)/40) so faces/hands survive the depth flattening — the model
+  can only follow expressions that exist in the reference. depthClip
+  cache is mode-keyed (plain vs x1.2) so toggling reconverts. /depth
+  page exposes it as an "Expression detail" slider (0–2). Depth
+  templates now ask for head direction + expression-beat matching.
+- **Audio lineage**: refClip grew `audioUrl` — a silent depth reference
+  carries its ORIGINAL's url (set automatically by the /depth handoff's
+  `?src=`, or picked by hand). audioSrcOf() is the one resolver: raw ref
+  → its own url; depth ref → audioUrl ?? null. REF AUDIO's row shows a
+  **MUSIC FROM thumbnail carousel** (video first-frames, ▶ auditions the
+  sound via a hidden <audio>, card click selects; ?pw= rides media srcs)
+  when the reference is depth-labeled. Retro "♪ Add ref audio" button on
+  done takes muxes after the fact (replaces take + Library entry).
+- Carousels contained (owner: "튀어나가는 거 막아줘") — min-width:0 /
+  max-width:100% on the depth-row/scenes/cast wrappers; flex min-width:
+  auto was letting wide scrollers punch through the panel edge.
+- Verified: mux fixtures green (h264+aac probe, #39); depth engine with
+  detail boost processed frames live headless (520×924 from a small
+  source — the pixel-floor upscale also exercised); full completion run
+  blocked by the headless daemon dying under WASM load, not by app code
+  — owner's WebGPU Chrome is the real path.
+
+## 42. Text-first identities · Seedream previews · adaptive depth detail
+
+- **Field-verified**: photoreal reference_image trips the filter even
+  WITH a depth reference_video ("input image may contain real person")
+  — so transfer identities are TEXT BY DEFAULT now: every new confirm
+  (toggleConfirm / useSharedLook / dressed replacement) auto-joins
+  textLookIds; the ↳ chip still flips back for stylized looks.
+  humanizeError now distinguishes image-blocked vs video-blocked.
+- **The expectation gap** (owner: "Grok으로 만든 카드가 Seedance 결과와
+  다름"): in text mode the card is only a PREVIEW of the prompt — so
+  draw the preview with the same family. New IMG_ENGINE "seedream"
+  (ByteDance Seedream 4.0, SAME ARK_API_KEY, ~$0.035 est.):
+  ark …/api/v3/images/generations, model seedream-4-0-250828 — shape
+  from ModelArk docs, UNVERIFIED until first run. Transfer flows
+  default to it; the pick carousel sorts Seedream cards first and
+  badges others with their engine (GROK/GPT/…) — not hidden, text is
+  what actually rides. FlowImageAttempt gained `engine`.
+- **Multi-person text fix**: with >1 text identity the prompt now
+  appends "The reference people are DIFFERENT individuals — … never
+  reuse the same face twice" (the two-dancer take came out same-faced
+  without it).
+- **Adaptive depth detail (v2)**: unsharp → local variance equalization
+  (mean + mean-of-squares box blurs → per-pixel gain
+  min(1+2.5·detail, 14/(σ+2)), floor 1) — flat faces get up to 4× local
+  contrast, busy silhouette edges get none (no more white halos).
+  depthClip cache mode bumped to "adaptive-1.2" (old caches reconvert
+  once). /depth grew a model picker: DA V2 Small (default) vs Base
+  (~370MB, more face detail) — pipeline cache keyed device:model.
+- Ceiling stated honestly: depth carries head pose + mouth-open at
+  best; exact expression TRANSFER is Kling MC / Act-Two territory.
+  Expressions on beat come from the PROMPT (beach take proved it).
+
+## 43. Identity texts are the same-face culprit — editor + ✨ From card
+
+- Post-mortem on the still-same-faced two-dancer take (owner report,
+  clip-mux-1784386518611): the store shows WHAT actually rode — look #1's
+  "identity" was a SoHo-winter photo-composition brief with near-zero
+  face info, look #2 was generic idol boilerplate. Two vague
+  descriptions of the same beauty archetype → one face twice. The
+  distinctness line helps but can't contrast what isn't there.
+- Fix: `flow.textOverrides[lookId]` — the identity TEXT is now editable
+  per dancer (✎ id button on a text-mode chip → inline editor; rides
+  verbatim via textChars). **✨ From card** calls the new /api/describe
+  (Gemini 2.5 Flash reads the CARD image → 2–3 sentence face-first cast
+  description, no names/locations/camera terms) — the closest text to
+  what the user actually picked, and inherently contrastive.
+  Live-tested against a starter card: face shape, eye shape+color,
+  hair tones, outfit — exactly the needed granularity. textOverrides
+  ride inputSig (editing re-arms ANIMATE).
+
+## 44. Auto identity distillation · MOVES thumbnail carousel
+
+- Identity distillation is now AUTOMATIC (owner: "항상 처리") — every
+  transfer confirm (carousel pick, shared look, dressed card) fires
+  /api/describe in the background; the face-first description lands in
+  textOverrides and RIDES by default. Chip shows "✨ identity…" while
+  distilling, "✎ identity" after (renamed from the unclear "✎ id");
+  user edits are never clobbered (override checked before writing).
+  Uploads/shared cards with placeholder prompts now get REAL identities
+  this way; until one lands their placeholder is filtered out of
+  textChars (junk like "(uploaded …)" never rides).
+- MOVES candidates: text chips → the MUSIC FROM thumbnail-card carousel
+  (video first frames, ▶ SET badge, Upload/Depth-tool as text cards).
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.

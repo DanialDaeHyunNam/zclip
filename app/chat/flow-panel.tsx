@@ -16,7 +16,15 @@ import {
 } from "@/lib/config";
 import { keyHeader } from "@/lib/client-keys";
 import * as store from "@/lib/store";
-import { type Clip, fmtCost, GALLERY_KEY, PW_KEY } from "@/lib/clip";
+import {
+  type Clip,
+  fmtCost,
+  isLocalVideoUrl,
+  GALLERY_KEY,
+  PW_KEY,
+  PENDING_DEPTH_KEY,
+} from "@/lib/clip";
+import { FASHION } from "@/lib/prompts";
 import { persistRemoteVideo } from "@/lib/persist-clip";
 
 /**
@@ -46,6 +54,10 @@ export interface FlowPreview {
   label: string;
   /** busy only — when the job started, drives the elapsed readout. */
   startedAt?: number;
+  /** video takes only — the MOVES reference url, unlocking the studio's
+   *  COMPARE view (reference | take side-by-side, played together). */
+  compareSrc?: string;
+  compareLabel?: string;
 }
 
 /** 🎲 starter drafts — editing a full draft beats a blank box. Varied
@@ -82,6 +94,10 @@ const IMG_ENGINES = [
   { key: "grok", label: "Grok Imagine image", cost: 0.05 },
   { key: "gpt", label: "GPT Image (OpenAI)", cost: 0.06 },
   { key: "gemini", label: "Gemini 2.5 Flash Image", cost: 0.04 },
+  // Same ByteDance family as Seedance — in text-identity mode the card is
+  // a PREVIEW of the prompt, and a same-family preview predicts the
+  // render. Transfer flows default here. (cost = third-party quote)
+  { key: "seedream", label: "Seedream 4.0 (ByteDance — matches Seedance)", cost: 0.035 },
 ] as const;
 
 interface FlowImageAttempt {
@@ -89,6 +105,9 @@ interface FlowImageAttempt {
   prompt: string;
   image: string; // dataURL — file-backed store has no 5MB quota problem
   createdAt: number;
+  /** Which engine drew it — transfer flows sort Seedream-made first and
+   *  badge the rest (their text may render differently on Seedance). */
+  engine?: string;
 }
 
 interface FlowMotionAttempt {
@@ -126,8 +145,28 @@ interface Flow {
   /** Legacy flows (undefined) are "look". */
   kind?: FlowKind;
   /** transfer only — the confirmed motion reference. A LIBRARY POINTER,
-   *  never base64: the file-backed store must not swallow 35MB clips. */
-  refClip?: { url: string; label: string } | null;
+   *  never base64: the file-backed store must not swallow 35MB clips.
+   *  audioUrl = where the SOUNDTRACK lives when the reference itself is
+   *  silent (a depth clip carries its original's url here — set by the
+   *  /depth handoff, or picked by hand in the REF AUDIO row). */
+  refClip?: { url: string; label: string; audioUrl?: string } | null;
+  /** transfer only — auto-convert the reference to a depth pass on ANIMATE
+   *  (undefined = ON, the default: depth refs carry pure motion, zero
+   *  identity, so they pass Seedance's real-person filter). */
+  depthRef?: boolean;
+  /** transfer only — the cached depth conversion of refClip. srcUrl records
+   *  WHICH reference it was made from: iterate reuses it, switching the
+   *  reference invalidates it. A Library pointer, never base64. */
+  depthClip?: { srcUrl: string; url: string; label: string; mode?: string } | null;
+  /** transfer only — unsharp the depth pass so faces/hands read (undefined
+   *  = ON): the model follows head direction and expression beats better
+   *  when they exist in the reference at all. */
+  depthDetail?: boolean;
+  /** transfer only — lay the reference clip's AUDIO over the finished take
+   *  (undefined = ON): the choreography follows the ref 1:1, so its music
+   *  lands on beat. Local-only (server ffmpeg); skipped for silent
+   *  depth-labeled references. */
+  keepAudio?: boolean;
   imgEngine?: string;
   imgPrompt: string;
   imgAttempts: FlowImageAttempt[];
@@ -141,6 +180,11 @@ interface Flow {
    *  instead of as a reference_image — the way around Seedance's real-person
    *  filter. Toggled per chip. */
   textLookIds?: string[];
+  /** Per-look IDENTITY TEXT overrides — what actually rides in text mode.
+   *  A look's generation prompt is usually a photo-composition brief, not
+   *  a face description (two dancers converge on one face, verified on the
+   *  owner's take); this is the edited/distilled replacement. */
+  textOverrides?: Record<string, string>;
   motionPrompt: string;
   motionModelKey: string;
   motionAttempts: FlowMotionAttempt[];
@@ -149,13 +193,217 @@ interface Flow {
   resolution: Resolution;
 }
 
-/** Distilled from the two-dancer depth-reference field prompt (2026-07-15):
- *  camera lock + wardrobe hold are what keep motion transfer usable; the
- *  green-screen variant generates pre-keyed footage for compositing. */
-const TRANSFER_PRESETS = [
+/** Transfer prompt templates come in TWO sets, keyed off the DEPTH REF
+ *  toggle — a depth reference carries zero scene/identity, so its prompt
+ *  must rebuild the WHOLE world (setting, light, style); a raw clip keeps
+ *  its own world, so its prompt only locks camera/wardrobe and directs
+ *  acting. The toggle, 🎲 Template and new-flow default all draw from the
+ *  ACTIVE set only. */
+
+/** Raw-clip set — distilled from the two-dancer field prompt (2026-07-15):
+ *  camera lock + wardrobe hold; the green-screen variant pre-keys footage. */
+const TRANSFER_PRESETS_RAW = [
   "Reproduce the reference video's body motion beat-for-beat on the same timeline. The camera stays completely fixed — every framing change comes from the dancer stepping toward or away from the lens; do NOT move, zoom or reframe the camera. The subject is the person from the reference image, outfit and hair held identical in every frame.\nActing: lively natural facial expressions throughout — playful energy, eyes to the lens. (← direct the performance here)\nAvoid: camera drift, face morphing, distorted hands, extra people, text, watermark.",
   "Reproduce the reference video's motion one-to-one. Locked camera — no zoom, pan or pull-back. The subject is the person from the reference image, outfit held identical in every frame. Every pixel around the subject is one flat solid green (#00FF00), a pure 2D color fill edge to edge, as if already keyed out — no green-screen studio set, no floor shadows, no wall-floor seam, no green cast on the subject, crisp silhouette edges.\nActing: confident and playful, eyes to the lens. (← direct the performance here)\nAvoid: camera movement, gradients in the green, reflections, extra people, text, watermark.",
 ];
+
+/** Depth SCENES — a depth ref carries no world, so the prompt rebuilds
+ *  setting AND light as a matched pair (a beach Light on a neon Setting
+ *  reads wrong). The SETTING chips on the MOTION step swap these into the
+ *  prompt's Setting:/Light: lines in place; 🎲 cycles full templates.
+ *  Head rides the opening line ("single-shot {head} dance video"). */
+interface DepthScene {
+  id: string;
+  label: string;
+  head: string;
+  setting: string;
+  light: string;
+  /** Card image — starter bakes for built-ins, dataURL for customs. */
+  img?: string;
+}
+
+const DEPTH_SCENES: DepthScene[] = [
+  {
+    id: "beach",
+    label: "Beach · midday",
+    head: "summer beach",
+    img: "/starters/beach.jpg",
+    // Owner field prompt 2026-07-18 — the proven baseline.
+    setting: "bright summer beach at midday — golden sand, rolling turquoise surf, clear blue sky",
+    light: "natural bright sunlight, high-key, hard warm key from the sun, sparkling water highlights, soft sand bounce fill. Sun-drenched, never grey",
+  },
+  {
+    id: "neon",
+    label: "Neon street · night",
+    head: "night street",
+    setting: "neon-lit city street at night — wet asphalt reflections, glowing sign bokeh, thin light haze",
+    light: "mixed neon key — cool cyan and warm magenta rims, specular street reflections, clean bright exposure on the face. Vivid, never murky",
+  },
+  {
+    id: "studio",
+    label: "Studio cyc · clean",
+    head: "studio",
+    setting: "seamless white cyclorama studio — pure sweep, no props, a faint contact shadow under the feet",
+    light: "soft even studio key with gentle top light, shadowless white background, clean commercial exposure",
+  },
+  {
+    id: "rooftop",
+    label: "Rooftop · sunset",
+    head: "rooftop",
+    img: "/starters/rooftop.jpg",
+    setting: "open city rooftop at golden hour — low sun over a hazy skyline, warm concrete deck",
+    light: "long warm golden-hour key with a soft orange rim, gentle sky fill, glowing lens warmth. Golden, never flat",
+  },
+  {
+    id: "stage",
+    label: "Festival stage",
+    head: "festival stage",
+    setting: "outdoor festival stage at night — truss towers, a glowing LED wall behind, drifting haze",
+    light: "punchy stage wash — moving beams, magenta-blue backlight, a bright clean key on the performer",
+  },
+  {
+    id: "gym",
+    label: "School gym",
+    head: "school gym",
+    setting: "empty school gymnasium — polished wood court, painted lines, folded bleachers",
+    light: "bright overhead fluorescent banks, soft floor bounce, clean even exposure",
+  },
+  {
+    id: "pool",
+    label: "Poolside · noon",
+    head: "poolside",
+    setting: "resort poolside at noon — turquoise water, white loungers, palm shadows on the deck",
+    light: "hard tropical sun with sparkling water caustics, white-deck bounce fill, vivid saturated color",
+  },
+  {
+    id: "subway",
+    label: "Subway platform",
+    head: "subway platform",
+    setting: "quiet late-night subway platform — tiled walls, glossy floor reflections, an empty track behind",
+    light: "cool fluorescent strips with a soft cyan cast, glossy floor speculars, a clean bright face exposure",
+  },
+  // The starter SETTING cards, re-authored as DANCE scenes (open floor, no
+  // sitting poses) so their baked photos double as scene cards here.
+  {
+    id: "bedroom",
+    label: "Bedroom",
+    head: "bedroom",
+    img: "/starters/bedroom.jpg",
+    setting: "a lived-in bedroom with warm lamp light, space cleared in front of the bed, soft clutter behind",
+    light: "warm practical lamp glow with soft shadows, cozy amber cast, a clean bright exposure on the subject",
+  },
+  {
+    id: "cafe",
+    label: "Cafe",
+    head: "cafe",
+    img: "/starters/cafe.jpg",
+    setting: "a cozy daylight cafe, open floor by the window, blurred espresso bar behind",
+    light: "soft window daylight, gentle interior fill, airy bright exposure",
+  },
+  {
+    id: "kitchen",
+    label: "Kitchen",
+    head: "kitchen",
+    img: "/starters/kitchen.jpg",
+    setting: "a lived-in home kitchen in the morning, open floor by the counter, everyday clutter behind",
+    light: "soft morning daylight through the window, warm counter bounce, clean natural exposure",
+  },
+  {
+    id: "desk",
+    label: "Home office",
+    head: "home office",
+    img: "/starters/desk.jpg",
+    setting: "a home office in the evening, space cleared beside the desk, faint monitor glow to one side",
+    light: "moody practical mix — desk lamp key with a cool monitor rim, clean face exposure",
+  },
+  {
+    id: "dorm",
+    label: "Dorm room",
+    head: "dorm room",
+    img: "/starters/dorm.jpg",
+    setting: "a dorm room with fairy lights and posters, open floor in front of the bed",
+    light: "soft fairy-light glow with warm practical fill, gentle low-contrast exposure",
+  },
+  {
+    id: "park",
+    label: "Sunny park",
+    head: "park",
+    img: "/starters/park.jpg",
+    setting: "a sunny green park lawn, trees and a walking path softly blurred behind",
+    light: "bright natural sunlight with soft leaf-dappled fill, fresh vivid color",
+  },
+  {
+    id: "mountain",
+    label: "Mountain overlook",
+    head: "mountain overlook",
+    img: "/starters/mountain.jpg",
+    setting: "a scenic mountain overlook, hazy ridgelines rolling behind",
+    light: "golden-hour side light with hazy sky fill, warm cinematic glow",
+  },
+  {
+    id: "car",
+    label: "Car park",
+    head: "parking deck",
+    img: "/starters/car.jpg",
+    setting: "an empty top-floor parking deck beside a parked car, city haze behind",
+    light: "flat open daylight with soft concrete bounce, clean urban exposure",
+  },
+];
+
+/** Generic light line for user-made custom scenes (they author the setting;
+ *  the light stays safe and neutral). */
+const CUSTOM_SCENE_LIGHT =
+  "natural light true to the setting — clean bright exposure on the subject, never murky";
+
+const depthTemplate = (s: DepthScene): string =>
+  `Continuous single-shot ${s.head} dance video. No cuts. No scene transitions.\nMotion: the reference video is a depth-map dance reference — follow its choreography, timing and framing 1:1, matching every pose and beat exactly, including head direction and the timing of expression changes. Camera framing follows the reference video.\nCharacter: the person from the reference image — exactly as the reference, with lively natural facial expressions on the beat.\nSetting: ${s.setting}. (← swap the scene here)\nStyle: photorealistic, true camera texture, crisp high-clarity plate.\nLight: ${s.light}.\nThe subject is already dancing from frame one; hair and clothes react naturally to the motion.\nAvoid: extra people, face morphing, distorted hands, on-screen text, subtitles, watermark.`;
+
+const TRANSFER_PRESETS_DEPTH = DEPTH_SCENES.map(depthTemplate);
+
+/** Swap a scene into an existing depth prompt IN PLACE — only the
+ *  Setting:/Light: lines change, every other user edit survives. If those
+ *  anchor lines were edited away, rebuild the full template instead. */
+const applyDepthScene = (prompt: string, s: DepthScene): string => {
+  if (!/^Setting:.*$/m.test(prompt)) return depthTemplate(s);
+  let out = prompt
+    .replace(/^Setting:.*$/m, `Setting: ${s.setting}. (← swap the scene here)`)
+    .replace(/^Light:.*$/m, `Light: ${s.light}.`);
+  out = out.replace(
+    /^Continuous single-shot .* dance video\./m,
+    `Continuous single-shot ${s.head} dance video.`,
+  );
+  return out;
+};
+
+/** Is the current prompt an untouched template? (Either set — safe to swap
+ *  on toggle without eating user edits.) */
+const isPresetPrompt = (p: string): boolean =>
+  !p.trim() ||
+  TRANSFER_PRESETS_RAW.includes(p) ||
+  TRANSFER_PRESETS_DEPTH.includes(p);
+
+/** Pull the wearable out of a FASHION preset's product-shot prompt
+ *  ("…product photo of an oversized hoodie, plain neutral…" → the garment). */
+const garmentDesc = (p: string): string =>
+  p.match(/product photo of (.+?), plain neutral/)?.[1] ?? p.slice(0, 80);
+
+const ASSETS_KEY = "hooklab.customAssets";
+
+/** A user setting card → a dance scene (their text IS the setting line;
+ *  the light stays generic-safe). */
+const customToScene = (c: {
+  id: string;
+  label: string;
+  prompt?: string;
+  image?: string;
+}): DepthScene => ({
+  id: `c-${c.id}`,
+  label: c.label,
+  head: c.label.toLowerCase(),
+  setting: (c.prompt ?? c.label).trim().replace(/\.+$/, ""),
+  light: CUSTOM_SCENE_LIGHT,
+  img: c.image,
+});
 
 const newFlow = (n: number, sessionId?: string, kind: FlowKind = "look"): Flow => ({
   id: `f${Date.now()}`,
@@ -164,13 +412,16 @@ const newFlow = (n: number, sessionId?: string, kind: FlowKind = "look"): Flow =
   sessionId,
   kind,
   refClip: null,
-  imgEngine: "grok",
+  // Transfer identities ride as TEXT (the prompt), so the card must be a
+  // same-family preview — Seedream. Look flows keep Grok (the still IS
+  // the i2v input there, any painter works).
+  imgEngine: kind === "transfer" ? "seedream" : "grok",
   imgPrompt: "",
   imgAttempts: [],
   confirmedImgIds: [],
-  // Transfer flows open with the distilled template — editing a working
-  // draft beats a blank box (same philosophy as 🎲 starters).
-  motionPrompt: kind === "transfer" ? TRANSFER_PRESETS[0] : "",
+  // Transfer flows open with the DEPTH template — depth ref is the default
+  // path, and editing a working draft beats a blank box (🎲 philosophy).
+  motionPrompt: kind === "transfer" ? TRANSFER_PRESETS_DEPTH[0] : "",
   motionModelKey: kind === "transfer" ? "seedance-2" : "kling",
   motionAttempts: [],
   aspect: "9:16",
@@ -209,8 +460,21 @@ const humanizeError = (raw: string): string => {
   // this is (a credit/quota error reads nothing like a safety block).
   const verbatim = ` (Seedance said: "${raw}")`;
   if (/real person|may contain real/i.test(raw)) {
+    // The filter fires on TWO different inputs — say which one this was.
+    if (/input image/i.test(raw)) {
+      return (
+        "Seedance's safety filter blocked a LOOK image — photoreal identity images trip it even when the depth reference passes (verified live). Switch the look chips to ↳ text (the default), or send a stylized (anime/3DCG) look as the image." +
+        verbatim
+      );
+    }
     return (
-      "Seedance's safety filter blocked the REFERENCE — it reads the driving video's frames and flags real people in it (this fires on the video, not just an identity image, so text-only looks don't dodge it). The depth-render references that pass carry pure motion, zero identity. For a raw real-person dance clip, Kling Motion Control (pose-extracted) or Runway Act-Two is the path." +
+      "Seedance's safety filter blocked the REFERENCE video — it reads the driving clip's frames and flags real people in it. Turn DEPTH REF on: the depth pass strips identity and passes. For a raw real-person clip, Kling Motion Control (pose-extracted) or Runway Act-Two is the path." +
+      verbatim
+    );
+  }
+  if (/pixel count/i.test(raw)) {
+    return (
+      "The reference video is too SMALL for Seedance — r2v needs at least 409,600 pixels (e.g. 576×1024). With DEPTH REF on, just Retry: the depth pass now reconverts at the right size automatically. A hand-picked depth clip needs remaking in /depth at 1024px." +
       verbatim
     );
   }
@@ -224,6 +488,36 @@ const humanizeError = (raw: string): string => {
     return `Out of Seedance credit — top up the ModelArk balance, then retry.${verbatim}`;
   }
   return raw;
+};
+
+/** W×H of a video blob (0 if unreadable) — ModelArk r2v floor checks. */
+const probeVideoPx = (b: Blob): Promise<number> =>
+  new Promise((res) => {
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      const n = v.videoWidth * v.videoHeight;
+      URL.revokeObjectURL(v.src);
+      res(n);
+    };
+    v.onerror = () => {
+      URL.revokeObjectURL(v.src);
+      res(0);
+    };
+    v.src = URL.createObjectURL(b);
+  });
+
+/** ModelArk rejects r2v references under this many pixels (verified live
+ *  2026-07-18: "video pixel count … must be ≥ 409600"). */
+const R2V_PX_FLOOR = 409_600;
+
+/** Where a flow's soundtrack comes from: a raw reference carries its own;
+ *  a depth reference is silent, so its linked original (audioUrl — set by
+ *  the /depth handoff or picked in the REF AUDIO row) speaks for it. */
+const audioSrcOf = (refClip: Flow["refClip"]): string | null => {
+  if (!refClip?.url) return null;
+  if (!/^depth\b/i.test(refClip.label)) return refClip.url;
+  return refClip.audioUrl ?? null;
 };
 
 /** "6:30" → 390, "1:02:05" → 3725, "95.5" → 95.5; "" → null; bad → NaN. */
@@ -242,9 +536,14 @@ export function FlowPanel({
   sessionId,
   sideOpen,
   onDigest,
+  onNote,
 }: {
   /** Surface an image/video in the studio's shared left frame. */
   onPreview: (p: FlowPreview | null) => void;
+  /** Pipeline status one-liner (depth pass → model call → rendering) —
+   *  the studio renders it UNDER the shared preview frame (owner call
+   *  2026-07-18: that's where eyes are while ANIMATE runs). */
+  onNote?: (note: string | null) => void;
   /** Current chat session — flows are scoped to it (legacy flows without
    *  a sessionId stay visible everywhere). */
   sessionId: string | null;
@@ -267,6 +566,35 @@ export function FlowPanel({
   /** A previous attempt picked as EDIT context ("same look, change only
    *  the outfit") — one-shot, consumed by the next Generate. */
   const [editFrom, setEditFrom] = useState<FlowImageAttempt | null>(null);
+  /** Live one-liner for the ANIMATE pipeline (depth pass → model call) —
+   *  the user must SEE what's running and what to wait for. */
+  const [depthNote, setDepthNote] = useState<string | null>(null);
+  /** Transfer IMAGE step: the prompt form hides once the cast has anyone —
+   *  this reopens it ("generate with a prompt" path). */
+  const [genOpen, setGenOpen] = useState(false);
+  /** Which cast slot the outfit strip is open for (null = closed). */
+  const [outfitFor, setOutfitFor] = useState<number | null>(null);
+  /** Slot index a dress job is running on (busy overlay). */
+  const [dressBusy, setDressBusy] = useState<number | null>(null);
+  const outfitFileRef = useRef<HTMLInputElement>(null);
+  /** User-made scene / outfit cards, read from hooklab.customAssets (this
+   *  is the studio tab, so writing through lib/store here is safe). */
+  const [customScenes, setCustomScenes] = useState<DepthScene[]>([]);
+  const [customFashion, setCustomFashion] = useState<
+    { id: string; label: string; image: string }[]
+  >([]);
+  const [sceneFormOpen, setSceneFormOpen] = useState(false);
+  const [sceneName, setSceneName] = useState("");
+  const [sceneText, setSceneText] = useState("");
+  const [sceneImg, setSceneImg] = useState<string | null>(null);
+  const sceneFileRef = useRef<HTMLInputElement>(null);
+  /* Per-flow ephemera reset on switching flows. */
+  useEffect(() => {
+    setGenOpen(false);
+    setOutfitFor(null);
+    setSceneFormOpen(false);
+  }, [flowId]);
+
   const fileRef = useRef<HTMLInputElement>(null);
   /** ＋ New flow opens a kind picker instead of assuming "look". */
   const [newPick, setNewPick] = useState(false);
@@ -395,7 +723,13 @@ export function FlowPanel({
           ? cur
           : [...cur, id]
         : [id];
+      // Transfer identities default to TEXT (see toggleConfirm).
+      const textLookIds =
+        isTransfer && !cur.includes(id)
+          ? [...new Set([...(f.textLookIds ?? []), id])]
+          : f.textLookIds;
       return {
+        textLookIds,
         imgAttempts: existing
           ? f.imgAttempts
           : [
@@ -413,6 +747,20 @@ export function FlowPanel({
         confirmedImgId: undefined,
       };
     });
+    // Auto-distill the identity from the card (owner call: always process).
+    const curIds =
+      flow.confirmedImgIds ?? (flow.confirmedImgId ? [flow.confirmedImgId] : []);
+    if (isTransfer && !curIds.includes(id)) {
+      autoDescribe(
+        existing ?? {
+          id,
+          prompt: look.prompt?.trim() || `(shared · ${look.label})`,
+          image: look.image,
+          createdAt: Date.now(),
+        },
+        flow.id,
+      );
+    }
     preview({
       kind: "image",
       src: look.image,
@@ -434,6 +782,18 @@ export function FlowPanel({
     .map((id) => flow?.imgAttempts.find((a) => a.id === id))
     .filter(Boolean) as FlowImageAttempt[];
   const confirmedImg = confirmedImgs[0] ?? null; // first = backward-compat
+  // CAST (transfer): slots GROW with each confirmed look — one dancer per
+  // look, cap 3 (Seedance's practical multi-subject limit). Beyond 3 the
+  // tail benches: front kept, tail cut, non-destructive.
+  const activeCast = isTransfer ? confirmedImgs.slice(0, 3) : confirmedImgs;
+  const benchedCast = isTransfer ? confirmedImgs.slice(3) : [];
+  // The scene currently picked on the MOTION step (derived from the prompt's
+  // Setting: line) — the IMAGE step offers to bake it into the look so the
+  // identity card is lit for the world it will dance in.
+  const activeScene =
+    isTransfer && flow?.depthRef !== false
+      ? (DEPTH_SCENES.find((s) => flow?.motionPrompt.includes(s.setting)) ?? null)
+      : null;
   // Motion is generatable when: look flow has a confirmed still, OR transfer
   // flow has its MOVES clip (the identity look is optional there).
   const canAnimate = isTransfer ? Boolean(flow?.refClip) : Boolean(confirmedImg);
@@ -444,9 +804,23 @@ export function FlowPanel({
   const rendering = Boolean(
     flow?.motionAttempts.some((a) => a.status === "pending"),
   );
+  /* Pipeline status → the studio (rendered under the shared left frame —
+   * that's where eyes are while ANIMATE runs). depthNote covers the
+   * depth/upscale/submit phases; a pending attempt keeps a rendering line
+   * up until the take lands. */
+  const noteLine =
+    depthNote ??
+    (rendering
+      ? `⏳ ${motionModel.short} is rendering — usually 60–180s, the take lands in the flow's history`
+      : null);
+  useEffect(() => {
+    onNote?.(noteLine);
+  }, [noteLine, onNote]);
+  useEffect(() => () => onNote?.(null), [onNote]);
+
   // Any edit to a generation input re-shows the bar (it hid after ANIMATE).
   const inputSig = flow
-    ? `${flow.motionPrompt}|${confirmedIds.join(",")}|${(flow.textLookIds ?? []).join(",")}|${flow.refClip?.url ?? ""}|${flow.motionModelKey}|${flow.aspect}|${flow.duration}|${flow.resolution}`
+    ? `${flow.motionPrompt}|${confirmedIds.join(",")}|${(flow.textLookIds ?? []).join(",")}|${confirmedIds.map((id) => flow.textOverrides?.[id]?.length ?? 0).join(",")}|${flow.refClip?.url ?? ""}|${flow.depthRef === false ? "raw" : "depth"}|${flow.motionModelKey}|${flow.aspect}|${flow.duration}|${flow.resolution}`
     : "";
   useEffect(() => {
     setBarHidden(false);
@@ -473,7 +847,14 @@ export function FlowPanel({
     }
     const done = flow.motionAttempts.find((a) => a.status === "done" && a.videoUrl);
     if (done?.videoUrl) {
-      preview({ kind: "video", src: done.videoUrl, aspect: done.aspectRatio, label: `${done.modelLabel} · take` });
+      preview({
+        kind: "video",
+        src: done.videoUrl,
+        aspect: done.aspectRatio,
+        label: `${done.modelLabel} · take`,
+        compareSrc: flow.kind === "transfer" ? flow.refClip?.url : undefined,
+        compareLabel: flow.refClip?.label,
+      });
     } else if (confirmedImg) {
       preview({ kind: "image", src: confirmedImg.image, aspect: flow.aspect, label: "look" });
     } else {
@@ -524,10 +905,10 @@ export function FlowPanel({
    *  either way; only how it's sent changes. */
   const toggleLookText = (a: FlowImageAttempt) => {
     if (!flow) return;
-    const desc = a.prompt.trim();
+    const desc = (flow.textOverrides?.[a.id] ?? a.prompt).trim();
     if (desc.length < 12 || /^\((uploaded|shared)/.test(desc)) {
       setError(
-        "This look has no text description to switch to (it was uploaded, not generated from a prompt).",
+        "This look has no identity text yet — open ✎ identity and use ✨ From card to distill one.",
       );
       return;
     }
@@ -541,12 +922,278 @@ export function FlowPanel({
     });
   };
 
+  /* ── per-slot outfit swap (face + garment = one set) ── */
+
+  /** Land a dressed card: new attempt, and it REPLACES that dancer's slot
+   *  (the set stays one card per person downstream). */
+  const applyDressed = (
+    slotIdx: number,
+    slot: FlowImageAttempt,
+    b64: string,
+    mime: string,
+    outfitLabel: string,
+  ) => {
+    if (!flow) return;
+    const attempt: FlowImageAttempt = {
+      id: `i${Date.now()}`,
+      prompt: `${slot.prompt.replace(/ · wearing .*$/, "")} · wearing ${outfitLabel}`,
+      image: `data:${mime};base64,${b64}`,
+      createdAt: Date.now(),
+      engine: "gemini",
+    };
+    patchFlow(flow.id, (f) => {
+      const ids = [...(f.confirmedImgIds ?? [])];
+      const pos = ids.indexOf(slot.id);
+      if (pos >= 0) ids[pos] = attempt.id;
+      else ids.push(attempt.id);
+      // The dressed card inherits the slot's text/image mode (text is the
+      // transfer default — photoreal images trip the filter).
+      const textIds = new Set(f.textLookIds ?? []);
+      if (textIds.has(slot.id) || pos < 0) {
+        textIds.delete(slot.id);
+        textIds.add(attempt.id);
+      }
+      return {
+        imgAttempts: [...f.imgAttempts, attempt],
+        confirmedImgIds: ids,
+        confirmedImgId: undefined,
+        textLookIds: [...textIds],
+      };
+    });
+    // The outfit changed — distill a fresh identity for the new card.
+    autoDescribe(attempt, flow.id);
+    preview({
+      kind: "image",
+      src: attempt.image,
+      aspect: flow.aspect,
+      label: `dancer ${slotIdx + 1} · ${outfitLabel}`,
+    });
+  };
+
+  /** Outfit as an IMAGE (custom card / upload) → /api/dress composites it
+   *  onto the slot's person, same face/pose (~$0.04, Gemini image). */
+  const dressSlotWithImage = async (slotIdx: number, outfitImg: string, label: string) => {
+    const slot = activeCast[slotIdx];
+    if (!flow || !slot || dressBusy != null) return;
+    setDressBusy(slotIdx);
+    setError(null);
+    try {
+      const r = await fetch("/api/dress", {
+        method: "POST",
+        headers: headers("GEMINI_API_KEY"),
+        body: JSON.stringify({
+          character: splitDataUrl(slot.image),
+          outfit: splitDataUrl(outfitImg),
+        }),
+      });
+      const b = await r.json();
+      if (!r.ok) throw new Error(b.error ?? "Outfit swap failed");
+      applyDressed(slotIdx, slot, b.base64, b.mimeType, label);
+      setOutfitFor(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Outfit swap failed");
+    } finally {
+      setDressBusy(null);
+    }
+  };
+
+  /** Outfit as TEXT (a FASHION preset) → Gemini edit on the slot's card. */
+  const dressSlotWithText = async (slotIdx: number, desc: string, label: string) => {
+    const slot = activeCast[slotIdx];
+    if (!flow || !slot || dressBusy != null) return;
+    setDressBusy(slotIdx);
+    setError(null);
+    try {
+      const r = await fetch("/api/image", {
+        method: "POST",
+        headers: headers("GEMINI_API_KEY"),
+        body: JSON.stringify({
+          prompt: `Same person — identical face, hair, expression, pose, framing and background — now wearing ${desc}. Photorealistic, natural fabric drape, lighting unchanged.`,
+          engine: "gemini",
+          aspect: flow.aspect,
+          image: splitDataUrl(slot.image),
+        }),
+      });
+      const b = await r.json();
+      if (!r.ok) throw new Error(b.error ?? "Outfit swap failed");
+      applyDressed(slotIdx, slot, b.base64, b.mimeType, label);
+      setOutfitFor(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Outfit swap failed");
+    } finally {
+      setDressBusy(null);
+    }
+  };
+
+  /** Which MUSIC FROM candidate is playing right now (audition). */
+  const [auditionUrl, setAuditionUrl] = useState<string | null>(null);
+  /** Identity-text editor: which look id is open + its draft. */
+  const [idEditFor, setIdEditFor] = useState<string | null>(null);
+  const [idDraft, setIdDraft] = useState("");
+  const [describeBusy, setDescribeBusy] = useState(false);
+
+  /** Cards currently being auto-described (chip shows ✨). */
+  const [describingIds, setDescribingIds] = useState<Set<string>>(new Set());
+
+  /** AUTO identity distillation — fires on every transfer confirm (owner
+   *  call: always process, no manual step): Gemini reads the CARD and the
+   *  face-first description becomes the text that rides. Never clobbers a
+   *  user-edited override; failures just leave the old prompt riding. */
+  const autoDescribe = (a: FlowImageAttempt, flowId: string) => {
+    if (flows.find((f) => f.id === flowId)?.textOverrides?.[a.id]) return;
+    setDescribingIds((s) => new Set(s).add(a.id));
+    void (async () => {
+      try {
+        const r = await fetch("/api/describe", {
+          method: "POST",
+          headers: headers("GEMINI_API_KEY"),
+          body: JSON.stringify({ image: splitDataUrl(a.image) }),
+        });
+        const b = await r.json();
+        if (r.ok && typeof b.text === "string" && b.text) {
+          patchFlow(flowId, (f) =>
+            f.textOverrides?.[a.id]
+              ? {}
+              : { textOverrides: { ...(f.textOverrides ?? {}), [a.id]: b.text } },
+          );
+        }
+      } catch {
+        /* the raw prompt rides, as before */
+      } finally {
+        setDescribingIds((s) => {
+          const n = new Set(s);
+          n.delete(a.id);
+          return n;
+        });
+      }
+    })();
+  };
+
+  /** ✨ From card — Gemini describes the CARD image (face-first), the
+   *  closest text to what the user actually picked (~free). */
+  const describeCard = async (a: FlowImageAttempt) => {
+    if (describeBusy) return;
+    setDescribeBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/describe", {
+        method: "POST",
+        headers: headers("GEMINI_API_KEY"),
+        body: JSON.stringify({ image: splitDataUrl(a.image) }),
+      });
+      const b = await r.json();
+      if (!r.ok || typeof b.text !== "string") {
+        throw new Error(b.error ?? "describe failed");
+      }
+      setIdDraft(b.text);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Describe failed");
+    } finally {
+      setDescribeBusy(false);
+    }
+  };
+  /** Media-src auth — <video>/<audio> can't send headers, so the password
+   *  rides as ?pw= (the app's existing URL convention for the owner's own
+   *  secret). */
+  const withPw = (url: string): string => {
+    const pw = storedPw();
+    return pw
+      ? `${url}${url.includes("?") ? "&" : "?"}pw=${encodeURIComponent(pw)}`
+      : url;
+  };
+
+  /** Retro-mux: lay the reference soundtrack over an ALREADY-finished take
+   *  (takes rendered before the audio source was known/linked). The muxed
+   *  file replaces the take + its Library entry. */
+  const [muxBusyId, setMuxBusyId] = useState<string | null>(null);
+  const muxTake = async (a: FlowMotionAttempt) => {
+    if (!flow || muxBusyId || !a.videoUrl || !isLocalVideoUrl(a.videoUrl)) return;
+    const audioSrc = audioSrcOf(flow.refClip);
+    if (!audioSrc) return;
+    setMuxBusyId(a.id);
+    setError(null);
+    try {
+      const pw = storedPw();
+      const mr = await fetch("/api/grab", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(pw ? { "x-app-password": pw } : {}),
+        },
+        body: JSON.stringify({ action: "mux-audio", video: a.videoUrl, audio: audioSrc }),
+      });
+      const mb = await mr.json();
+      if (!mr.ok || typeof mb.url !== "string") {
+        throw new Error(mb.error ?? "audio mux failed");
+      }
+      patchAttempt(flow.id, a.id, { videoUrl: mb.url });
+      try {
+        const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
+        const hit = gallery.find((c) => c.jobId === a.jobId);
+        if (hit) {
+          hit.videoUrl = mb.url;
+          store.set(GALLERY_KEY, JSON.stringify(gallery));
+        }
+      } catch {
+        /* library share is best-effort */
+      }
+      preview({
+        kind: "video",
+        src: mb.url,
+        aspect: a.aspectRatio,
+        label: `${a.modelLabel} · take ♪`,
+        compareSrc: flow.refClip?.url,
+        compareLabel: flow.refClip?.label,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Audio mux failed");
+    } finally {
+      setMuxBusyId(null);
+    }
+  };
+
+  /** Save a user scene card into hooklab.customAssets.settings (this tab
+   *  owns the store cache — safe) and surface it in the carousel. */
+  const saveCustomScene = () => {
+    if (!sceneName.trim() || (!sceneText.trim() && !sceneImg)) return;
+    try {
+      const cur = JSON.parse(store.get(ASSETS_KEY) ?? "{}");
+      const entry = {
+        id: `cs${Date.now()}`,
+        label: sceneName.trim().slice(0, 40),
+        prompt: sceneText.trim() || sceneName.trim(),
+        image: sceneImg ?? undefined,
+      };
+      store.set(
+        ASSETS_KEY,
+        JSON.stringify({
+          characters: Array.isArray(cur.characters) ? cur.characters : [],
+          settings: [...(Array.isArray(cur.settings) ? cur.settings : []), entry],
+          fashion: Array.isArray(cur.fashion) ? cur.fashion : [],
+        }),
+      );
+      setCustomScenes((cs) => [...cs, customToScene(entry)]);
+      if (flow) {
+        patchFlow(flow.id, {
+          motionPrompt: applyDepthScene(flow.motionPrompt, customToScene(entry)),
+        });
+      }
+      setSceneFormOpen(false);
+      setSceneName("");
+      setSceneText("");
+      setSceneImg(null);
+    } catch {
+      setError("Couldn't save the scene");
+    }
+  };
+
   /** Click a thumbnail: look flows single-select; transfer flows toggle
    *  membership (one identity per person in the reference clip). */
   const toggleConfirm = (id: string) => {
     if (!flow) return;
     const cur =
       flow.confirmedImgIds ?? (flow.confirmedImgId ? [flow.confirmedImgId] : []);
+    const adding = isTransfer && !cur.includes(id);
     const next = isTransfer
       ? cur.includes(id)
         ? cur.filter((x) => x !== id)
@@ -554,7 +1201,23 @@ export function FlowPanel({
       : cur.length === 1 && cur[0] === id
         ? []
         : [id];
-    patchFlow(flow.id, { confirmedImgIds: next, confirmedImgId: undefined });
+    patchFlow(flow.id, (f) => ({
+      confirmedImgIds: next,
+      confirmedImgId: undefined,
+      // Transfer identities default to TEXT — photoreal reference_images
+      // trip Seedance's filter even beside a depth video (verified live
+      // 2026-07-18). The ↳ chip flips back for stylized looks.
+      textLookIds: adding
+        ? [...new Set([...(f.textLookIds ?? []), id])]
+        : f.textLookIds,
+    }));
+    // A confirm fills a slot — collapse the prompt form back down, and
+    // distill the identity text from the card automatically.
+    if (adding) {
+      setGenOpen(false);
+      const a = flow.imgAttempts.find((x) => x.id === id);
+      if (a) autoDescribe(a, flow.id);
+    }
     const shown = flow.imgAttempts.find(
       (a) => a.id === (next[next.length - 1] ?? id),
     );
@@ -651,6 +1314,26 @@ export function FlowPanel({
       } catch {
         /* empty library */
       }
+      // Custom scene/outfit cards (shared with the chat starters).
+      try {
+        const assets = JSON.parse(store.get(ASSETS_KEY) ?? "{}") as {
+          settings?: { id: string; label: string; prompt?: string; image?: string }[];
+          fashion?: { id: string; label: string; image?: string }[];
+        };
+        setCustomScenes(
+          (assets.settings ?? [])
+            .filter((s) => s?.id && s.label)
+            .map(customToScene),
+        );
+        setCustomFashion(
+          (assets.fashion ?? []).filter(
+            (f): f is { id: string; label: string; image: string } =>
+              Boolean(f?.id && f.label && f.image),
+          ),
+        );
+      } catch {
+        /* no custom assets */
+      }
       setHydrated(true);
     })();
   }, []);
@@ -660,6 +1343,82 @@ export function FlowPanel({
     if (!hydrated) return;
     store.set(FLOWS_KEY, JSON.stringify(flows));
   }, [flows, hydrated]);
+
+  /* Adopt a depth clip parked by the /depth tool (plain localStorage — the
+   * tool tab must never write the store, its full-cache flush would clobber
+   * ours). THIS tab owns the cache, so the Library entry is written here;
+   * if the pointer names one of our transfer flows, it becomes that flow's
+   * MOVES reference directly. Runs on mount + every window focus (the tool
+   * lives in another tab, so focus is exactly the "I'm back" moment). */
+  useEffect(() => {
+    if (!hydrated) return;
+    const adopt = () => {
+      try {
+        const raw = localStorage.getItem(PENDING_DEPTH_KEY);
+        if (!raw) return;
+        localStorage.removeItem(PENDING_DEPTH_KEY);
+        const p = JSON.parse(raw) as {
+          jobId?: string;
+          url?: string;
+          label?: string;
+          flowId?: string | null;
+          audioUrl?: string;
+          aspect?: AspectRatio;
+          durationSeconds?: number;
+        };
+        if (!p?.jobId || !p.url) return;
+        const label = p.label ?? "depth reference";
+        const clip: Clip = {
+          jobId: p.jobId,
+          sessionId: sessionId || undefined,
+          provider: "grab",
+          prompt: label,
+          note: `Reference · ${label}`,
+          variantLabel: "Depth ref",
+          createdAt: Date.now(),
+          status: "done",
+          aspectRatio: p.aspect ?? "9:16",
+          durationSeconds: p.durationSeconds ?? 0,
+          resolution: "720p",
+          videoUrl: p.url,
+          costUsd: 0,
+        };
+        try {
+          const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
+          if (!gallery.some((c) => c.jobId === clip.jobId)) {
+            store.set(GALLERY_KEY, JSON.stringify([clip, ...gallery]));
+          }
+        } catch {
+          /* library share is best-effort */
+        }
+        setLibClips((cs) =>
+          cs.some((c) => c.jobId === clip.jobId) ? cs : [clip, ...cs],
+        );
+        if (p.flowId) {
+          setFlows((fs) =>
+            fs.map((f) =>
+              f.id === p.flowId && f.kind === "transfer"
+                ? {
+                    ...f,
+                    refClip: {
+                      url: p.url!,
+                      label: label.slice(0, 60),
+                      // The original's url — the depth clip's soundtrack.
+                      audioUrl: p.audioUrl,
+                    },
+                  }
+                : f,
+            ),
+          );
+        }
+      } catch {
+        /* a malformed pointer is not worth a fault */
+      }
+    };
+    adopt();
+    window.addEventListener("focus", adopt);
+    return () => window.removeEventListener("focus", adopt);
+  }, [hydrated, sessionId]);
 
   /* Tell the studio what work happened in this session's flows — attempt
    *  prompts only (typing alone doesn't count as work), oldest first, so
@@ -783,6 +1542,7 @@ export function FlowPanel({
         prompt: flow.imgPrompt,
         image: `data:${b.mimeType};base64,${b.base64}`,
         createdAt: Date.now(),
+        engine: editFrom ? "gemini" : imgEngine.key,
       };
       patchFlow(flow.id, (f) => ({
         imgAttempts: [...f.imgAttempts, attempt],
@@ -1003,11 +1763,20 @@ export function FlowPanel({
     // description (prepended below) — the real-person-filter workaround.
     const stillImage = confirmedImg ? splitDataUrl(confirmedImg.image) : undefined;
     const textIds = new Set(flow.textLookIds ?? []);
-    const imageLooks = confirmedImgs.filter((a) => !textIds.has(a.id));
+    // Only the ACTIVE cast rides (first castCount confirms, in order) —
+    // benched looks are kept in state but never sent.
+    const imageLooks = activeCast.filter((a) => !textIds.has(a.id));
     const refImages = imageLooks.map((a) => splitDataUrl(a.image));
-    const textChars = confirmedImgs
+    const textChars = activeCast
       .filter((a) => textIds.has(a.id))
-      .map((a) => a.prompt.trim())
+      .map((a) =>
+        (
+          flow.textOverrides?.[a.id] ??
+          // "(uploaded …)" / "(shared …)" markers are not identities —
+          // ride nothing until the auto-describe lands.
+          (/^\((uploaded|shared)/.test(a.prompt.trim()) ? "" : a.prompt)
+        ).trim(),
+      )
       .filter(Boolean);
 
     // Transfer flows carry the MOVES clip as a Library pointer — fetch and
@@ -1054,14 +1823,183 @@ export function FlowPanel({
           setBarHidden(false);
           return;
         }
+        /* ── DEPTH PASS (default ON) — convert the reference to a depth
+           video before the render: pure motion, zero identity, passes
+           Seedance's real-person filter. Cached per reference (depthClip),
+           so iterating motion never reconverts; switching the reference
+           invalidates the cache. Skipped when the picked clip is already
+           a depth conversion or the toggle is off. ── */
+        let sendBlob = blob;
+        let sendMime = "video/mp4";
+        const wantDepth =
+          flow.depthRef !== false && !/^depth\b/i.test(flow.refClip.label);
+        // "adaptive-*" invalidates pre-adaptive caches once (the algorithm
+        // changed under the same detail knob).
+        const depthMode = flow.depthDetail !== false ? "adaptive-1.2" : "plain";
+        if (wantDepth) {
+          let reused = false;
+          if (
+            flow.depthClip &&
+            flow.depthClip.srcUrl === flow.refClip.url &&
+            (flow.depthClip.mode ?? "plain") === depthMode
+          ) {
+            const dr = await fetch(flow.depthClip.url, {
+              headers: pw ? { "x-app-password": pw } : {},
+            }).catch(() => null);
+            if (dr?.ok) {
+              const cached = await dr.blob();
+              // A depth pass converted before the floor was known (432×768
+              // era) must be REMADE at full quality, not reused.
+              const px = await probeVideoPx(cached);
+              if (px >= R2V_PX_FLOOR) {
+                sendBlob = cached;
+                sendMime = cached.type || "video/mp4";
+                reused = true;
+                setDepthNote("⬗ depth pass already cached for this reference — reusing it, no reconvert");
+              } else {
+                setDepthNote("⬗ cached depth pass is below Seedance's size floor — reconverting at a higher resolution…");
+              }
+            }
+            // vault cleared / too small → fall through and reconvert
+          }
+          if (!reused) {
+            try {
+              setDepthNote(
+                "⬗ DEPTH PASS running — converting the reference to pure motion in this browser ($0)…",
+              );
+              const { extractDepthVideo } = await import("@/lib/depth-extract");
+              let depthPct = 0;
+              let lastFramePush = 0;
+              const res = await extractDepthVideo(blob, {
+                // ModelArk r2v rejects references under 409,600 px — aim
+                // comfortably above (576×1024 for 9:16).
+                maxSide: 1024,
+                minPixels: 480_000,
+                // +EXPRESSION (default): local-contrast boost so faces and
+                // hands survive the depth flattening.
+                detail: flow.depthDetail !== false ? 1.2 : 0,
+                onProgress: (p) => {
+                  depthPct = p.pct;
+                  setDepthNote(
+                    `⬗ DEPTH PASS ${p.pct}% — ${p.note} · then ${m.short} gets called`,
+                  );
+                },
+                // Live depth frames in the shared OUTPUT frame — the user
+                // SEES the depth pass running before the render submits.
+                onFrame: (canvas) => {
+                  const now = Date.now();
+                  if (now - lastFramePush < 400) return;
+                  lastFramePush = now;
+                  preview({
+                    kind: "image",
+                    src: canvas.toDataURL("image/jpeg", 0.7),
+                    aspect: flow.aspect,
+                    label: `DEPTH PASS · ${depthPct}% — extracting motion, identity stays out`,
+                  });
+                },
+              });
+              if (!res.blob) throw new Error("depth pass returned nothing");
+              sendBlob = res.blob;
+              sendMime = `video/${res.container}`;
+              // Vault + Library + cache — best-effort: if the vault is
+              // unavailable (hosted), the in-memory depth still rides this
+              // render; it just can't be reused next take.
+              try {
+                const fd = new FormData();
+                fd.append(
+                  "file",
+                  new File([res.blob], `depth.${res.container}`, { type: sendMime }),
+                );
+                const vr = await fetch("/api/clips", {
+                  method: "POST",
+                  headers: pw ? { "x-app-password": pw } : {},
+                  body: fd,
+                });
+                const vb = await vr.json();
+                if (vr.ok) {
+                  const label = `depth · ${flow.refClip.label.replace(/ · .*$/, "").slice(0, 48)}`;
+                  const clip: Clip = {
+                    jobId: vb.name,
+                    sessionId: sessionId || undefined,
+                    provider: "grab",
+                    prompt: label,
+                    note: `Reference · ${label}`,
+                    variantLabel: "Depth ref",
+                    createdAt: Date.now(),
+                    status: "done",
+                    aspectRatio: flow.aspect,
+                    durationSeconds: Math.round(dur),
+                    resolution: flow.resolution,
+                    videoUrl: vb.url,
+                    costUsd: 0,
+                  };
+                  try {
+                    const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
+                    store.set(GALLERY_KEY, JSON.stringify([clip, ...gallery]));
+                  } catch {
+                    /* library share is best-effort */
+                  }
+                  setLibClips((cs) => [clip, ...cs]);
+                  patchFlow(flow.id, {
+                    depthClip: {
+                      srcUrl: flow.refClip.url,
+                      url: vb.url,
+                      label,
+                      mode: depthMode,
+                    },
+                  });
+                }
+              } catch {
+                /* vault unavailable — proceed with the in-memory depth */
+              }
+            } catch (e) {
+              setDepthNote(null);
+              setError(
+                `The depth pass failed — ${e instanceof Error ? e.message : "processing error"}. ` +
+                  "Retry, or switch DEPTH REF off on this step to send the raw clip as-is.",
+              );
+              preview(lastShown.current);
+              firingRef.current = false;
+              setBarHidden(false);
+              return;
+            }
+          }
+        }
+        // UNIVERSAL floor guard — whatever is about to ride (fresh depth,
+        // cached depth, a hand-picked "depth · …" Library clip, a raw
+        // clip with DEPTH REF off) must clear ModelArk's r2v pixel floor.
+        // Below it: a fast pure-resize re-encode (no AI). This is what
+        // catches the already-depth reference the depth pass skips.
+        try {
+          const px = await probeVideoPx(sendBlob);
+          if (px > 0 && px < R2V_PX_FLOOR) {
+            setDepthNote("⤢ reference is under Seedance's size floor — upscaling (no AI, just a resize)…");
+            const { resizeVideoToFloor } = await import("@/lib/depth-extract");
+            const up = await resizeVideoToFloor(sendBlob, 480_000, 30, (p) =>
+              setDepthNote(`⤢ upscaling ${p.pct}% — ${p.note} · then ${m.short} gets called`),
+            );
+            sendBlob = up.blob;
+            sendMime = `video/${up.container}`;
+          }
+        } catch (e) {
+          setDepthNote(null);
+          setError(
+            `Couldn't upscale the reference to Seedance's minimum size — ${e instanceof Error ? e.message : "resize error"}.`,
+          );
+          preview(lastShown.current);
+          firingRef.current = false;
+          setBarHidden(false);
+          return;
+        }
         const b64 = await new Promise<string>((res, rej) => {
           const fr = new FileReader();
           fr.onload = () => res(String(fr.result).split(",")[1] ?? "");
           fr.onerror = rej;
-          fr.readAsDataURL(blob);
+          fr.readAsDataURL(sendBlob);
         });
-        drivingVideo = { base64: b64, mimeType: "video/mp4" };
+        drivingVideo = { base64: b64, mimeType: sendMime };
       } catch {
+        setDepthNote(null);
         setError(
           "Couldn't load the MOVES reference — the saved file may have been cleared. Pick or upload it again.",
         );
@@ -1070,6 +2008,11 @@ export function FlowPanel({
         setBarHidden(false);
         return;
       }
+    }
+    if (flow.kind === "transfer") {
+      setDepthNote(
+        `✓ reference ready → calling ${m.short} now — the render usually takes 60–180s, hang tight`,
+      );
     }
     preview({
       kind: "busy",
@@ -1092,7 +2035,14 @@ export function FlowPanel({
                 ? `Reference person ${i + 1}: ${d}`
                 : `Character: ${d}`,
             )
-            .join("\n")}\n${cleanPrompt}`
+            .join("\n")}\n${
+            // Text identities give the model nothing to anchor faces to —
+            // without this line it happily reuses ONE face for everyone
+            // (verified on the owner's two-dancer take).
+            textChars.length > 1
+              ? "The reference people are DIFFERENT individuals — give each one a clearly distinct face, hairstyle and features; never reuse the same face twice.\n"
+              : ""
+          }${cleanPrompt}`
         : cleanPrompt;
       const r = await fetch("/api/generate", {
         method: "POST",
@@ -1115,11 +2065,13 @@ export function FlowPanel({
       });
       const b = await r.json();
       if (!r.ok) {
+        setDepthNote(null);
         setError(humanizeError(b.error ?? "Submit failed"));
         preview(lastShown.current); // un-stick the busy frame
         setBarHidden(false); // failed — let them retry
         return;
       }
+      setDepthNote(null); // submitted — the pending-attempt line takes over
       const attempt: FlowMotionAttempt = {
         id: `m${Date.now()}`,
         prompt: flow.motionPrompt,
@@ -1145,6 +2097,7 @@ export function FlowPanel({
       setBarHidden(true); // fired — hide the bar until an input changes
       setMotionEditing(false); // collapse the prompt back to read-only
     } catch {
+      setDepthNote(null);
       setError("Network error — try again");
       preview(lastShown.current);
       setBarHidden(false);
@@ -1190,13 +2143,41 @@ export function FlowPanel({
                 b.videoUrl,
                 headers(),
               );
-              const url = local ?? b.videoUrl;
+              let url = local ?? b.videoUrl;
+              // REF AUDIO (default on): the reference clip's soundtrack
+              // drops onto the finished take — the choreography tracks the
+              // ref 1:1, so it lands on beat. Depth-labeled refs are
+              // silent (nothing to lay); any failure keeps the take as-is.
+              const audioSrc = audioSrcOf(f.refClip);
+              if (f.kind === "transfer" && f.keepAudio !== false && local && audioSrc) {
+                try {
+                  const pw = storedPw();
+                  const mr = await fetch("/api/grab", {
+                    method: "POST",
+                    headers: {
+                      "content-type": "application/json",
+                      ...(pw ? { "x-app-password": pw } : {}),
+                    },
+                    body: JSON.stringify({
+                      action: "mux-audio",
+                      video: local,
+                      audio: audioSrc,
+                    }),
+                  });
+                  const mb = await mr.json();
+                  if (mr.ok && typeof mb.url === "string") url = mb.url;
+                } catch {
+                  /* silent take is still a take */
+                }
+              }
               patchAttempt(f.id, a.id, { status: "done", videoUrl: url });
               preview({
                 kind: "video",
                 src: url,
                 aspect: a.aspectRatio,
                 label: `${a.modelLabel} · done`,
+                compareSrc: f.kind === "transfer" ? f.refClip?.url : undefined,
+                compareLabel: f.refClip?.label,
               });
               try {
                 const gallery = JSON.parse(
@@ -1376,7 +2357,7 @@ export function FlowPanel({
               STAGE 1 · MOVES — THE REFERENCE {flow.refClip ? "· SET ✓" : ""}
             </span>
             <span className="flow-engine mono">
-              tip: depth-render references carry pure motion, zero identity bleed
+              any clip works — ANIMATE auto-converts it to a depth pass (pure motion, zero identity)
             </span>
           </div>
           <p className="flow-locked-hint">
@@ -1384,18 +2365,17 @@ export function FlowPanel({
               ? "Click another to switch, click the selected one to replay it in the frame."
               : "Pick the clip whose motion gets performed — ≤15s (Seedance's reference cap). GRAB from the Library (⤓ pulls YouTube/X with a m:ss trim), or upload a local file."}
           </p>
-          {/* candidates STAY visible after picking — the chosen one
-              highlights (▶ + sel), so with many similar references it's
-              always obvious which is live */}
-          <div className="chips-row" style={{ flexWrap: "wrap", paddingTop: 8 }}>
+          {/* candidates as a thumbnail CAROUSEL (same kit as MUSIC FROM) —
+              first frames beat filenames. Cards STAY after picking; the
+              chosen one badges ▶ SET so it's always obvious which is live. */}
+          <div className="flow-scene-carousel" style={{ paddingTop: 8 }}>
             {(() => {
-              // Top 6, but the selected clip always stays in view even if
-              // it has scrolled out of the recency window.
-              const shown = libClips.slice(0, 6);
+              // Recency window, but the selected clip always stays in view.
+              const shown = libClips.slice(0, 10);
               const sel = flow.refClip
                 ? libClips.find((c) => c.videoUrl === flow.refClip!.url)
                 : null;
-              return sel && !shown.includes(sel) ? [sel, ...shown.slice(0, 5)] : shown;
+              return sel && !shown.includes(sel) ? [sel, ...shown.slice(0, 9)] : shown;
             })().map((c) => {
               const raw = (c.note ?? c.prompt ?? c.jobId) || c.jobId;
               // Every Library note starts "Reference · " — drop the shared
@@ -1405,7 +2385,7 @@ export function FlowPanel({
               return (
                 <button
                   key={c.jobId}
-                  className={`spec-chip ${isSel ? "sel" : ""}`}
+                  className={`flow-scene-card flow-audio-card ${isSel ? "sel" : ""}`}
                   title={raw}
                   onClick={() => {
                     if (!isSel) {
@@ -1421,18 +2401,45 @@ export function FlowPanel({
                     });
                   }}
                 >
-                  {isSel ? "▶ " : ""}
-                  {label.slice(0, 34)}
+                  <video src={withPw(c.videoUrl!)} muted playsInline preload="metadata" />
+                  {isSel && <span className="flow-thumb-badge">▶ SET</span>}
+                  <span className="flow-cast-tag mono">{label.slice(0, 14)}</span>
                 </button>
               );
             })}
             <button
-              className="spec-chip"
+              className="flow-scene-card textonly"
               disabled={uploadBusy}
               onClick={() => refFileRef.current?.click()}
             >
-              {uploadBusy ? "UPLOADING…" : "↥ Upload a video"}
+              <span className="flow-scene-desc" style={{ fontSize: 18 }}>
+                {uploadBusy ? "…" : "↥"}
+              </span>
+              <span className="flow-cast-tag mono">
+                {uploadBusy ? "UPLOADING" : "Upload"}
+              </span>
             </button>
+            {/* /depth converts a real-person clip into a pure-motion depth
+                reference (in-browser, $0) — the way past Seedance's
+                real-person filter. Saving there lands back HERE on focus. */}
+            <a
+              className="flow-scene-card textonly"
+              href={
+                flow.refClip
+                  ? `/depth?src=${encodeURIComponent(flow.refClip.url)}&label=${encodeURIComponent(flow.refClip.label)}&flow=${encodeURIComponent(flow.id)}`
+                  : `/depth?flow=${encodeURIComponent(flow.id)}`
+              }
+              target="_blank"
+              rel="noreferrer"
+              title={
+                flow.refClip
+                  ? "Preview/tune the depth pass on the selected reference (ANIMATE already runs it automatically — this is the manual tool with style knobs)"
+                  : "Open the depth tool — preview any clip as a pure-motion depth reference (ANIMATE runs the pass automatically)"
+              }
+            >
+              <span className="flow-scene-desc" style={{ fontSize: 18 }}>⬗</span>
+              <span className="flow-cast-tag mono">Depth tool</span>
+            </a>
             <input
               ref={refFileRef}
               type="file"
@@ -1492,16 +2499,133 @@ export function FlowPanel({
             {isTransfer ? "STAGE 2 · IMAGE (OPTIONAL)" : "STAGE 1 · STILL"} — THE LOOK{" "}
             {confirmedImgs.length
               ? isTransfer
-                ? `· ${confirmedImgs.length} SELECTED ✓`
+                ? `· CAST ${activeCast.length} ✓`
                 : "· CONFIRMED ✓"
               : ""}
           </span>
           {isTransfer && (
             <span className="flow-engine mono">
-              OPTIONAL — or describe the character in the prompt (no image → no real-person filter). A photoreal look gets blocked; a stylized one (anime/3DCG) works.
+              identities ride as TEXT by default (photoreal images trip the filter — verified). Seedream cards preview the render best; the ↳ chip can send a stylized look as an image.
             </span>
           )}
         </div>
+
+        {/* CAST — slots GROW with each picked look, one dancer per look
+            (max 3). A card carries face + outfit TOGETHER; the 👕 button
+            swaps the garment on that dancer while the face stays. */}
+        {isTransfer && (
+          <div className="flow-cast">
+            <div className="flow-cast-head">
+              <span className="label">CAST · {activeCast.length || "0"} DANCER{activeCast.length === 1 ? "" : "S"}</span>
+              <span className="flow-engine mono">
+                pick one look per dancer in the clip — slot order = &quot;first / second reference person&quot; in the prompt
+              </span>
+            </div>
+            <div className="flow-cast-row">
+              {activeCast.map((a, i) => (
+                <div key={a.id} className={`flow-cast-slot ${dressBusy === i ? "busy" : ""}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={a.image} alt="" onClick={() => toggleConfirm(a.id)} title="Click to remove this dancer" />
+                  {dressBusy === i && <span className="flow-cast-busy mono">DRESSING…</span>}
+                  <button
+                    className="flow-cast-outfit"
+                    title="Swap this dancer's outfit — same face, new garment (~$0.04)"
+                    disabled={dressBusy != null}
+                    onClick={() => setOutfitFor(outfitFor === i ? null : i)}
+                  >
+                    👕
+                  </button>
+                  <span className="flow-cast-tag mono">DANCER {i + 1}</span>
+                </div>
+              ))}
+              {activeCast.length < 3 && (
+                <div className="flow-cast-slot empty">
+                  <span className="flow-cast-tag mono">
+                    DANCER {activeCast.length + 1}
+                  </span>
+                  <span className="flow-cast-hint">
+                    {activeCast.length === 0 ? "pick a look ↓" : "optional — pick ↓"}
+                  </span>
+                </div>
+              )}
+              {benchedCast.length > 0 && (
+                <span className="flow-engine mono flow-cast-bench">
+                  +{benchedCast.length} benched — 3 dancers max, the first 3
+                  ride (unconfirm one to swap)
+                </span>
+              )}
+            </div>
+
+            {/* OUTFIT strip — garment sources for the armed slot: custom
+                outfit cards (image → /api/dress) + preset garments (text →
+                Gemini edit) + a direct upload. */}
+            {outfitFor != null && activeCast[outfitFor] && (
+              <div className="flow-outfit">
+                <span className="label">
+                  OUTFIT → DANCER {outfitFor + 1} · face stays, garment swaps
+                  (~$0.04)
+                </span>
+                <div className="chips-row" style={{ flexWrap: "wrap" }}>
+                  {customFashion.map((f) => (
+                    <button
+                      key={f.id}
+                      className="flow-outfit-card"
+                      title={`${f.label} — your outfit card`}
+                      disabled={dressBusy != null}
+                      onClick={() => void dressSlotWithImage(outfitFor, f.image, f.label)}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={f.image} alt="" />
+                      <span className="flow-cast-tag mono">{f.label.slice(0, 12)}</span>
+                    </button>
+                  ))}
+                  {FASHION.map((f) => (
+                    <button
+                      key={f.id}
+                      className="spec-chip"
+                      title={garmentDesc(f.prompt)}
+                      disabled={dressBusy != null}
+                      onClick={() =>
+                        void dressSlotWithText(outfitFor, garmentDesc(f.prompt), f.label)
+                      }
+                    >
+                      {f.gender === "She" ? "♀" : "♂"} {f.label}
+                    </button>
+                  ))}
+                  <button
+                    className="spec-chip"
+                    disabled={dressBusy != null}
+                    onClick={() => outfitFileRef.current?.click()}
+                  >
+                    ⤒ Upload outfit
+                  </button>
+                  <input
+                    ref={outfitFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!f || outfitFor == null) return;
+                      const fr = new FileReader();
+                      fr.onload = () =>
+                        void dressSlotWithImage(
+                          outfitFor,
+                          String(fr.result),
+                          f.name.replace(/\.[^.]+$/, "").slice(0, 24),
+                        );
+                      fr.readAsDataURL(f);
+                    }}
+                  />
+                  <button className="link-btn" onClick={() => setOutfitFor(null)}>
+                    ✕ close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* One carousel to PICK from: this flow's own generated looks
             (newest first) + looks reused from other flows/cards. A selected
@@ -1509,7 +2633,15 @@ export function FlowPanel({
             to vanish into the chip tray); clicking it again unselects. */}
         {(() => {
           const attemptImgs = new Set(flow.imgAttempts.map((a) => a.image));
+          // Transfer: Seedream-made cards lead (same family as the video
+          // model — the card predicts the render); others follow, badged.
           const pickAttempts = [...flow.imgAttempts].reverse();
+          if (isTransfer) {
+            pickAttempts.sort(
+              (a, b) =>
+                Number(b.engine === "seedream") - Number(a.engine === "seedream"),
+            );
+          }
           const pickShared = sharedLooks.filter((l) => !attemptImgs.has(l.image));
           if (!pickAttempts.length && !pickShared.length) return null;
           return (
@@ -1538,6 +2670,13 @@ export function FlowPanel({
                   {isSel && (
                     <span className="flow-thumb-badge">
                       ✓ {isTransfer ? "SELECTED" : "CONFIRMED"}
+                    </span>
+                  )}
+                  {/* Non-Seedream cards in a transfer flow: honest note —
+                      the text identity may render differently on Seedance. */}
+                  {isTransfer && a.engine && a.engine !== "seedream" && (
+                    <span className="flow-thumb-engine mono">
+                      {a.engine.toUpperCase()}
                     </span>
                   )}
                   <span
@@ -1580,9 +2719,11 @@ export function FlowPanel({
           <div className="flow-selected-chips">
             {confirmedImgs.map((a, n) => {
               const hasText =
-                a.prompt.trim().length >= 12 &&
-                !/^\((uploaded|shared)/.test(a.prompt.trim());
+                Boolean(flow.textOverrides?.[a.id]) ||
+                (a.prompt.trim().length >= 12 &&
+                  !/^\((uploaded|shared)/.test(a.prompt.trim()));
               const asText = (flow.textLookIds ?? []).includes(a.id);
+              const distilling = describingIds.has(a.id);
               return (
                 <span key={a.id} className={`flow-sel-chip ${asText ? "text-mode" : ""}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1596,12 +2737,31 @@ export function FlowPanel({
                       className="flow-sel-mode"
                       title={
                         asText
-                          ? "Sent as TEXT (this look's prompt). Click to send the IMAGE instead."
-                          : "Sent as the IMAGE. Click to send its PROMPT as text (avoids Seedance's real-person filter)."
+                          ? "Sent as TEXT (this look's identity description). Click to send the IMAGE instead."
+                          : "Sent as the IMAGE. Click to send its identity as text (avoids Seedance's real-person filter)."
                       }
                       onClick={() => toggleLookText(a)}
                     >
                       {asText ? "↳ text" : "🖼 image"}
+                    </button>
+                  )}
+                  {/* Edit WHAT rides as the identity — auto-distilled from
+                      the card on confirm (✨ while running); this opens it
+                      for hand-tuning. */}
+                  {isTransfer && asText && (
+                    <button
+                      className="flow-sel-mode"
+                      title={
+                        distilling
+                          ? "Distilling the identity from the card (Gemini) — done in a few seconds"
+                          : "View/edit this dancer's identity text — the exact words that ride the render"
+                      }
+                      onClick={() => {
+                        setIdEditFor(idEditFor === a.id ? null : a.id);
+                        setIdDraft(flow.textOverrides?.[a.id] ?? a.prompt);
+                      }}
+                    >
+                      {distilling ? "✨ identity…" : "✎ identity"}
                     </button>
                   )}
                   <button
@@ -1617,7 +2777,75 @@ export function FlowPanel({
           </div>
         )}
 
-        {(!confirmedImg || editFrom || isTransfer) && (
+        {/* Identity-text editor — the text that ACTUALLY rides for this
+            dancer. ✨ From card distills a face-first description from the
+            picked image (Gemini, ~free): the strongest way to make two
+            dancers render as different people. */}
+        {isTransfer &&
+          idEditFor &&
+          (() => {
+            const a = confirmedImgs.find((x) => x.id === idEditFor);
+            if (!a) return null;
+            const slotNo = activeCast.findIndex((x) => x.id === a.id) + 1;
+            return (
+              <div className="flow-id-editor">
+                <span className="label">
+                  DANCER {slotNo || "?"} · IDENTITY TEXT — this exact text rides
+                  the render
+                </span>
+                <textarea
+                  rows={4}
+                  value={idDraft}
+                  onChange={(e) => setIdDraft(e.target.value)}
+                  placeholder="face shape, eyes, hair color/style, skin tone, vibe, outfit — distinctive features first"
+                />
+                <div className="chips-row">
+                  <button
+                    className="btn-ghost"
+                    disabled={describeBusy}
+                    onClick={() => void describeCard(a)}
+                    title="Gemini looks at the card and writes a face-first description (~free)"
+                  >
+                    {describeBusy ? "✨ describing…" : "✨ From card"}
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    disabled={!idDraft.trim()}
+                    onClick={() => {
+                      patchFlow(flow.id, (f) => ({
+                        textOverrides: {
+                          ...(f.textOverrides ?? {}),
+                          [a.id]: idDraft.trim(),
+                        },
+                      }));
+                      setIdEditFor(null);
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button className="link-btn" onClick={() => setIdEditFor(null)}>
+                    ✕ cancel
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+        {/* The generation form collapses once the cast has anyone — the
+            common path is pick-from-carousel; prompting is the explicit
+            side door (owner call 2026-07-18). */}
+        {isTransfer && activeCast.length > 0 && !genOpen && !editFrom && (
+          <button
+            className="link-btn"
+            style={{ marginBottom: 8 }}
+            onClick={() => setGenOpen(true)}
+          >
+            ✎ Generate a look with a prompt…
+          </button>
+        )}
+        {(isTransfer
+          ? activeCast.length === 0 || genOpen || Boolean(editFrom)
+          : !confirmedImg || Boolean(editFrom)) && (
           <>
             {editFrom && (
               <div className="chips-row" style={{ marginBottom: 8 }}>
@@ -1692,6 +2920,29 @@ export function FlowPanel({
                 >
                   🎲 Random
                 </button>
+                {/* Bake the MOTION step's scene into the look prompt — the
+                    identity card gets generated in the world (and light) it
+                    will dance in, which locks better than a studio portrait. */}
+                {activeScene && (
+                  <button
+                    className="link-btn"
+                    disabled={flow.imgPrompt.includes(activeScene.setting)}
+                    title={`Append the picked scene so the look is lit for it — ${activeScene.setting}`}
+                    onClick={() =>
+                      patchFlow(flow.id, {
+                        imgPrompt: `${
+                          flow.imgPrompt.trim()
+                            ? `${flow.imgPrompt.trim().replace(/[\s,.]+$/, "")}, `
+                            : ""
+                        }standing in ${activeScene.setting}, lit to match: ${activeScene.light}`,
+                      })
+                    }
+                  >
+                    {flow.imgPrompt.includes(activeScene.setting)
+                      ? `✓ scene matched`
+                      : `⛯ Match scene · ${activeScene.label}`}
+                  </button>
+                )}
                 <button
                   className="link-btn"
                   onClick={() => fileRef.current?.click()}
@@ -1749,18 +3000,225 @@ export function FlowPanel({
           </span>
           <span className="flow-engine mono">
             {isTransfer
-              ? "Seedance 2.0 family — reference ≤15s; Mini is cheapest"
+              ? "clip-reading models only — Seedance 2.0 today (i2v models can't take a video ref); ≤15s, Mini is cheapest"
               : "recommended: Kling 3.0 (most natural motion per dollar)"}
           </span>
         </div>
 
-        {isTransfer && confirmedImgs.length > 1 && (
+        {isTransfer && activeCast.length > 1 && (
           <p className="flow-locked-hint" style={{ marginBottom: 12 }}>
-            {confirmedImgs.length} looks selected — in the prompt, refer to
-            them in order (&quot;the first reference person… the second…&quot;)
-            and say where each one is (left / right) so the clip&apos;s
-            dancers map to the right identity.
+            {activeCast.length} dancers cast — in the prompt, refer to them
+            in slot order (&quot;the first reference person… the
+            second…&quot;) and say where each one is (left / right) so the
+            clip&apos;s dancers map to the right identity.
           </p>
+        )}
+
+        {/* DEPTH REF — the default transfer path: ANIMATE first converts the
+            MOVES clip to a depth pass (pure motion, zero identity → passes
+            the real-person filter), then submits the render with it. */}
+        {isTransfer && (
+          <div className="flow-depth-row">
+            {(() => {
+              const on = flow.depthRef !== false;
+              const alreadyDepth = flow.refClip
+                ? /^depth\b/i.test(flow.refClip.label)
+                : false;
+              const cached =
+                on &&
+                !alreadyDepth &&
+                flow.depthClip?.srcUrl === flow.refClip?.url;
+              return (
+                <>
+                  <span className={`zt ${on ? "on" : ""} ${alreadyDepth ? "disabled" : ""}`}>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={on}
+                      aria-label="Depth ref"
+                      className="zt-switch"
+                      disabled={alreadyDepth}
+                      onClick={() => {
+                        // The toggle drives the prompt DEFAULT: an untouched
+                        // template swaps to the other set's lead; user-typed
+                        // text is never eaten.
+                        const next = !on;
+                        patchFlow(flow.id, {
+                          depthRef: next,
+                          ...(isPresetPrompt(flow.motionPrompt)
+                            ? {
+                                motionPrompt: next
+                                  ? TRANSFER_PRESETS_DEPTH[0]
+                                  : TRANSFER_PRESETS_RAW[0],
+                              }
+                            : {}),
+                        });
+                      }}
+                    >
+                      <span className="zt-track">
+                        <span className="zt-knob" />
+                      </span>
+                      <span className="zt-label">DEPTH REF</span>
+                    </button>
+                  </span>
+                  <span className="flow-engine mono">
+                    {alreadyDepth
+                      ? "the picked reference is already a depth clip — sent as-is"
+                      : !on
+                        ? "raw clip rides as the reference — real people in it will trip Seedance's filter"
+                        : cached
+                          ? "depth pass cached for this reference — reused, no reconvert"
+                          : "ANIMATE runs a depth pass on the reference first (in-browser, $0), then renders"}
+                  </span>
+                  {/* +EXPRESSION — unsharp the depth so faces/hands read;
+                      the model can only follow what exists in the ref. */}
+                  {on && !alreadyDepth && (
+                    <span className={`zt ${flow.depthDetail !== false ? "on" : ""}`}>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={flow.depthDetail !== false}
+                        aria-label="Expression detail"
+                        className="zt-switch"
+                        title="Boost local contrast in the depth pass so head direction, expressions and fingers survive the flattening"
+                        onClick={() =>
+                          patchFlow(flow.id, {
+                            depthDetail: flow.depthDetail === false,
+                          })
+                        }
+                      >
+                        <span className="zt-track">
+                          <span className="zt-knob" />
+                        </span>
+                        <span className="zt-label">+EXPRESSION</span>
+                      </button>
+                    </span>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
+        {/* REF AUDIO — the reference clip's music lands back on the finished
+            take (the depth pass strips it; the choreography is 1:1 so it
+            drops on beat). Local ffmpeg, free. A depth-labeled reference is
+            silent — its ORIGINAL speaks for it (linked by /depth, or picked
+            right here). */}
+        {isTransfer && (
+          <div className="flow-depth-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+            {(() => {
+              const on = flow.keepAudio !== false;
+              const depthRefPicked = flow.refClip
+                ? /^depth\b/i.test(flow.refClip.label)
+                : false;
+              const audioSrc = audioSrcOf(flow.refClip);
+              const needsPick = depthRefPicked && !audioSrc;
+              return (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span className={`zt ${on ? "on" : ""} ${needsPick ? "disabled" : ""}`}>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={on}
+                        aria-label="Ref audio"
+                        className="zt-switch"
+                        disabled={needsPick}
+                        onClick={() => patchFlow(flow.id, { keepAudio: !on })}
+                      >
+                        <span className="zt-track">
+                          <span className="zt-knob" />
+                        </span>
+                        <span className="zt-label">REF AUDIO</span>
+                      </button>
+                    </span>
+                    <span className="flow-engine mono">
+                      {needsPick
+                        ? "the depth reference is silent — pick which clip's soundtrack rides ↓"
+                        : !on
+                          ? "the take keeps whatever audio the model generated"
+                          : depthRefPicked
+                            ? "music comes from the linked original clip — lands on beat (local ffmpeg, $0)"
+                            : "the reference's music lands on the finished take (local ffmpeg, $0) — beats match, the moves follow the same timeline"}
+                    </span>
+                  </div>
+                  {/* Soundtrack source picker — thumbnail carousel of
+                      non-depth Library clips: ▶ auditions the sound, the
+                      card itself picks it. */}
+                  {depthRefPicked && on && (
+                    <div className="flow-scenes">
+                      <span className="label">
+                        MUSIC FROM — ▶ to listen · tap the card to use it
+                      </span>
+                      <div className="flow-scene-carousel">
+                        {libClips
+                          .filter(
+                            (c) =>
+                              c.videoUrl &&
+                              !/depth/i.test(`${c.note ?? ""}${c.prompt ?? ""}`),
+                          )
+                          .slice(0, 12)
+                          .map((c) => {
+                            const raw = (c.note ?? c.prompt ?? c.jobId) || c.jobId;
+                            const label = raw.replace(/^Reference · /, "");
+                            const isSel = flow.refClip?.audioUrl === c.videoUrl;
+                            const listening = auditionUrl === c.videoUrl;
+                            return (
+                              <button
+                                key={c.jobId}
+                                className={`flow-scene-card flow-audio-card ${isSel ? "sel" : ""}`}
+                                title={raw}
+                                onClick={() =>
+                                  patchFlow(flow.id, {
+                                    refClip: flow.refClip
+                                      ? {
+                                          ...flow.refClip,
+                                          audioUrl: isSel ? undefined : c.videoUrl,
+                                        }
+                                      : flow.refClip,
+                                  })
+                                }
+                              >
+                                <video
+                                  src={withPw(c.videoUrl!)}
+                                  muted
+                                  playsInline
+                                  preload="metadata"
+                                />
+                                <span
+                                  role="button"
+                                  className={`flow-audio-listen ${listening ? "live" : ""}`}
+                                  title={listening ? "Stop listening" : "Listen to this clip's sound"}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAuditionUrl(listening ? null : c.videoUrl!);
+                                  }}
+                                >
+                                  {listening ? "◼" : "▶"}
+                                </span>
+                                {isSel && (
+                                  <span className="flow-thumb-badge">♪ IN USE</span>
+                                )}
+                                <span className="flow-cast-tag mono">
+                                  {label.slice(0, 14)}
+                                </span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                      {auditionUrl && (
+                        <audio
+                          src={withPw(auditionUrl)}
+                          autoPlay
+                          onEnded={() => setAuditionUrl(null)}
+                        />
+                      )}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
         )}
 
         {/* model/params always visible & editable */}
@@ -1844,6 +3302,111 @@ export function FlowPanel({
               </div>
             ) : (
             <div className="flow-gen-row">
+              {/* SETTING — the scene is the depth transfer's main creative
+                  control (the depth ref brings no world of its own). One
+                  card carousel: built-ins (starter photos where we have
+                  them), your custom scenes, ＋ add your own. A card swaps
+                  ONLY the prompt's Setting:/Light: pair in place. */}
+              {isTransfer && flow.depthRef !== false && (
+                <div className="flow-scenes">
+                  <span className="label">SETTING</span>
+                  <div className="flow-scene-carousel">
+                    {[...DEPTH_SCENES, ...customScenes].map((s) => {
+                      const isSel = flow.motionPrompt.includes(s.setting);
+                      return (
+                        <button
+                          key={s.id}
+                          className={`flow-scene-card ${isSel ? "sel" : ""} ${s.img ? "" : "textonly"}`}
+                          title={`${s.setting}. Light: ${s.light}.`}
+                          onClick={() =>
+                            patchFlow(flow.id, {
+                              motionPrompt: applyDepthScene(flow.motionPrompt, s),
+                            })
+                          }
+                        >
+                          {s.img ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={s.img} alt="" loading="lazy" />
+                          ) : (
+                            <span className="flow-scene-desc">{s.setting}</span>
+                          )}
+                          {isSel && <span className="flow-thumb-badge">▶ SET</span>}
+                          <span className="flow-cast-tag mono">{s.label}</span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      className="flow-scene-card textonly add"
+                      title="Add your own scene — a name, the setting line, optionally a photo card"
+                      onClick={() => setSceneFormOpen((v) => !v)}
+                    >
+                      <span className="flow-scene-desc">＋</span>
+                      <span className="flow-cast-tag mono">Custom</span>
+                    </button>
+                  </div>
+                  {sceneFormOpen && (
+                    <div className="flow-scene-form">
+                      <input
+                        type="text"
+                        value={sceneName}
+                        onChange={(e) => setSceneName(e.target.value)}
+                        placeholder="Name — e.g. Han River park"
+                      />
+                      <input
+                        type="text"
+                        value={sceneText}
+                        onChange={(e) => setSceneText(e.target.value)}
+                        placeholder="Setting line — 'Han River park at dusk — bridge lights on the water, joggers blurred behind'"
+                      />
+                      <div className="chips-row">
+                        <button
+                          className="spec-chip"
+                          onClick={() => sceneFileRef.current?.click()}
+                        >
+                          {sceneImg ? "✓ photo attached" : "⤒ Photo (optional)"}
+                        </button>
+                        <input
+                          ref={sceneFileRef}
+                          type="file"
+                          accept="image/*"
+                          hidden
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = "";
+                            if (!f) return;
+                            const fr = new FileReader();
+                            fr.onload = () => {
+                              // Downscale to a small card — customAssets
+                              // lives in the store, keep entries light.
+                              const img = new Image();
+                              img.onload = () => {
+                                const scale = Math.min(1, 360 / Math.max(img.width, img.height));
+                                const c = document.createElement("canvas");
+                                c.width = Math.round(img.width * scale);
+                                c.height = Math.round(img.height * scale);
+                                c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+                                setSceneImg(c.toDataURL("image/jpeg", 0.8));
+                              };
+                              img.src = String(fr.result);
+                            };
+                            fr.readAsDataURL(f);
+                          }}
+                        />
+                        <button
+                          className="btn-ghost"
+                          disabled={!sceneName.trim() || (!sceneText.trim() && !sceneImg)}
+                          onClick={saveCustomScene}
+                        >
+                          Save scene
+                        </button>
+                        <button className="link-btn" onClick={() => setSceneFormOpen(false)}>
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <textarea
                 rows={isTransfer ? 7 : 2}
                 value={flow.motionPrompt}
@@ -1861,14 +3424,20 @@ export function FlowPanel({
                   onClick={() =>
                     patchFlow(flow.id, {
                       motionPrompt: randomFrom(
-                        isTransfer ? TRANSFER_PRESETS : MOTION_PRESETS,
+                        isTransfer
+                          ? flow.depthRef !== false
+                            ? TRANSFER_PRESETS_DEPTH
+                            : TRANSFER_PRESETS_RAW
+                          : MOTION_PRESETS,
                         flow.motionPrompt,
                       ),
                     })
                   }
                   title={
                     isTransfer
-                      ? "Cycle transfer templates — plain vs green-screen composite"
+                      ? flow.depthRef !== false
+                        ? "Cycle depth-reference templates (scene rebuilds — beach / neon night); swap the Setting: line for your world"
+                        : "Cycle raw-clip templates — camera-lock / green-screen composite"
                       : "Fill with a random motion draft — edit from there"
                   }
                 >
@@ -1911,7 +3480,7 @@ export function FlowPanel({
           disabled={activeStepIdx === 0}
           onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
         >
-          ← 이전
+          ← Back
         </button>
         {activeStage === "motion" ? (
           <button
@@ -1947,7 +3516,7 @@ export function FlowPanel({
               setStepIdx((i) => Math.min(flowSteps.length - 1, i + 1))
             }
           >
-            다음 →
+            Next →
           </button>
         )}
       </div>
@@ -1971,6 +3540,8 @@ export function FlowPanel({
                     src: a.videoUrl,
                     aspect: a.aspectRatio,
                     label: `${a.modelLabel} · take`,
+                    compareSrc: isTransfer ? flow.refClip?.url : undefined,
+                    compareLabel: flow.refClip?.label,
                   })
                 }
               >
@@ -2011,6 +3582,25 @@ export function FlowPanel({
                     ▶ view in the frame
                   </span>
                 )}
+                {/* Retro-mux — lay the ref soundtrack over a take rendered
+                    before the audio source existed/was linked. */}
+                {a.status === "done" &&
+                  a.videoUrl &&
+                  isLocalVideoUrl(a.videoUrl) &&
+                  isTransfer &&
+                  Boolean(audioSrcOf(flow.refClip)) && (
+                    <button
+                      className="link-btn"
+                      disabled={muxBusyId != null}
+                      title="Replace this take's audio with the reference soundtrack (local ffmpeg, $0)"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void muxTake(a);
+                      }}
+                    >
+                      {muxBusyId === a.id ? "♪ muxing…" : "♪ Add ref audio"}
+                    </button>
+                  )}
               </div>
             ))}
           </div>

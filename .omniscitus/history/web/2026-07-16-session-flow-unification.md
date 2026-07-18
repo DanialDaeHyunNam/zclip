@@ -71,8 +71,10 @@ React 자식 effect가 부모보다 먼저 도는 것 때문에 clear-then-repor
 지점(프루닝×3, 게이트, 라우팅)의 문제라 정의를 함수 하나로 단일화했다.
 
 ## Pending
-- [ ] PR 머지 후 tag v0.11.0 + gh release + `vercel --prod` + prod
-      /api/version=0.11.0 확인 (이 세션에서 이어서 진행)
+- [x] PR 머지 후 tag v0.11.0 + gh release + `vercel --prod` + prod
+      /api/version=0.11.0 확인 — 완료 (PR #5 머지 f189582, tag v0.11.0,
+      gh release 2026-07-16 09:29 Latest, prod /api/version = 0.11.0
+      확인 2026-07-17 /follow-up)
 - [ ] Library 이미지 개별 삭제는 미지원(flows가 원본, studio 열림 중 외부
       mutation 위험) — 오너 요청 시 flow 상태 동기화 포함 설계 필요
 - [ ] Clear All은 여전히 비디오만 — 이미지 포함 여부 오너 결정 대기

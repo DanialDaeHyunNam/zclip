@@ -65,8 +65,8 @@ chat refine 토글(기본 OFF). v0.6.0~v0.9.3 (2026-07-15~16).
 - [ ] **Kling Motion Control 어댑터** — 실사 댄스 클립을 pose 추출로
       전이(Seedance 실인물 필터 우회). $9.80 트라이얼 키로 첫 실런.
       TRANSFER flow 모델 선택지에 Seedance와 나란히 추가. [[flow-method-kling]]
-- [ ] Seedance role 페어링 **실제 성공 영상** 1회(스타일라이즈드 룩 or
-      depth 참조로) — 지금까지 검증·필터 거절만, 완성 결과물 미확인
+- [x] Seedance role 페어링 **실제 성공 영상** — 완료 2026-07-18: depth
+      레퍼런스 + 2인 캐스트 해변 take 성공 ([[depth-transfer-pipeline]])
 - [x] 오너 dev 서버(:3333) 재시작 — 완료: 7/16 현재 :3333 /api/version이
       0.10.0 반환(재시작 없이는 env 인라인 버전이 못 바뀜)
 - [ ] Higgsfield motion_control로 댄스+캐릭터 품질 데모(ZCLIP 무접촉, MCP)

@@ -44,6 +44,11 @@ export const SESSION_ID_KEY = "hooklab.sessionId";
 export const PW_KEY = "hooklab.pw";
 /** A clip the archive route hands off to the studio composer as a reference. */
 export const PENDING_REF_KEY = "hooklab.pendingRef";
+/** A depth clip the /depth tool hands off to the studio (plain localStorage,
+ *  NOT the file store — a second tab must never write the store cache, its
+ *  full-payload flush would clobber the studio tab's writes). The studio tab
+ *  adopts it on focus: Library entry + the flow's MOVES reference. */
+export const PENDING_DEPTH_KEY = "hooklab.pendingDepthClip";
 
 export const fmtCost = (c?: number) => (c != null ? `$${c.toFixed(2)}` : null);
 

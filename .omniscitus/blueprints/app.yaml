@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-16T09:12:19.406Z
+updated: 2026-07-18T15:06:32.209Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -17,10 +17,13 @@ files:
     status: active
     source: "claude"
     created: 2026-07-06
-    last_modified: 2026-07-15T09:45:29.574Z
-    change_count: 11
+    last_modified: 2026-07-18T13:28:08.655Z
+    change_count: 12
     purpose: "Dev-only reference-video fetcher: YouTube via yt-dlp, X posts/articles via guest GraphQL, direct .mp4; optional ffmpeg trim; serves grabbed files back"
     change_log:
+      - date: 2026-07-18T13:28:08.655Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T09:45:29.574Z
         action: edit
         source: "claude:Danial Nam"
@@ -918,10 +921,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-15T09:35:47.675Z
-    change_count: 14
+    last_modified: 2026-07-18T12:24:58.688Z
+    change_count: 16
     purpose: "POST submit → adapter; validates params/image/character/drivingVideo/modelId against whitelists, returns jobId fast"
     change_log:
+      - date: 2026-07-18T12:24:58.688Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:24:46.491Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-15T09:35:47.675Z
         action: edit
         source: "claude:Danial Nam"
@@ -1249,10 +1258,46 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-16T08:56:19.017Z
-    change_count: 375
+    last_modified: 2026-07-18T13:38:05.207Z
+    change_count: 387
     purpose: "The entire studio UI (one big client component): chat thread, rewind, persistent sessions sidebar, spend popover, starter carousels + Library pill, key panel, params, send pipeline (refine → generate → poll)"
     change_log:
+      - date: 2026-07-18T13:38:05.207Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:37:57.244Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:37:54.900Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:34:28.801Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:34:14.141Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:34:05.853Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:21:33.880Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:21:27.135Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:21:24.786Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:24:21.725Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:24:16.994Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:24:14.645Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T08:56:19.017Z
         action: edit
         source: "claude:Danial Nam"
@@ -2714,10 +2759,19 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-14T15:43:44.639Z
-    change_count: 10
+    last_modified: 2026-07-18T14:42:32.603Z
+    change_count: 13
     purpose: "Flow stage-1 still generation — Grok/GPT/Gemini image engines behind existing keys; a reference image switches to Gemini EDIT mode; returns durable base64"
     change_log:
+      - date: 2026-07-18T14:42:32.603Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:42:31.248Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:42:19.368Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T15:43:44.639Z
         action: edit
         source: "claude:Danial Nam"
@@ -2795,10 +2849,358 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-13
-    last_modified: 2026-07-16T08:55:45.739Z
-    change_count: 161
+    last_modified: 2026-07-18T15:06:32.209Z
+    change_count: 277
     purpose: "FLOW method panel (embedded in the studio): still→motion pipeline — look generate/upload/EDIT with confirm gate, motion iteration via i2v, presets, session-scoped flows, shared-Library interop, Character-card export"
     change_log:
+      - date: 2026-07-18T15:06:32.209Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:06:28.599Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:06:10.877Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:06:08.067Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:06:04.279Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:05:52.572Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:05:36.137Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:05:24.220Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:05:21.028Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:05:09.731Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:04:41.240Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:59:34.613Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:59:08.174Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:58:59.397Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:58:47.846Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:58:41.673Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:58:39.305Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:43:59.267Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:43:56.069Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:43:51.837Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:43:43.288Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:43:41.119Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:43:36.354Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:43:23.234Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:43:19.498Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:43:05.806Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:42:59.325Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:42:50.668Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:42:47.955Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:42:44.697Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:44:55.006Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:44:42.678Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:44:04.499Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:44:01.288Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:43:39.650Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:43:30.034Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:43:19.220Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:42:57.693Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:42:45.669Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:42:36.228Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:42:31.473Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:41:58.082Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:41:45.715Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:41:43.531Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:41:40.168Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:41:29.683Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:41:27.197Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:33:50.838Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:33:50.014Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:33:48.541Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:33:35.620Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:33:33.114Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:33:30.438Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:28:43.475Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:28:24.183Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:28:17.248Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:21:09.679Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:20:58.974Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:20:40.648Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:20:35.406Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:20:28.527Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:00:15.220Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:00:01.132Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:59:53.293Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:51:43.090Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:51:34.301Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:51:31.348Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:31:10.455Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:30:46.996Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:30:37.228Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:30:27.894Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:29:58.966Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:29:48.700Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:29:37.944Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:29:15.941Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:29:08.300Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:28:55.495Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:28:48.352Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:28:41.682Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:28:36.657Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:28:31.490Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:28:20.860Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:26:28.096Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:26:26.141Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:26:07.608Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:26:03.018Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:25:53.360Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:25:41.404Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:25:38.463Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:10:40.442Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:10:33.804Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:09:52.085Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:09:49.677Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:09:40.450Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:09:26.575Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:09:22.385Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:09:19.079Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:09:15.469Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:07:19.490Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:07:07.664Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:00:13.349Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T11:59:59.414Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T11:59:50.491Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T11:59:46.901Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T11:59:41.356Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:25:23.069Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:23:26.207Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:23:22.435Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:23:16.889Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:22:54.357Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:22:32.245Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:57:58.111Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:57:41.205Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:57:35.054Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:57:22.118Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:57:14.257Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-16T08:55:45.739Z
         action: edit
         source: "claude:Danial Nam"
@@ -3291,5 +3693,104 @@ files:
     purpose: "Auto session titles via Gemini Flash — names a session (2-5 words) from its recent prompts; gated by the sidebar Auto-title toggle, ~$0.00002/call"
     change_log:
       - date: 2026-07-16T03:05:21.485Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/depth/depth-client.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-18
+    last_modified: 2026-07-18T14:42:12.163Z
+    change_count: 23
+    purpose: "Depth Video Extractor UI — manual/preview tool over lib/depth-extract; saves vault clips + PENDING_DEPTH_KEY handoff to the studio"
+    change_log:
+      - date: 2026-07-18T14:42:12.163Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:42:10.422Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:42:10.032Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:45:24.970Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:45:22.671Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:45:20.767Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:43:54.618Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:43:50.762Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:43:48.304Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:52:00.812Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:51:50.246Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:51:45.529Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:22:02.895Z
+        action: write
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:10:12.799Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:00:31.774Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:59:35.739Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:59:22.031Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:59:20.018Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:59:18.121Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:59:16.792Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:59:08.935Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:58:55.411Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T06:56:29.351Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/depth/page.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-18
+    last_modified: 2026-07-18T06:56:35.792Z
+    change_count: 1
+    purpose: "Server shell for the /depth tool (metadata + client mount)"
+    change_log:
+      - date: 2026-07-18T06:56:35.792Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/api/describe/route.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-18
+    last_modified: 2026-07-18T14:58:31.383Z
+    change_count: 1
+    purpose: "Gemini reads a look card → face-first identity text for transfer text-mode casting (auto-distilled on confirm)"
+    change_log:
+      - date: 2026-07-18T14:58:31.383Z
         action: write
         source: "claude:Danial Nam"

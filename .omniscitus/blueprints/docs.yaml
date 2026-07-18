@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-14T16:08:44.651Z
+updated: 2026-07-18T15:06:49.736Z
 
 files:
   "docs/ARCHITECTURE.md":
@@ -20,10 +20,55 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-13T06:03:29.723Z
-    change_count: 9
+    last_modified: 2026-07-18T15:06:49.736Z
+    change_count: 24
     purpose: "Chronological build log (#1–26) with evidence for every decision and pivot"
     change_log:
+      - date: 2026-07-18T15:06:49.736Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T15:00:14.911Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:46:14.616Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T14:08:59.368Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:34:54.948Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:29:17.643Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:21:55.245Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T13:00:37.216Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:52:17.239Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:39:36.714Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:32:11.891Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:11:05.627Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:00:30.623Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:25:50.957Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T07:13:22.377Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T06:03:29.723Z
         action: edit
         source: "claude:Danial Nam"
@@ -78,10 +123,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-14
-    last_modified: 2026-07-14T16:08:44.651Z
-    change_count: 2
+    last_modified: 2026-07-18T12:39:42.425Z
+    change_count: 4
     purpose: "Hosted BYOK design SSOT: two-track product stance, pass-through honesty copy, key architecture, cost/quota defense table, release contract (decided 2026-07-15)"
     change_log:
+      - date: 2026-07-18T12:39:42.425Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-18T12:31:51.316Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-14T16:08:44.651Z
         action: edit
         source: "claude:Danial Nam"
