@@ -5759,13 +5759,19 @@ button {
 
 /* ＋ New flow kind picker — which pipeline is this flow? */
 .flow-kind-pick {
+  /* One-row carousel (owner call 2026-07-19) — scrolls like every other
+     card row instead of wrapping to a lopsided second line. */
   display: flex;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  align-items: stretch;
   margin: 10px 0 6px;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
 }
 .flow-kind-opt {
-  flex: 1 1 240px;
+  flex: 0 0 250px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -6965,3 +6971,45 @@ button {
 
 /* flow-scene-card as an anchor (Depth tool card) */
 a.flow-scene-card { text-decoration: none; color: inherit; }
+
+/* ＋ Custom card at the end of the restyle look carousel */
+.flow-thumb-custom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-style: dashed !important;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.flow-thumb-plus {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 300;
+}
+
+/* Kind picker wrapper — carousel row + Cancel BELOW it */
+.flow-kind-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0 6px;
+}
+
+.flow-kind-wrap .flow-kind-pick { margin: 0; }
+.flow-kind-cancel { align-self: flex-start; }
+
+/* Inline variant of the key popover — .key-popover is ABSOLUTE (it floats
+   under the chat composer), which silently teleported the flow panel's
+   instance below the whole workbench. This pins it back into normal flow. */
+.key-popover.key-inline {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  /* the workbench column already spaces children with its flex gap —
+     any own margin double-counts and unbalances the rhythm */
+  margin: 0;
+  box-shadow: none;
+}

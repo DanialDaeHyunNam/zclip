@@ -1,15 +1,30 @@
 version: 1
-updated: 2026-07-18T14:41:59.309Z
+updated: 2026-07-19T04:18:14.668Z
 
 files:
   "lib/config.ts":
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-18T12:24:40.731Z
-    change_count: 29
+    last_modified: 2026-07-19T04:18:12.566Z
+    change_count: 34
     purpose: "The switchboard: PROVIDERS adapters + MODELS catalog (model≠adapter), pricing, duration rules (effectiveSeconds), cost estimates, key allowlist"
     change_log:
+      - date: 2026-07-19T04:18:12.566Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-19T04:18:10.593Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-19T04:17:59.456Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-19T04:17:57.151Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-19T04:17:47.289Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-18T12:24:40.731Z
         action: edit
         source: "claude:Danial Nam"
@@ -147,10 +162,13 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T04:37:57.372Z
-    change_count: 1
+    last_modified: 2026-07-19T04:18:14.668Z
+    change_count: 2
     purpose: "Adapter registry + resolveProvider(name) mapping a ProviderName to its VideoProvider"
     change_log:
+      - date: 2026-07-19T04:18:14.668Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T04:37:57.372Z
         action: edit
         source: "claude:Danial Nam"
@@ -682,5 +700,16 @@ files:
         action: edit
         source: "claude:Danial Nam"
       - date: 2026-07-18T12:38:16.094Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/providers/lucy.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-19
+    last_modified: 2026-07-19T04:17:40.534Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-19T04:17:40.534Z
         action: write
         source: "claude:Danial Nam"
