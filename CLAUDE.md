@@ -57,9 +57,18 @@ store survives port moves); test against it with client-side checks only.
   chat thread (turns) / rewind / sessions sidebar / preview / params /
   key panel / spend chart / archive. State shapes documented inline
   (`Turn`, `Clip`, `StoredSession`).
-- `app/chat/flow-panel.tsx` — the FLOW method (vs the chat method). TWO
-  pipelines since v0.6.0, picked at ＋ New flow (tabs are named after the
-  pipeline, e.g. "Image → Motion 1"):
+- `app/chat/flow-panel.tsx` — the FLOW method (vs the chat method). Two
+  VISIBLE pipelines + one hidden, picked at ＋ New flow (tabs are named
+  after the pipeline, e.g. "Image → Motion 1"):
+  · **restyle** (VIDEO → IMAGE) — Lucy Edit Pro v2v via fal, **HIDDEN
+    behind `RESTYLE_ENABLED=false`** (owner call 2026-07-19: the offline
+    lucy-edit model is Wan-2.2-based, doll-faces photoreal identity swaps
+    and caps output at ~4s — verified live, not shippable). ALL code
+    stays wired (`lib/providers/lucy.ts` FAL_KEY $0.15/s, `restylesClip()`
+    in config, the isRestyle branches, VIDEO/IMAGE stages, REF AUDIO,
+    COMPARE) — flip the flag to revive when Lucy-2.5-class offline v2v
+    lands (2.5's good $0.04/s tier is realtime-WebRTC only → cinerec).
+    Existing restyle flows still render; you just can't create new ones.
   · **look** (classic): Stage 1 generates/uploads a look (`/api/image`,
     ~$0.05) with a CONFIRM gate; Stage 2 animates the confirmed still via
     `/api/generate` i2v (Kling recommended), iterating motion forever.

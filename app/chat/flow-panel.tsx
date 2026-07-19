@@ -14,7 +14,7 @@ import {
   type ProviderName,
   type Resolution,
 } from "@/lib/config";
-import { keyHeader } from "@/lib/client-keys";
+import { keyHeader, localKeyFlags, setLocalKey } from "@/lib/client-keys";
 import * as store from "@/lib/store";
 import {
   type Clip,
@@ -127,12 +127,24 @@ interface FlowMotionAttempt {
   createdAt: number;
 }
 
-/** What a flow is FOR — picked at ＋ New flow (docs: two pipelines):
+/** What a flow is FOR — picked at ＋ New flow (docs: three pipelines):
  *   "look"     · LOOK → MOTION (classic still → i2v iterate)
  *   "transfer" · MOVES → LOOK → TRANSFER (a reference video's choreography
  *                performed by your confirmed look — clip-reading models
- *                only, Seedance 2.0 today, Kling Motion Control later). */
-type FlowKind = "look" | "transfer";
+ *                only, Seedance 2.0 today, Kling Motion Control later).
+ *   "restyle"  · VIDEO → IMAGE (Lucy Edit v2v: the raw clip drives, the
+ *                prompt/identity says what the dancer becomes — no depth
+ *                pass, no filter dance, scene/camera/timing come free). */
+type FlowKind = "look" | "transfer" | "restyle";
+
+/** Restyle (Lucy Edit v2v) is HIDDEN from the ＋ New flow picker
+ *  (owner call 2026-07-19): the offline lucy-edit model is Wan-2.2-based
+ *  and comes out doll-faced on photoreal identity swaps + caps output at
+ *  ~4s — not shippable quality. ALL its code stays wired (adapter,
+ *  config, the restyle branches below) so flipping this to `true`
+ *  revives it when Lucy 2.5-class offline v2v lands. Existing restyle
+ *  flows still render; you just can't create new ones. */
+const RESTYLE_ENABLED = false;
 
 interface Flow {
   id: string;
@@ -375,12 +387,19 @@ const applyDepthScene = (prompt: string, s: DepthScene): string => {
   return out;
 };
 
-/** Is the current prompt an untouched template? (Either set — safe to swap
+/** Restyle (Lucy v2v) templates — the clip drives; say what changes. */
+const RESTYLE_PRESETS = [
+  "Transform the dancer into the character described below. Keep the choreography, camera, framing and timing EXACTLY as the source — beat for beat. Keep the original scene and lighting.\nAvoid: face morphing between frames, identity drift, extra people, on-screen text, watermark.",
+  "Transform the dancer into the character described below AND move the scene to a bright summer beach at midday — golden sand, rolling surf, clear sky, sun-drenched light. Keep the choreography, camera, framing and timing EXACTLY as the source — beat for beat.\nAvoid: face morphing between frames, identity drift, extra people, on-screen text, watermark.",
+];
+
+/** Is the current prompt an untouched template? (Any set — safe to swap
  *  on toggle without eating user edits.) */
 const isPresetPrompt = (p: string): boolean =>
   !p.trim() ||
   TRANSFER_PRESETS_RAW.includes(p) ||
-  TRANSFER_PRESETS_DEPTH.includes(p);
+  TRANSFER_PRESETS_DEPTH.includes(p) ||
+  RESTYLE_PRESETS.includes(p);
 
 /** Pull the wearable out of a FASHION preset's product-shot prompt
  *  ("…product photo of an oversized hoodie, plain neutral…" → the garment). */
@@ -407,25 +426,36 @@ const customToScene = (c: {
 
 const newFlow = (n: number, sessionId?: string, kind: FlowKind = "look"): Flow => ({
   id: `f${Date.now()}`,
-  title: kind === "transfer" ? `Moves → Image → Motion ${n}` : `Image → Motion ${n}`,
+  title:
+    kind === "transfer"
+      ? `Moves → Image → Motion ${n}`
+      : kind === "restyle"
+        ? `Video → Image ${n}`
+        : `Image → Motion ${n}`,
   createdAt: Date.now(),
   sessionId,
   kind,
   refClip: null,
-  // Transfer identities ride as TEXT (the prompt), so the card must be a
+  // Transfer/restyle identities ride as TEXT, so the card must be a
   // same-family preview — Seedream. Look flows keep Grok (the still IS
   // the i2v input there, any painter works).
-  imgEngine: kind === "transfer" ? "seedream" : "grok",
+  imgEngine: kind === "look" ? "grok" : "seedream",
   imgPrompt: "",
   imgAttempts: [],
   confirmedImgIds: [],
-  // Transfer flows open with the DEPTH template — depth ref is the default
-  // path, and editing a working draft beats a blank box (🎲 philosophy).
-  motionPrompt: kind === "transfer" ? TRANSFER_PRESETS_DEPTH[0] : "",
-  motionModelKey: kind === "transfer" ? "seedance-2" : "kling",
+  // Transfer opens with the DEPTH template, restyle with the in-place
+  // restyle template — editing a working draft beats a blank box.
+  motionPrompt:
+    kind === "transfer"
+      ? TRANSFER_PRESETS_DEPTH[0]
+      : kind === "restyle"
+        ? RESTYLE_PRESETS[0]
+        : "",
+  motionModelKey:
+    kind === "transfer" ? "seedance-2" : kind === "restyle" ? "lucy" : "kling",
   motionAttempts: [],
   aspect: "9:16",
-  duration: kind === "transfer" ? 10 : 5,
+  duration: kind === "look" ? 5 : 10,
   resolution: "720p",
 });
 
@@ -455,9 +485,21 @@ const splitDataUrl = (d: string): { base64: string; mimeType: string } => {
  *  filter blocks photoreal identity images — even AI-generated ones — so
  *  the transfer flow's whole premise (a look as a reference_image) trips it.
  *  Say what's happening and how to get around it. */
-const humanizeError = (raw: string): string => {
+const humanizeError = (raw: string, provider?: string): string => {
   // Always keep the provider's exact words so there's no doubt WHICH error
   // this is (a credit/quota error reads nothing like a safety block).
+  // Route by provider — a fal balance error wearing "top up ModelArk"
+  // clothing sent the owner to the wrong console (2026-07-19).
+  if (provider === "lucy") {
+    const falVerbatim = ` (fal said: "${raw}")`;
+    if (/balance|locked|top up|insufficient|payment|credit|402/i.test(raw)) {
+      return (
+        "Your fal account is out of credit — fal is pay-as-you-go, but it draws from a PREPAID balance (no balance = locked). Add credit at fal.ai/dashboard/billing, then Retry." +
+        falVerbatim
+      );
+    }
+    return raw;
+  }
   const verbatim = ` (Seedance said: "${raw}")`;
   if (/real person|may contain real/i.test(raw)) {
     // The filter fires on TWO different inputs — say which one this was.
@@ -593,6 +635,8 @@ export function FlowPanel({
     setGenOpen(false);
     setOutfitFor(null);
     setSceneFormOpen(false);
+    setRestyleEditing(false);
+    setFalPanelHidden(false);
   }, [flowId]);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -666,6 +710,8 @@ export function FlowPanel({
     );
   }, [hydrated, sessionId]);
   const isTransfer = flow?.kind === "transfer";
+  /** Lucy v2v — the raw clip drives; the look/prompt says what to become. */
+  const isRestyle = flow?.kind === "restyle";
 
   /** Looks already made elsewhere, offered for reuse in THIS flow's look
    *  stage: every other flow's CONFIRMED still + custom Character cards
@@ -750,7 +796,7 @@ export function FlowPanel({
     // Auto-distill the identity from the card (owner call: always process).
     const curIds =
       flow.confirmedImgIds ?? (flow.confirmedImgId ? [flow.confirmedImgId] : []);
-    if (isTransfer && !curIds.includes(id)) {
+    if ((isTransfer || isRestyle) && !curIds.includes(id)) {
       autoDescribe(
         existing ?? {
           id,
@@ -796,7 +842,8 @@ export function FlowPanel({
       : null;
   // Motion is generatable when: look flow has a confirmed still, OR transfer
   // flow has its MOVES clip (the identity look is optional there).
-  const canAnimate = isTransfer ? Boolean(flow?.refClip) : Boolean(confirmedImg);
+  const canAnimate =
+    isTransfer || isRestyle ? Boolean(flow?.refClip) : Boolean(confirmedImg);
   const motionReady = Boolean(flow?.motionPrompt.trim());
   const animateReady = canAnimate && motionReady;
   // Hide the bar while a take is actually rendering (any pending attempt) —
@@ -852,7 +899,8 @@ export function FlowPanel({
         src: done.videoUrl,
         aspect: done.aspectRatio,
         label: `${done.modelLabel} · take`,
-        compareSrc: flow.kind === "transfer" ? flow.refClip?.url : undefined,
+        compareSrc:
+          (flow.kind ?? "look") !== "look" ? flow.refClip?.url : undefined,
         compareLabel: flow.refClip?.label,
       });
     } else if (confirmedImg) {
@@ -879,10 +927,15 @@ export function FlowPanel({
           { label: "IMAGE", stage: "look", done: confirmedImgs.length > 0, required: false },
           { label: "MOTION", stage: "motion", done: hasTake, required: true },
         ]
-      : [
-          { label: "STILL", stage: "look", done: Boolean(confirmedImg), required: true },
-          { label: "MOTION", stage: "motion", done: hasTake, required: true },
-        ]
+      : isRestyle
+        ? [
+            { label: "VIDEO", stage: "moves", done: Boolean(flow.refClip), required: true },
+            { label: "IMAGE", stage: "look", done: hasTake || confirmedImgs.length > 0, required: false },
+          ]
+        : [
+            { label: "STILL", stage: "look", done: Boolean(confirmedImg), required: true },
+            { label: "MOTION", stage: "motion", done: hasTake, required: true },
+          ]
     : [];
   // Clamp the wizard index and resolve the active stage to render.
   const activeStepIdx = Math.min(
@@ -1022,6 +1075,68 @@ export function FlowPanel({
       setError(e instanceof Error ? e.message : "Outfit swap failed");
     } finally {
       setDressBusy(null);
+    }
+  };
+
+  /** FAL key status for the restyle step — shown inline, with the same
+   *  paste-to-.env.local onboarding as the studio's provider key panel. */
+  const [falKey, setFalKey] = useState<{ present: boolean; writable: boolean } | null>(null);
+  const [falInput, setFalInput] = useState("");
+  const [falSaving, setFalSaving] = useState(false);
+  const [falMsg, setFalMsg] = useState("");
+  const [falPanelHidden, setFalPanelHidden] = useState(false);
+  /** Restyle prompt: collapsed read-only card by default (the template is
+   *  complete as-is — owner call); ✎ Edit prompt expands it. */
+  const [restyleEditing, setRestyleEditing] = useState(false);
+  useEffect(() => {
+    if (!isRestyle || falKey) return;
+    void (async () => {
+      try {
+        const pw = storedPw();
+        const r = await fetch("/api/keys", {
+          headers: pw ? { "x-app-password": pw } : {},
+        });
+        const b = await r.json();
+        setFalKey({
+          present: Boolean(b?.keys?.FAL_KEY) || Boolean(localKeyFlags().FAL_KEY),
+          writable: Boolean(b?.writable),
+        });
+      } catch {
+        setFalKey({ present: Boolean(localKeyFlags().FAL_KEY), writable: false });
+      }
+    })();
+  }, [isRestyle, falKey]);
+  const saveFalKey = async () => {
+    const v = falInput.trim();
+    if (!v || falSaving) return;
+    setFalSaving(true);
+    setFalMsg("");
+    try {
+      if (falKey?.writable) {
+        const pw = storedPw();
+        const r = await fetch("/api/keys", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(pw ? { "x-app-password": pw } : {}),
+          },
+          body: JSON.stringify({ envVar: "FAL_KEY", value: v }),
+        });
+        const b = await r.json();
+        if (!r.ok) throw new Error(b.error ?? "Could not save the key");
+        setFalMsg("Saved to .env.local — ready.");
+      } else {
+        // Hosted BYOK: the key lives in this browser only and rides each
+        // request as a header (lib/client-keys) — never the server.
+        setLocalKey("FAL_KEY", v);
+        setFalMsg("Saved in this browser — rides each request as a header.");
+      }
+      setFalInput("");
+      setFalKey((k) => (k ? { ...k, present: true } : k));
+    } catch (e) {
+      setFalMsg(e instanceof Error ? e.message : "Could not save the key");
+    } finally {
+      setFalSaving(false);
     }
   };
 
@@ -1212,8 +1327,9 @@ export function FlowPanel({
         : f.textLookIds,
     }));
     // A confirm fills a slot — collapse the prompt form back down, and
-    // distill the identity text from the card automatically.
-    if (adding) {
+    // distill the identity text from the card automatically. Restyle's
+    // single-select confirms distill too (the identity rides the prompt).
+    if (adding || (isRestyle && !cur.includes(id) && next.includes(id))) {
       setGenOpen(false);
       const a = flow.imgAttempts.find((x) => x.id === id);
       if (a) autoDescribe(a, flow.id);
@@ -1783,7 +1899,7 @@ export function FlowPanel({
     // encode it now (same-origin, password header as query param not needed
     // for fetch()).
     let drivingVideo: { base64: string; mimeType: string } | undefined;
-    if (flow.kind === "transfer" && flow.refClip) {
+    if ((flow.kind === "transfer" || flow.kind === "restyle") && flow.refClip) {
       preview({
         kind: "busy",
         src: "",
@@ -1814,7 +1930,7 @@ export function FlowPanel({
           };
           v.src = URL.createObjectURL(blob);
         });
-        if (dur > 15.2) {
+        if (flow.kind === "transfer" && dur > 15.2) {
           setError(
             `The MOVES reference is ${Math.round(dur)}s — Seedance reads at most 15s of reference. Trim the beat you want with GRAB (Library ⤓, m:ss trim like 0:05 → 0:18) and pick the trimmed clip here.`,
           );
@@ -1836,7 +1952,7 @@ export function FlowPanel({
         // "adaptive-*" invalidates pre-adaptive caches once (the algorithm
         // changed under the same detail knob).
         const depthMode = flow.depthDetail !== false ? "adaptive-1.2" : "plain";
-        if (wantDepth) {
+        if (flow.kind === "transfer" && wantDepth) {
           let reused = false;
           if (
             flow.depthClip &&
@@ -1970,8 +2086,10 @@ export function FlowPanel({
         // clip with DEPTH REF off) must clear ModelArk's r2v pixel floor.
         // Below it: a fast pure-resize re-encode (no AI). This is what
         // catches the already-depth reference the depth pass skips.
+        // (ModelArk-specific — Lucy restyle skips it.)
         try {
-          const px = await probeVideoPx(sendBlob);
+          const px =
+            flow.kind === "transfer" ? await probeVideoPx(sendBlob) : 0;
           if (px > 0 && px < R2V_PX_FLOOR) {
             setDepthNote("⤢ reference is under Seedance's size floor — upscaling (no AI, just a resize)…");
             const { resizeVideoToFloor } = await import("@/lib/depth-extract");
@@ -2009,9 +2127,9 @@ export function FlowPanel({
         return;
       }
     }
-    if (flow.kind === "transfer") {
+    if (flow.kind === "transfer" || flow.kind === "restyle") {
       setDepthNote(
-        `✓ reference ready → calling ${m.short} now — the render usually takes 60–180s, hang tight`,
+        `✓ ${flow.kind === "restyle" ? "clip" : "reference"} ready → calling ${m.short} now — the render usually takes 60–180s, hang tight`,
       );
     }
     preview({
@@ -2028,7 +2146,22 @@ export function FlowPanel({
         /\s*\(← direct the performance here\)/g,
         "",
       );
-      const sentPrompt = textChars.length
+      // Restyle: ONE identity, folded into the prompt as the "become"
+      // target (Lucy Edit is text-guided; no image inputs).
+      const restyleIdentity =
+        flow.kind === "restyle" && confirmedImg
+          ? (
+              flow.textOverrides?.[confirmedImg.id] ??
+              (/^\((uploaded|shared)/.test(confirmedImg.prompt.trim())
+                ? ""
+                : confirmedImg.prompt)
+            ).trim()
+          : "";
+      const sentPrompt = flow.kind === "restyle"
+        ? restyleIdentity
+          ? `${cleanPrompt}\nCharacter — who the dancer becomes: ${restyleIdentity}`
+          : cleanPrompt
+        : textChars.length
         ? `${textChars
             .map((d, i) =>
               textChars.length > 1
@@ -2054,9 +2187,9 @@ export function FlowPanel({
           aspectRatio: flow.aspect,
           durationSeconds: flow.duration,
           resolution: flow.resolution,
-          // Look flow: the still is the i2v input. Transfer: no first-frame
-          // image (identity is reference_image or pure text).
-          image: isTransfer ? undefined : stillImage,
+          // Look flow: the still is the i2v input. Transfer/restyle: no
+          // first-frame image (identity is reference_image or pure text).
+          image: isTransfer || flow.kind === "restyle" ? undefined : stillImage,
           // Transfer: each confirmed look rides as a reference_image (one per
           // person). Empty ⇒ text-only identity (skips the real-person filter).
           images: isTransfer && refImages.length ? refImages : undefined,
@@ -2066,7 +2199,7 @@ export function FlowPanel({
       const b = await r.json();
       if (!r.ok) {
         setDepthNote(null);
-        setError(humanizeError(b.error ?? "Submit failed"));
+        setError(humanizeError(b.error ?? "Submit failed", m.provider));
         preview(lastShown.current); // un-stick the busy frame
         setBarHidden(false); // failed — let them retry
         return;
@@ -2131,7 +2264,7 @@ export function FlowPanel({
             if (!r.ok || b.state === "error" || b.state === "failed") {
               patchAttempt(f.id, a.id, {
                 status: "error",
-                error: humanizeError(b.error ?? "Render failed"),
+                error: humanizeError(b.error ?? "Render failed", a.provider),
               });
               preview(lastShown.current); // un-stick the busy frame
               return;
@@ -2149,7 +2282,12 @@ export function FlowPanel({
               // ref 1:1, so it lands on beat. Depth-labeled refs are
               // silent (nothing to lay); any failure keeps the take as-is.
               const audioSrc = audioSrcOf(f.refClip);
-              if (f.kind === "transfer" && f.keepAudio !== false && local && audioSrc) {
+              if (
+                (f.kind === "transfer" || f.kind === "restyle") &&
+                f.keepAudio !== false &&
+                local &&
+                audioSrc
+              ) {
                 try {
                   const pw = storedPw();
                   const mr = await fetch("/api/grab", {
@@ -2176,7 +2314,8 @@ export function FlowPanel({
                 src: url,
                 aspect: a.aspectRatio,
                 label: `${a.modelLabel} · done`,
-                compareSrc: f.kind === "transfer" ? f.refClip?.url : undefined,
+                compareSrc:
+                  (f.kind ?? "look") !== "look" ? f.refClip?.url : undefined,
                 compareLabel: f.refClip?.label,
               });
               try {
@@ -2273,7 +2412,8 @@ export function FlowPanel({
         ))}
       </div>
       {newPick && (
-        <div className="flow-kind-pick fade">
+        <div className="flow-kind-wrap fade">
+        <div className="flow-kind-pick">
           {(
             [
               {
@@ -2284,8 +2424,19 @@ export function FlowPanel({
               {
                 kind: "transfer" as FlowKind,
                 title: "MOVES → IMAGE → MOTION",
-                desc: "Pick a reference video's choreography, confirm a look, and have them perform it (Seedance 2.0 · opens with a working template).",
+                desc: "Pick a reference video's choreography, confirm a look, and have them perform it in a scene you rebuild.",
               },
+              // restyle (Lucy v2v) — hidden behind RESTYLE_ENABLED; the
+              // offline model isn't shippable yet (see the flag).
+              ...(RESTYLE_ENABLED
+                ? [
+                    {
+                      kind: "restyle" as FlowKind,
+                      title: "VIDEO → IMAGE",
+                      desc: "Restyle a clip in place — the video drives everything, your look/prompt says what the dancer becomes (Lucy Edit v2v · no depth pass needed).",
+                    },
+                  ]
+                : []),
             ]
           ).map((opt) => (
             <button
@@ -2301,7 +2452,7 @@ export function FlowPanel({
                     !f.motionAttempts.length &&
                     !f.imgPrompt.trim() &&
                     !f.refClip &&
-                    (opt.kind === "transfer" || !f.motionPrompt.trim()),
+                    (opt.kind !== "look" || !f.motionPrompt.trim()),
                 );
                 if (empty) {
                   setFlowId(empty.id);
@@ -2319,13 +2470,15 @@ export function FlowPanel({
               <span className="flow-kind-desc">{opt.desc}</span>
             </button>
           ))}
-          {/* opened by mistake? close without creating anything */}
-          <button
-            className="btn-ghost flow-kind-cancel"
-            onClick={() => setNewPick(false)}
-          >
-            Cancel
-          </button>
+        </div>
+        {/* opened by mistake? close without creating anything — BELOW the
+            carousel, never scrolling with it */}
+        <button
+          className="btn-ghost flow-kind-cancel"
+          onClick={() => setNewPick(false)}
+        >
+          Cancel
+        </button>
         </div>
       )}
       {/* the working surface for the selected flow — a distinct workbench,
@@ -2349,21 +2502,68 @@ export function FlowPanel({
 
       {error && <div className="error-box fade">{error}</div>}
 
+      {/* RESTYLE needs a FAL key — parked BETWEEN the step chips and the
+          stage card (owner call 2026-07-19) so it can't be missed on
+          either step. Same key-popover kit as the chat method's panels. */}
+      {isRestyle && falKey && !falKey.present && !falPanelHidden && (
+        <div className="stub-note key-popover key-inline fade">
+          <button
+            className="side-del key-popover-close"
+            onClick={() => setFalPanelHidden(true)}
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+          <span className="label">Lucy Edit Pro · API key required</span>
+          <div className="key-row">
+            <input
+              type="password"
+              value={falInput}
+              onChange={(e) => setFalInput(e.target.value)}
+              placeholder="Paste FAL_KEY"
+              aria-label="FAL_KEY"
+              onKeyDown={(e) => e.key === "Enter" && void saveFalKey()}
+            />
+            <button
+              className="btn-ghost"
+              onClick={() => void saveFalKey()}
+              disabled={falSaving || !falInput.trim()}
+            >
+              {falSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+          <p className="key-hint">
+            {falKey.writable
+              ? "Writes to .env.local, effective immediately · "
+              : "Stays in this browser, rides each request as a header · "}
+            <a href="https://fal.ai/dashboard/keys" target="_blank" rel="noreferrer">
+              Get a key ↗
+            </a>
+          </p>
+          {falMsg && <p className="key-msg">{falMsg}</p>}
+        </div>
+      )}
+
       {/* ── MOVES stage (transfer flows only) ───── */}
       {activeStage === "moves" && (
         <section className={`flow-stage ${flow.refClip ? "locked" : ""}`}>
           <div className="flow-stage-head">
             <span className="spec-head">
-              STAGE 1 · MOVES — THE REFERENCE {flow.refClip ? "· SET ✓" : ""}
+              STAGE 1 · {isRestyle ? "VIDEO — THE SOURCE" : "MOVES — THE REFERENCE"}{" "}
+              {flow.refClip ? "· SET ✓" : ""}
             </span>
             <span className="flow-engine mono">
-              any clip works — ANIMATE auto-converts it to a depth pass (pure motion, zero identity)
+              {isRestyle
+                ? "Lucy reads the RAW clip — motion, camera and timing come free; no depth pass"
+                : "any clip works — ANIMATE auto-converts it to a depth pass (pure motion, zero identity)"}
             </span>
           </div>
           <p className="flow-locked-hint">
             {flow.refClip
               ? "Click another to switch, click the selected one to replay it in the frame."
-              : "Pick the clip whose motion gets performed — ≤15s (Seedance's reference cap). GRAB from the Library (⤓ pulls YouTube/X with a m:ss trim), or upload a local file."}
+              : isRestyle
+                ? "Pick the clip to restyle — it uploads to a temp host for the job (raw frames, so use footage you have rights to). GRAB from the Library or upload a local file."
+                : "Pick the clip whose motion gets performed — ≤15s (Seedance's reference cap). GRAB from the Library (⤓ pulls YouTube/X with a m:ss trim), or upload a local file."}
           </p>
           {/* candidates as a thumbnail CAROUSEL (same kit as MUSIC FROM) —
               first frames beat filenames. Cards STAY after picking; the
@@ -2391,13 +2591,18 @@ export function FlowPanel({
                     if (!isSel) {
                       patchFlow(flow.id, {
                         refClip: { url: c.videoUrl!, label: label.slice(0, 60) },
+                        // Restyle bills by the clip's length — sync the
+                        // duration so the ANIMATE cost estimate is honest.
+                        ...(isRestyle && c.durationSeconds
+                          ? { duration: Math.round(c.durationSeconds) }
+                          : {}),
                       });
                     }
                     preview({
                       kind: "video",
                       src: c.videoUrl!,
                       aspect: flow.aspect,
-                      label: "MOVES reference",
+                      label: isRestyle ? "source clip" : "MOVES reference",
                     });
                   }}
                 >
@@ -2421,7 +2626,9 @@ export function FlowPanel({
             </button>
             {/* /depth converts a real-person clip into a pure-motion depth
                 reference (in-browser, $0) — the way past Seedance's
-                real-person filter. Saving there lands back HERE on focus. */}
+                real-person filter. Saving there lands back HERE on focus.
+                (Restyle doesn't need it — Lucy reads the raw clip.) */}
+            {!isRestyle && (
             <a
               className="flow-scene-card textonly"
               href={
@@ -2440,6 +2647,7 @@ export function FlowPanel({
               <span className="flow-scene-desc" style={{ fontSize: 18 }}>⬗</span>
               <span className="flow-cast-tag mono">Depth tool</span>
             </a>
+            )}
             <input
               ref={refFileRef}
               type="file"
@@ -2496,7 +2704,12 @@ export function FlowPanel({
       <section className={`flow-stage ${confirmedImg && !isTransfer ? "locked" : ""}`}>
         <div className="flow-stage-head">
           <span className="spec-head">
-            {isTransfer ? "STAGE 2 · IMAGE (OPTIONAL)" : "STAGE 1 · STILL"} — THE LOOK{" "}
+            {isTransfer
+              ? "STAGE 2 · IMAGE (OPTIONAL)"
+              : isRestyle
+                ? "STAGE 2 · IMAGE — WHO THEY BECOME"
+                : "STAGE 1 · STILL"}{" "}
+            — THE LOOK{" "}
             {confirmedImgs.length
               ? isTransfer
                 ? `· CAST ${activeCast.length} ✓`
@@ -2508,7 +2721,13 @@ export function FlowPanel({
               identities ride as TEXT by default (photoreal images trip the filter — verified). Seedream cards preview the render best; the ↳ chip can send a stylized look as an image.
             </span>
           )}
+          {isRestyle && (
+            <span className="flow-engine mono">
+              optional — pick a look and its identity text rides the restyle prompt; or skip and describe the change in the prompt alone. ANIMATE runs Lucy Edit Pro (~$0.15/s of clip).
+            </span>
+          )}
         </div>
+
 
         {/* CAST — slots GROW with each picked look, one dancer per look
             (max 3). A card carries face + outfit TOGETHER; the 👕 button
@@ -2643,7 +2862,9 @@ export function FlowPanel({
             );
           }
           const pickShared = sharedLooks.filter((l) => !attemptImgs.has(l.image));
-          if (!pickAttempts.length && !pickShared.length) return null;
+          // Restyle keeps the carousel visible even when empty — its
+          // trailing ＋ Custom card IS the way into the generation form.
+          if (!isRestyle && !pickAttempts.length && !pickShared.length) return null;
           return (
           <>
             <p className="flow-locked-hint" style={{ marginBottom: 8 }}>
@@ -2706,6 +2927,18 @@ export function FlowPanel({
                   <span className="flow-thumb-tag">{l.label.slice(0, 18)}</span>
                 </button>
               ))}
+              {/* Restyle: ＋ Custom at the END of the row (owner call
+                  2026-07-19) — opens the Seedream generation form. */}
+              {isRestyle && !genOpen && (
+                <button
+                  className="flow-thumb flow-thumb-custom"
+                  title="Generate a look with a prompt (Seedream)"
+                  onClick={() => setGenOpen(true)}
+                >
+                  <span className="flow-thumb-plus">＋</span>
+                  <span className="flow-thumb-tag">Custom</span>
+                </button>
+              )}
             </div>
           </>
           );
@@ -2831,9 +3064,59 @@ export function FlowPanel({
             );
           })()}
 
-        {/* The generation form collapses once the cast has anyone — the
-            common path is pick-from-carousel; prompting is the explicit
-            side door (owner call 2026-07-18). */}
+        {/* RESTYLE: image first (the carousel above), then the prompt —
+            which ships collapsed (the template is complete; the identity
+            text folds in automatically). The KEY panel lives up between
+            the step chips and this stage card. */}
+        {isRestyle && (
+          <div className="flow-gen-row" style={{ marginBottom: 14 }}>
+            {!restyleEditing ? (
+              <div className="flow-motion-collapsed">
+                <p className="flow-take-prompt clamp3">{flow.motionPrompt}</p>
+                <button className="link-btn" onClick={() => setRestyleEditing(true)}>
+                  ✎ Edit prompt
+                </button>
+              </div>
+            ) : (
+              <>
+                <textarea
+                  rows={5}
+                  value={flow.motionPrompt}
+                  onChange={(e) => patchFlow(flow.id, { motionPrompt: e.target.value })}
+                  placeholder="What should change — 'Transform the dancer into …; keep the choreography, camera and timing exactly'"
+                />
+                <div className="flow-gen-actions">
+                  <button
+                    className="link-btn"
+                    onClick={() =>
+                      patchFlow(flow.id, {
+                        motionPrompt: randomFrom(RESTYLE_PRESETS, flow.motionPrompt),
+                      })
+                    }
+                    title="Cycle restyle templates — in-place swap / scene-swap variant"
+                  >
+                    🎲 Template
+                  </button>
+                  <button className="link-btn" onClick={() => setRestyleEditing(false)}>
+                    ✓ Done
+                  </button>
+                </div>
+              </>
+            )}
+            <span className="flow-engine mono">
+              Lucy Edit Pro (fal) · $0.15/s of OUTPUT — first run produced ~4s
+              from a 15s source (~$0.60; Wan-family length cap, observed
+              2026-07-19). Strongest at STYLE transforms (claymation/anime);
+              photoreal identity swaps come out doll-faced — use the depth
+              flow for those.{falKey?.present ? " · FAL_KEY ✓" : ""}
+            </span>
+          </div>
+        )}
+
+        {/* The generation form collapses by default on transfer/restyle —
+            the common path is pick-from-carousel; prompting is the explicit
+            side door (owner call 2026-07-18; restyle showed TWO textareas
+            without this, 2026-07-19). */}
         {isTransfer && activeCast.length > 0 && !genOpen && !editFrom && (
           <button
             className="link-btn"
@@ -2845,7 +3128,9 @@ export function FlowPanel({
         )}
         {(isTransfer
           ? activeCast.length === 0 || genOpen || Boolean(editFrom)
-          : !confirmedImg || Boolean(editFrom)) && (
+          : isRestyle
+            ? genOpen || Boolean(editFrom)
+            : !confirmedImg || Boolean(editFrom)) && (
           <>
             {editFrom && (
               <div className="chips-row" style={{ marginBottom: 8 }}>
@@ -3482,7 +3767,8 @@ export function FlowPanel({
         >
           ← Back
         </button>
-        {activeStage === "motion" ? (
+        {activeStage === "motion" ||
+        (isRestyle && activeStepIdx === flowSteps.length - 1) ? (
           <button
             className="btn-primary wiz-animate"
             disabled={!animateReady || rendering}
@@ -3490,9 +3776,11 @@ export function FlowPanel({
             title={
               animateReady
                 ? undefined
-                : isTransfer
-                  ? "Set a MOVES reference and write the prompt first"
-                  : "Confirm a look and write the motion prompt first"
+                : isRestyle
+                  ? "Pick a source clip on the VIDEO step first"
+                  : isTransfer
+                    ? "Set a MOVES reference and write the prompt first"
+                    : "Confirm a look and write the motion prompt first"
             }
           >
             {rendering
@@ -3540,7 +3828,8 @@ export function FlowPanel({
                     src: a.videoUrl,
                     aspect: a.aspectRatio,
                     label: `${a.modelLabel} · take`,
-                    compareSrc: isTransfer ? flow.refClip?.url : undefined,
+                    compareSrc:
+                      (flow.kind ?? "look") !== "look" ? flow.refClip?.url : undefined,
                     compareLabel: flow.refClip?.label,
                   })
                 }

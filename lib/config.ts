@@ -12,7 +12,8 @@ export type ProviderName =
   | "grok"
   | "seedance"
   | "runway"
-  | "kling";
+  | "kling"
+  | "lucy";
 export type AspectRatio = "9:16" | "16:9";
 export type Resolution = "720p" | "1080p";
 
@@ -186,6 +187,33 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     speed: 2,
     note: "UNVERIFIED — adapter built from Kling API docs 2026-07-13; verify on first real run. Key format ACCESS_KEY:SECRET_KEY (needs the separate API plan, not the consumer sub). Durations snap to 5/10s.",
   },
+  lucy: {
+    label: "Lucy Edit Pro",
+    // Decart's text-guided VIDEO-TO-VIDEO restyle via fal's queue API — the
+    // raw clip drives (motion/camera/timing free), the prompt says what to
+    // become. Powers the restyle flow (Video → Image), not i2v.
+    modelId: "decart/lucy-edit/pro",
+    implemented: true,
+    envVar: "FAL_KEY",
+    docsUrl: "https://fal.ai/models/decart/lucy-edit/pro",
+    keyUrl: "https://fal.ai/dashboard/keys",
+    dashboardUrl: "https://fal.ai/dashboard/usage",
+    adapterFile: "lib/providers/lucy.ts",
+    // fal published pricing 2026-07-19: $0.15/s @720p (Pro is the only
+    // active offline endpoint — fast/dev deprecated; Lucy 2.5 $0.04/s is
+    // realtime-WebRTC only). Output is 720p regardless of the res knob.
+    costPerSecondUsd: { "720p": 0.15, "1080p": 0.15 },
+    chartColor: "#3FBFAF", // added 2026-07-19 — re-validate the palette set
+    short: "Lucy Edit",
+    company: "Decart",
+    tagline: "Restyle a real clip in place — motion, camera and timing come free",
+    bestFor: "Turning the dancer into your character without rebuilding the scene",
+    tier: "recommended",
+    quality: 3,
+    speed: 2,
+    transferOnly: true,
+    note: "Video-to-video ONLY (the source clip drives everything). fal queue shapes from docs 2026-07-19 — verify on first real run. The RAW clip is uploaded to a temp host; unlike Seedance there is no real-person filter to dodge.",
+  },
 };
 
 export const DEFAULT_PROVIDER: ProviderName = "veo";
@@ -304,6 +332,8 @@ export const MODELS: ModelEntry[] = [
   defaultModel("runway"),
   // Kuaishou
   defaultModel("kling"),
+  // Decart (fal)
+  defaultModel("lucy"),
   // ByteDance
   defaultModel("seedance"),
   variant({
@@ -349,6 +379,11 @@ export const MODELS: ModelEntry[] = [
 export const readsClip = (modelKey: string): boolean =>
   modelKey.startsWith("seedance-2");
 
+/** Lucy-family v2v restylers — the models behind the RESTYLE flow
+ *  (Video → Image): the raw clip drives, the prompt says what to become. */
+export const restylesClip = (modelKey: string): boolean =>
+  modelKey.startsWith("lucy");
+
 /** Company chips, in the order they appear (companies with ≥1 model). */
 export const COMPANIES: string[] = MODELS.reduce<string[]>((acc, m) => {
   if (!acc.includes(m.company)) acc.push(m.company);
@@ -381,6 +416,7 @@ export const KEY_ENV_VARS = [
   "ARK_API_KEY",
   "RUNWAYML_API_SECRET",
   "KLING_API_KEY",
+  "FAL_KEY",
 ] as const;
 
 /** Whitelists — the API routes validate against these, never raw client input. */

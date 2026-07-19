@@ -901,6 +901,78 @@ All entries 2026-07-06 (single build session, owner: Dan).
 - MOVES candidates: text chips → the MUSIC FROM thumbnail-card carousel
   (video first frames, ▶ SET badge, Upload/Depth-tool as text cards).
 
+## 45. RESTYLE flow (Video → Image) — Lucy Edit v2v as a third pipeline
+
+- Owner call: don't jam Lucy into the transfer flow's model dropdown
+  (a picked depth ref would need un-picking) — a THIRD flow kind is the
+  clean UX. `restyle`: VIDEO (source clip) → IMAGE (who they become).
+  Two steps; ANIMATE = Lucy Edit Pro v2v. The raw clip drives —
+  motion/camera/timing free, no depth pass, no real-person filter
+  (Decart's product openly edits real people; the raw clip DOES upload
+  to the temp host — the stage copy says so).
+- Adapter `lib/providers/lucy.ts` via fal queue API (`decart/lucy-edit/
+  pro` — fast/dev are DEPRECATED on fal; Lucy 2.5's $0.04/s is
+  realtime-WebRTC only → cinerec territory). Queue shapes from docs
+  2026-07-19, UNVERIFIED until first run. Provider `lucy` (FAL_KEY,
+  $0.15/s 720p published, chartColor #3FBFAF — re-validate palette),
+  `restylesClip()` helper, transferOnly (never in i2v pickers).
+- Flow reuse economics: MOVES stage reused (restyle copy + duration
+  synced from the picked clip so the ANIMATE estimate is honest; depth
+  tool card hidden), LOOK stage reused (single-select semantics come
+  free from the non-transfer branch; auto-describe distills the
+  identity, which folds into the prompt as "Character — who the dancer
+  becomes: …"), REF AUDIO mux + COMPARE + take history all inherited.
+  RESTYLE_PRESETS: in-place swap / beach scene-swap.
+- Restyle-specific skips in runMotion: no depth pass, no 15.2s Seedance
+  cap, no ModelArk pixel-floor guard.
+- Cost reality check vs the depth path (15s 720p): Lucy Pro ~$2.25 vs
+  depth→Seedance Mini ~$1.35 — Lucy is the PRICIER offline path now
+  that fast/dev died; its value is source fidelity, not price.
+- Owner UX pass (2026-07-19): the restyle IMAGE step showed TWO
+  textareas (the gen form didn't collapse for restyle) — fixed: the
+  Seedream form opens only via the ＋ Custom card at the END of the
+  pick carousel (the separate ✎ link is transfer-only now). The step
+  shows MODEL + FAL_KEY presence inline; a missing key gets the same
+  paste-to-save onboarding as the provider panel (.env.local locally,
+  browser-only header key on hosted). No length cap for restyle by
+  design — fal's own max is unknown (unstated in docs), billing is
+  linear ($0.15/s), uguu upload caps at 128MB.
+- Second UX pass (owner order): image carousel FIRST (＋ Custom at the
+  end), then the key as a real key-popover card ("Lucy Edit Pro · API
+  key required" · Paste FAL_KEY · "Writes to .env.local, effective
+  immediately", ✕ dismiss — same kit as the chat method's key panels),
+  then the PROMPT as a collapsed 3-line read-only card with "✎ Edit
+  prompt" (flow-motion-collapsed kit) — the template is complete as-is
+  and the identity folds in automatically, so editing is the exception.
+
+## 46. Lucy first real run — adapter VERIFIED, quality verdict in
+
+- End-to-end LIVE: FAL_KEY auth → queue submit → poll → result →
+  vault → REF AUDIO mux → take. The whole restyle pipeline works;
+  queue shapes confirmed. (Also live-verified on the way: fal's
+  "Exhausted balance/User is locked" gate — pay-as-you-go draws from a
+  PREPAID balance; humanizeError is now provider-routed after its
+  Seedance wording sent the owner to the wrong console.)
+- Quality verdict (owner: "개판 ㅋㅋ"): photoreal identity swap on a
+  2-dancer clip came out doll-faced. Root cause is structural — the
+  impressive lucy.decart.ai demo is Lucy 2.5 (REALTIME-only model);
+  offline lucy-edit is Wan 2.2 5B-based, a smaller older model, weakest
+  exactly at photoreal identity. Positioning updated in the UI: Lucy =
+  STYLE transforms (claymation/anime) and partial edits; identity swaps
+  stay on the depth→Seedance path (the beach take remains champion).
+- OUTPUT LENGTH CAP observed: 15s source → 4s output (Wan-family
+  generation cap). "Length freedom" is dead for the offline path;
+  billing is per OUTPUT second (~$0.60, confirm on the fal dashboard).
+  Lucy 2.5-quality on files would mean pushing a file through the
+  realtime WebRTC endpoint and recording — cinerec's LIVE work is the
+  natural place to verify that first, then back-port.
+- DECISION: restyle flow HIDDEN, not deleted (owner: "너무 구려서 미노출,
+  머지는 해두고 나중에 재발전"). `RESTYLE_ENABLED=false` drops it from
+  the ＋ New flow picker; every line of restyle code (adapter, config,
+  isRestyle branches, stages) stays wired so the flag is the only revive
+  switch. No version bump / prod deploy — zero user-facing change, so
+  the update banner shouldn't fire. Merged to main as dormant code.
+
 ## Verification ledger (what was actually exercised)
 
 - `bun run build` green after every feature.
