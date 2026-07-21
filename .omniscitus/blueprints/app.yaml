@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-19T14:11:15.499Z
+updated: 2026-07-21T07:39:37.423Z
 
 files:
   "app/api/fetch-video/route.ts":
@@ -2441,10 +2441,16 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-07T13:44:37.059Z
-    change_count: 2
+    last_modified: 2026-07-21T07:39:37.423Z
+    change_count: 4
     purpose: "Root layout — fonts, metadata, and the data-hosted stamp (isCloud) the update check + footer read"
     change_log:
+      - date: 2026-07-21T07:39:37.423Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-21T07:39:31.184Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-07T13:44:37.059Z
         action: edit
         source: "claude:Danial Nam"
@@ -3963,5 +3969,16 @@ files:
     purpose: "Gemini reads a look card → face-first identity text for transfer text-mode casting (auto-distilled on confirm)"
     change_log:
       - date: 2026-07-18T14:58:31.383Z
+        action: write
+        source: "claude:Danial Nam"
+  "app/analytics.tsx":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-21
+    last_modified: 2026-07-21T07:39:15.937Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-21T07:39:15.937Z
         action: write
         source: "claude:Danial Nam"

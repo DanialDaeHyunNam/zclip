@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-19T04:18:14.668Z
+updated: 2026-07-21T07:39:26.528Z
 
 files:
   "lib/config.ts":
@@ -515,10 +515,28 @@ files:
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-12
-    last_modified: 2026-07-13T06:03:25.808Z
-    change_count: 9
+    last_modified: 2026-07-20T11:13:24.372Z
+    change_count: 15
     purpose: "SSOT of the photoreal video-prompt spec — SPEC_VERSION, 15 SECTIONS, GATES, SELF_CHECKS, MODEL_PROFILES; changes gated by Spec Lab wins (mono skill retired 2026-07-12)"
     change_log:
+      - date: 2026-07-20T11:13:24.372Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-20T11:13:19.539Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-20T11:13:14.155Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-20T11:13:09.366Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-20T11:13:04.316Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-07-20T11:12:58.329Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-13T06:03:25.808Z
         action: edit
         source: "claude:Danial Nam"
@@ -708,8 +726,19 @@ files:
     created: 2026-07-19
     last_modified: 2026-07-19T04:17:40.534Z
     change_count: 1
-    purpose: ""
+    purpose: "Decart Lucy Edit Pro v2v adapter (fal queue) for the DORMANT restyle flow — raw clip drives, prompt restyles; hidden behind RESTYLE_ENABLED (Wan-based, not shippable)"
     change_log:
       - date: 2026-07-19T04:17:40.534Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/analytics.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-07-21
+    last_modified: 2026-07-21T07:39:26.528Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-07-21T07:39:26.528Z
         action: write
         source: "claude:Danial Nam"

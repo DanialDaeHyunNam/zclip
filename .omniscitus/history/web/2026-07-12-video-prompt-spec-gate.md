@@ -164,6 +164,15 @@ queryable (the model profile), not just the journal.
       billed tests land (guide is dated Jul 2026 market chatter)
 - [ ] Storyboard candidate decisive test: ONE ≥8s multi-cut pair on Grok
       (~$2.50) — else retire it to Seedance hints permanently
+- [ ] SPEC 1.1.0 (2026-07-20, CHASE camcorder ref)의 미룬 검증 2건 —
+      additive 변경(회귀 0, 오너 verdict)은 A/B 없이 ship했으나 진짜 flip은
+      게이트가 남음:
+      ① "8K photoreal DEFAULT → 완전 genre-driven" FLIP을 /lab/snapshots
+         후보로 만들어 캠코더/lo-fi 브리프로 A/B (지금은 lo-fi OVERRIDE만
+         additive 삽입 — photoreal baseline 불변)
+      ② `subject` modesty=filter-safety 가설(n=1)은 화질 arena가 아니라
+         "필터 통과율" 테스트로 검증 — depth 실인물 필터 작업
+         ([[depth-transfer-pipeline]])과 같은 계열, 통과/실패 이진 측정
 
 ## Notes
 Docs trail: DEVLOG #27–#29, docs/VIDEO-PROMPT-SPEC.md (kept current),

@@ -5,8 +5,8 @@ units:
     status: open
     created: 2026-07-18
     last_updated: 2026-07-19
-    session_count: 1
-    title: "Depth Transfer Pipeline — /depth 툴 · 자동 depth 패스 · 캐스팅/오디오/씬 UX (v0.12.0)"
+    session_count: 2
+    title: "Depth Transfer Pipeline — /depth 툴 · 자동 depth 패스 · 캐스팅/오디오/씬 UX (v0.12.0) + Lucy restyle(dormant)"
   - id: zclip-chat-studio
     file: web/2026-07-06-zclip-chat-studio.md
     domain: web

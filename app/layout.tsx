@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { isCloud } from "@/lib/deploy";
+import { ZAnalytics } from "./analytics";
 import "./globals.css";
 
 const sans = Inter({
@@ -42,7 +43,12 @@ export default function RootLayout({
       className={`${sans.variable} ${mono.variable} ${display.variable}`}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Web Analytics on the hosted deploy only — local/self-host stays
+            call-free. Query strings stripped before send (app/analytics.tsx). */}
+        {isCloud() && <ZAnalytics />}
+      </body>
     </html>
   );
 }
