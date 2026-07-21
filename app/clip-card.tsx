@@ -13,25 +13,35 @@ export function ClipCardView({
   onDownload,
   onRemove,
   onUse,
+  onDead,
 }: {
   clip: Clip;
   withPw: (u: string) => string;
   onDownload: (u: string) => void;
   onRemove: (id: string) => void;
   onUse?: (clip: Clip) => void;
+  /** Fired when the video fails to load (expired provider link) — lets the
+   *  archive drop the card instead of showing a broken tile. */
+  onDead?: (jobId: string) => void;
 }) {
+  // Resolve once: on hosted this is "" while the blob is still fetching, so the
+  // onError guard below must ignore an empty src (not a real load failure).
+  const src = clip.videoUrl ? withPw(clip.videoUrl) : "";
   return (
     <div className="card">
       <div className="thumb" style={{ aspectRatio: cssAspect(clip.aspectRatio) }}>
         {clip.videoUrl ? (
           <video
-            src={withPw(clip.videoUrl)}
+            src={src}
             muted
             loop
             playsInline
             preload="metadata"
             onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
             onMouseLeave={(e) => e.currentTarget.pause()}
+            onError={() => {
+              if (src) onDead?.(clip.jobId);
+            }}
           />
         ) : (
           <span className="thumb-state">Unavailable</span>

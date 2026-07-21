@@ -92,6 +92,9 @@ export default function ArchivePage() {
   const hosted = useHosted();
   const [ready, setReady] = useState(false);
   const [clips, setClips] = useState<Clip[]>([]);
+  // Gone takes (expired provider link / no saved copy) — hidden from the grid
+  // but kept in `clips` so the spend ledger and Clear All still see them.
+  const [dead, setDead] = useState<Set<string>>(new Set());
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [filter, setFilter] = useState<"all" | "video" | "photo">("all");
   const [sessions, setSessions] = useState<StoredSession[]>([]);
@@ -422,11 +425,21 @@ export default function ArchivePage() {
     a.remove();
   };
 
+  const markDead = useCallback((jobId: string) => {
+    setDead((prev) => (prev.has(jobId) ? prev : new Set(prev).add(jobId)));
+  }, []);
+
+  /* Only playable takes reach the grid: a take with no saved URL, or one whose
+     provider link has expired (marked dead on load error), is hidden. The full
+     `clips` array stays intact for the spend ledger and Clear All. */
+  const shownClips = clips.filter((c) => c.videoUrl && !dead.has(c.jobId));
+  const shownCount = shownClips.length + photos.length;
+
   /* videos + generated photos in one list, cut by the ALL/VIDEO/PHOTO filter,
      grouped by owning session, newest first inside each group */
   const items: LibItem[] = [
     ...(filter !== "photo"
-      ? clips.map((clip) => ({ kind: "video" as const, clip }))
+      ? shownClips.map((clip) => ({ kind: "video" as const, clip }))
       : []),
     ...(filter !== "video"
       ? photos.map((photo) => ({ kind: "photo" as const, photo }))
@@ -468,7 +481,7 @@ export default function ArchivePage() {
       <div className="dash-page">
         <div className="archive-head">
           <span className="label">
-            Library · All Sessions · {clips.length + photos.length}
+            Library · All Sessions · {shownCount}
           </span>
           <span className="session-tools">
             {!hosted && (
@@ -493,8 +506,8 @@ export default function ArchivePage() {
         <div className="lib-filters">
           {(
             [
-              { k: "all", label: `ALL · ${clips.length + photos.length}` },
-              { k: "video", label: `VIDEO · ${clips.length}` },
+              { k: "all", label: `ALL · ${shownCount}` },
+              { k: "video", label: `VIDEO · ${shownClips.length}` },
               { k: "photo", label: `PHOTO · ${photos.length}` },
             ] as const
           ).map((f) => (
@@ -636,6 +649,7 @@ export default function ArchivePage() {
                     onDownload={download}
                     onRemove={removeClip}
                     onUse={useClipAsRef}
+                    onDead={markDead}
                   />
                 ) : (
                   <div key={itemKey(item)} className="card">

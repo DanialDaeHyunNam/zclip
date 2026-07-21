@@ -4731,12 +4731,22 @@ export default function Home() {
               deadPreview === `${previewTurn.id}:${previewTurn.videoUrl}` ? (
               <div className="frame-fault fade">
                 <span className="label">Video unavailable</span>
-                <p>
-                  This take&apos;s video is gone — either the provider&apos;s
-                  signed link expired before it was saved locally, or saved
-                  videos were cleared from this machine. New takes are saved
-                  into .zclip-data automatically.
-                </p>
+                {hosted ? (
+                  <p>
+                    This take&apos;s video is gone — the provider&apos;s signed
+                    link expired (Veo purges in ~2 days) or this browser&apos;s
+                    copy was cleared. The hosted app can&apos;t vault takes, so{" "}
+                    <a href="/install">install locally</a> or download the ones
+                    you want to keep.
+                  </p>
+                ) : (
+                  <p>
+                    This take&apos;s video is gone — either the provider&apos;s
+                    signed link expired before it was saved locally, or saved
+                    videos were cleared from this machine. New takes are saved
+                    into .zclip-data automatically.
+                  </p>
+                )}
               </div>
             ) : previewTurn?.videoUrl ? (
               <video
