@@ -18,8 +18,20 @@
  * card runs SELF_CHECKS via lib/spec-check.ts. Docs: docs/VIDEO-PROMPT-SPEC.md.
  */
 
-export const SPEC_VERSION = "1.0.2";
+export const SPEC_VERSION = "1.1.0";
 // CHANGELOG
+// 1.1.0 (2026-07-20) — CHASE late-night dance-studio camcorder ref → three
+//         ADDITIVE section learnings (explicit owner verdict; backward-
+//         compatible so no Spec Lab gate needed — the photoreal DEFAULT is
+//         byte-unchanged, only new capability is added): (1) `style` gains a
+//         lo-fi-genre OVERRIDE (camcorder/VHS/webcam native look wins, don't
+//         force 8K) — the full "8K photoreal → genre-driven" FLIP is the real
+//         behavior change and is DEFERRED to a /lab snapshot A/B on a camcorder
+//         brief; (2) `acting` gains a single emotional throughline shown via
+//         the body; (3) `continuity` gains physiological-state continuity
+//         (sweat/breath/flush across cuts). `subject` gains a modesty=filter-
+//         safety HYPOTHESIS (n=1 — verify with a filter-PASS test, not a
+//         quality arena; kin to the depth real-person-filter work).
 // 1.0.2 (2026-07-13) — arena field failures → veo avoid: real-celebrity
 //         likeness hard-block (Veo rejected an assembled idol name);
 //         assemblers gained a fictional-names rule + an over-length
@@ -49,18 +61,18 @@ export interface SpecSection {
 }
 
 export const SECTIONS: SpecSection[] = [
-  { key: "style", requires: "8K photoreal + negatives NAMED AS GENRES (no 3D render / game engine / cutscene / ad-CG / music-video grading)" },
+  { key: "style", requires: "8K photoreal DEFAULT + negatives NAMED AS GENRES (no 3D render / game engine / cutscene / ad-CG / music-video grading). LO-FI OVERRIDE: when the genre-anchor is a lo-fi capture format (camcorder/VHS/webcam/early-phone), the medium's native look WINS — name its artifacts (tape noise, highlight bloom, auto-exposure flicker, soft focus, imperfect framing) and do NOT force 8K/photoreal sharpness" },
   { key: "format", requires: "anchor to ONE specific real video genre (e.g. 'K-pop idol YouTube behind-the-scenes vlog'); camera gear must never be visible; if one-take: forbid cuts/split-screen/storyboard/on-screen text with a double lock" },
   { key: "lighting", requires: "light source + direction (e.g. vanity bulbs as key, golden hour)" },
   { key: "color", requires: "60:30:10 palette with concrete main/secondary/accent" },
   { key: "lens", requires: "physical lens traits, focal feel, 180-degree shutter motion blur" },
   { key: "skin", requires: "pores, vellus hair, real wrinkles where age-appropriate; forbid plastic skin / beauty filter / smoothing" },
-  { key: "acting", requires: "micro-specs: eye-contact beats, breathing (chest rise), tiny laughs, 'never posed-frozen'" },
+  { key: "acting", requires: "micro-specs: eye-contact beats, breathing (chest rise), tiny laughs, 'never posed-frozen'; ONE named emotional throughline the whole clip serves (e.g. 'tired-but-satisfied after practice'), shown through the BODY (breath, sweat, posture) not adjectives" },
   { key: "physics", requires: "gravity & inertia: hair bounce, fabric sway, prop weight, contact shadows" },
-  { key: "continuity", requires: "named character canon lock — 'Same {NAME}, no identity drift' — plus wardrobe/set constancy" },
+  { key: "continuity", requires: "named character canon lock — 'Same {NAME}, no identity drift' — plus wardrobe/set constancy; physiological-state continuity across cuts (sweat/breath/flush escalate consistently, never reset mid-clip)" },
   { key: "technical", requires: "24fps, no jitter/glitch" },
   { key: "audio", requires: "no BGM / no subtitles + ambience list + DIALOGUE LAYER (on-camera vs voiceover; mouth closed during VO) + per-character speech-pace contract" },
-  { key: "subject", requires: "full character spec (age/build/hair/skin/outfit/accessories); name them" },
+  { key: "subject", requires: "full character spec (age/build/hair/skin/outfit/accessories); name them. FILTER-SAFETY HYPOTHESIS (n=1, CHASE camcorder ref — unverified): for real-person-risk subjects (idol/celebrity-like), specifying modest full coverage (long sleeves, covered torso, no jewelry) MAY lower real-person/NSFW filter trips — confirm with a filter-pass test, not a quality arena" },
   { key: "scene", requires: "location declared as FIXED CANON (not style reference) + named recurring props" },
   { key: "action", requires: "CUT N (0:00–0:02) timecoded board; ≤1 spoken line per ~2s cut; one no-dialogue b-roll cut; ending pose hold ('do not end abruptly')" },
   { key: "camera", requires: "restate viewpoint + forbidden moves (dolly/drone/third-person switch/exterior tracking)" },
@@ -130,6 +142,7 @@ export const SELF_CHECKS: string[] = [
   "Ending hold present ('do not end abruptly')",
   "Screenplay-format-only prompt? NO — bare 'A: … / B: …' scripts make some models render burned subtitles/storyboards",
   "Named character + 'no identity drift' clause present",
+  "Lo-fi genre (camcorder/VHS/webcam)? Its capture artifacts (shake / tape noise / bloom / focus-miss) are NAMED and 8K/photoreal sharpness is NOT forced",
 ];
 
 /**
