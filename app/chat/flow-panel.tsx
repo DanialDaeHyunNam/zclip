@@ -681,16 +681,9 @@ export function FlowPanel({
     if (flow && flow.id !== flowId) setFlowId(flow.id);
   }, [flow, flowId]);
 
-  /* No flow in this session at all → make one. Wait for a REAL session id
-   *  before auto-creating — creating with "" (studio not yet hydrated)
-   *  would orphan the flow into every session. */
-  useEffect(() => {
-    if (flow || !hydrated || !sessionId) return;
-    const f = newFlow(1, sessionId);
-    setFlows((fs) => [...fs, f]);
-    setFlowId(f.id);
-    setEditFrom(null);
-  }, [sessionId, flow, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* Intentionally NO auto-create when a session has no flow: the empty state
+   *  shows ＋ New flow → kind picker, so both pipelines (IMAGE→MOTION and
+   *  MOVES→IMAGE→MOTION) are seen. Pre-making a look flow buried the second. */
 
   /* switching sessions must not carry another flow's one-shot edit context */
   useEffect(() => {
@@ -1403,14 +1396,13 @@ export function FlowPanel({
           setFlows(migrated);
           setFlowId(migrated[migrated.length - 1].id);
         } else {
-          const f = newFlow(1, sessionId || undefined);
-          setFlows([f]);
-          setFlowId(f.id);
+          // No flows yet → DON'T auto-create one. The empty state prompts
+          // ＋ New flow, which opens the kind picker so the MOVES→IMAGE→MOTION
+          // pipeline is discoverable (auto-creating a look hid it).
+          setFlows([]);
         }
       } catch {
-        const f = newFlow(1, sessionId || undefined);
-        setFlows([f]);
-        setFlowId(f.id);
+        setFlows([]);
       }
       // MOVES candidates: any Library entry with a playable video —
       // GRABbed references first (that's what they're FOR), then takes.
@@ -2355,9 +2347,82 @@ export function FlowPanel({
     return () => clearInterval(tick);
   }, [flows, hydrated, headers, patchAttempt, onPreview]);
 
-  // Never a mysterious blank: if there's no active flow (transient, or a
-  // corrupted hot-reload state), show a real Start button instead of an
-  // empty div so the user can always begin.
+  // The ＋ New flow kind picker — rendered in BOTH the empty state and the tab
+  // row so the first-ever ＋ New flow lands on a real choice between the
+  // pipelines (never a pre-made look flow).
+  const kindPicker = newPick ? (
+    <div className="flow-kind-wrap fade">
+      <div className="flow-kind-pick">
+        {(
+          [
+            {
+              kind: "look" as FlowKind,
+              title: "IMAGE → MOTION",
+              desc: "Make a look, confirm it, then iterate motion on it forever.",
+            },
+            {
+              kind: "transfer" as FlowKind,
+              title: "MOVES → IMAGE → MOTION",
+              desc: "Pick a reference video's choreography, confirm a look, and have them perform it in a scene you rebuild.",
+            },
+            // restyle (Lucy v2v) — hidden behind RESTYLE_ENABLED; the
+            // offline model isn't shippable yet (see the flag).
+            ...(RESTYLE_ENABLED
+              ? [
+                  {
+                    kind: "restyle" as FlowKind,
+                    title: "VIDEO → IMAGE",
+                    desc: "Restyle a clip in place — the video drives everything, your look/prompt says what the dancer becomes (Lucy Edit v2v · no depth pass needed).",
+                  },
+                ]
+              : []),
+          ]
+        ).map((opt) => (
+          <button
+            key={opt.kind}
+            className="flow-kind-opt"
+            onClick={() => {
+              setNewPick(false);
+              // an untouched flow OF THIS KIND is reused, not cloned
+              const empty = visibleFlows.find(
+                (f) =>
+                  (f.kind ?? "look") === opt.kind &&
+                  !f.imgAttempts.length &&
+                  !f.motionAttempts.length &&
+                  !f.imgPrompt.trim() &&
+                  !f.refClip &&
+                  (opt.kind !== "look" || !f.motionPrompt.trim()),
+              );
+              if (empty) {
+                setFlowId(empty.id);
+                return;
+              }
+              const n =
+                visibleFlows.filter((f) => (f.kind ?? "look") === opt.kind)
+                  .length + 1;
+              const f = newFlow(n, sessionId || undefined, opt.kind);
+              setFlows((fs) => [...fs, f]);
+              setFlowId(f.id);
+            }}
+          >
+            <span className="spec-head">{opt.title}</span>
+            <span className="flow-kind-desc">{opt.desc}</span>
+          </button>
+        ))}
+      </div>
+      {/* opened by mistake? close without creating anything — BELOW the
+          carousel, never scrolling with it */}
+      <button
+        className="btn-ghost flow-kind-cancel"
+        onClick={() => setNewPick(false)}
+      >
+        Cancel
+      </button>
+    </div>
+  ) : null;
+
+  // Never a mysterious blank: if there's no active flow, show a real Start
+  // button (which opens the kind picker) instead of an empty div.
   if (!hydrated) return <div className="flow-panel" />;
   if (!flow) {
     return (
@@ -2366,15 +2431,12 @@ export function FlowPanel({
           <p className="flow-sub">Start a flow to generate here.</p>
           <button
             className="btn-primary"
-            onClick={() => {
-              const f = newFlow(visibleFlows.length + 1, sessionId || undefined);
-              setFlows((fs) => [...fs, f]);
-              setFlowId(f.id);
-            }}
+            onClick={() => setNewPick((v) => !v)}
           >
             ＋ New flow
           </button>
         </div>
+        {kindPicker}
       </div>
     );
   }
@@ -2411,76 +2473,7 @@ export function FlowPanel({
           </button>
         ))}
       </div>
-      {newPick && (
-        <div className="flow-kind-wrap fade">
-        <div className="flow-kind-pick">
-          {(
-            [
-              {
-                kind: "look" as FlowKind,
-                title: "IMAGE → MOTION",
-                desc: "Make a look, confirm it, then iterate motion on it forever.",
-              },
-              {
-                kind: "transfer" as FlowKind,
-                title: "MOVES → IMAGE → MOTION",
-                desc: "Pick a reference video's choreography, confirm a look, and have them perform it in a scene you rebuild.",
-              },
-              // restyle (Lucy v2v) — hidden behind RESTYLE_ENABLED; the
-              // offline model isn't shippable yet (see the flag).
-              ...(RESTYLE_ENABLED
-                ? [
-                    {
-                      kind: "restyle" as FlowKind,
-                      title: "VIDEO → IMAGE",
-                      desc: "Restyle a clip in place — the video drives everything, your look/prompt says what the dancer becomes (Lucy Edit v2v · no depth pass needed).",
-                    },
-                  ]
-                : []),
-            ]
-          ).map((opt) => (
-            <button
-              key={opt.kind}
-              className="flow-kind-opt"
-              onClick={() => {
-                setNewPick(false);
-                // an untouched flow OF THIS KIND is reused, not cloned
-                const empty = visibleFlows.find(
-                  (f) =>
-                    (f.kind ?? "look") === opt.kind &&
-                    !f.imgAttempts.length &&
-                    !f.motionAttempts.length &&
-                    !f.imgPrompt.trim() &&
-                    !f.refClip &&
-                    (opt.kind !== "look" || !f.motionPrompt.trim()),
-                );
-                if (empty) {
-                  setFlowId(empty.id);
-                  return;
-                }
-                const n =
-                  visibleFlows.filter((f) => (f.kind ?? "look") === opt.kind)
-                    .length + 1;
-                const f = newFlow(n, sessionId || undefined, opt.kind);
-                setFlows((fs) => [...fs, f]);
-                setFlowId(f.id);
-              }}
-            >
-              <span className="spec-head">{opt.title}</span>
-              <span className="flow-kind-desc">{opt.desc}</span>
-            </button>
-          ))}
-        </div>
-        {/* opened by mistake? close without creating anything — BELOW the
-            carousel, never scrolling with it */}
-        <button
-          className="btn-ghost flow-kind-cancel"
-          onClick={() => setNewPick(false)}
-        >
-          Cancel
-        </button>
-        </div>
-      )}
+      {kindPicker}
       {/* the working surface for the selected flow — a distinct workbench,
           visually set apart from the flow-tab carousel above */}
       <div className="flow-workspace">
