@@ -15,3 +15,10 @@ tsconfig.tsbuildinfo
 .gstack
 .grabs
 .omniscitus
+
+# 로컬 전용 데이터 · 오너 전용 실험 — .gitignore 와 같은 목록. 이 파일이 있으면
+# Vercel 은 .gitignore 를 안 보므로 여기에도 꼭 적는다 (2026-10-28 발견: 빠져 있었다)
+.zclip-data
+/app/lab
+/lab
+.DS_Store

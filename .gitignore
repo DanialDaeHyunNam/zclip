@@ -17,3 +17,6 @@ next-env.d.ts
 # open-source repo; the whole feature lives in these local-only folders
 /app/lab/
 /lab/
+# omniscitus work history (blueprints, session units) — kept on the owner's
+# machine only, not published with the open-source repo (owner 2026-10-28)
+.omniscitus/
