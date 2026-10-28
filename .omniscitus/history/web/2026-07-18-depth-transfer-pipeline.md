@@ -94,8 +94,8 @@ restyle flow(구축·라이브 검증·품질 판정·잠재움).
   (`.key-inline`로 absolute 오버라이드 — 원래 팝오버라 워크벤치 밖으로
   순간이동하던 버그), restyle 마지막 스텝에 ANIMATE.
 - **품질 판정 → 미노출**: 라이브 실런 end-to-end 성공(어댑터 검증 완료,
-  fal 선불잔액 게이트도 확인 → humanizeError provider-라우팅)했으나 결과가
-  "개판"(오너) — 오프라인 lucy-edit은 Wan-2.2 5B 기반이라 포토리얼 identity
+  fal 선불잔액 게이트도 확인 → humanizeError provider-라우팅)했으나 결과
+  품질 미달(오너 판정) — 오프라인 lucy-edit은 Wan-2.2 5B 기반이라 포토리얼 identity
   swap이 인형 얼굴 + 출력 ~4s 캡. `RESTYLE_ENABLED=false`로 ＋New flow
   픽커에서 숨김, 코드는 전부 배선 유지(플래그로 부활). 버전업/배포 없이
   main 머지(PR #7) — 사용자 대면 변화 0.

@@ -11,6 +11,7 @@ import {
   estimateCostUsd,
   estimateModelCost,
   resolveModel,
+  MODELS,
   effectiveSeconds,
   readsClip,
   type ProviderName,
@@ -20,6 +21,7 @@ import {
 import { CHARACTERS, SETTINGS, FASHION, composeStarter } from "@/lib/prompts";
 import {
   keyHeader,
+  setLedgerSession,
   videoUrlEnvVar,
   setLocalKey,
   localKeyFlags,
@@ -30,6 +32,7 @@ import { VERSION, RELEASES_URL } from "@/lib/version";
 import { useHosted, useUpdateCheck } from "@/lib/use-version";
 import { UpdateGuide } from "./update-guide";
 import { FlowPanel, type FlowPreview } from "./flow-panel";
+import { CutPanel, cutDraft } from "./cut-panel";
 import { HelpGuide } from "./help-guide";
 import { AboutModal } from "./about-modal";
 import { useRouter } from "next/navigation";
@@ -42,12 +45,30 @@ import {
   cssAspect,
   isLocalVideoUrl,
   GALLERY_KEY,
+  GALLERY_EVENT,
+  BILLABLE_PROVIDERS,
+  REBILL_KEY,
+  REBILL_DONE_KEY,
   SESSIONS_KEY,
   SESSION_ID_KEY,
   PW_KEY,
   PENDING_REF_KEY,
 } from "@/lib/clip";
 import { persistRemoteVideo } from "@/lib/persist-clip";
+import {
+  grainStrength,
+  POST_PRESETS,
+  POST_SHAKES,
+  postWindow,
+  shakeMargin,
+  type LightSide,
+  type PostPreset,
+  type PostShake,
+} from "@/lib/post-frame";
+import { NEUTRAL_GRADE, type Grade } from "@/lib/post-grade";
+import { pickSettings } from "@/lib/post-settings";
+import { PostPreview } from "./post-preview";
+import { AgentText } from "./agent-text";
 import {
   type RefMix,
   DEFAULT_REF_MIX,
@@ -200,6 +221,12 @@ interface StoredSession {
   autoTitled?: boolean;
   /** Pinned sessions float above the rest of the sidebar list. */
   pinned?: boolean;
+  /** Session KIND, fixed at creation (+ New picker) — `undefined` = "take"
+   *  (every pre-CUT session). There is NO in-session switch: the other kind
+   *  is always a NEW session; untouched sessions are never persisted, so
+   *  picking the other kind on a fresh one reads as replacement.
+   *  docs/CUT-FLOW.md is the SSOT. */
+  kind?: "take" | "cut";
   turns: Turn[];
 }
 
@@ -242,6 +269,12 @@ const flowWorkSessionIds = (): Set<string> => {
     return new Set();
   }
 };
+
+/** Real CUT work — the ONE definition (mirrors flowWorkSessionIds) that
+ *  keeps a cut session alive in the sidebar placeholder sweeps. Currently:
+ *  a non-empty parked script draft; grows with the pipeline (scenes,
+ *  renders). Reads plain localStorage, so call at sweep time only. */
+const hasCutWork = (id: string): boolean => Boolean(cutDraft(id).trim());
 
 const PinGlyph = () => (
   <svg
@@ -331,9 +364,11 @@ function contextManifest(
       label: `Character · ${has.char}`,
       role: transfer
         ? "face / identity — required"
-        : has.fullVideoRef
-          ? "described in the prompt only — Seedance 2.0 can't mix a frame image with a video reference"
-          : "reference image (the face)",
+        : has.fullVideoRef && provider === "kling4"
+          ? "@Image1 — the face; the clip is only a timing/emotion reference"
+          : has.fullVideoRef
+            ? "described in the prompt only — Seedance 2.0 can't mix a frame image with a video reference"
+            : "reference image (the face)",
     });
   if (has.setting)
     rows.push({
@@ -605,6 +640,12 @@ export default function Home() {
   /** CHAT (conversational loop) vs FLOW (still → motion pipeline) —
    *  one studio surface, two methods; the left frame is shared. */
   const [method, setMethod] = useState<"chat" | "flow">("chat");
+  /** TAKE (raw clips via chat/flow) vs CUT (one assembled finished video) —
+   *  the session KIND, fixed at creation. Mirrors StoredSession.kind for the
+   *  CURRENT session; docs/CUT-FLOW.md. */
+  const [sessionKind, setSessionKind] = useState<"take" | "cut">("take");
+  /** + New opens a kind picker (TAKE | CUT) instead of assuming take. */
+  const [sidePick, setSidePick] = useState(false);
   const [flowPreview, setFlowPreview] = useState<FlowPreview | null>(null);
   /** FLOW pipeline one-liner (depth pass → model call → rendering) —
    *  shown UNDER the shared frame, where eyes are during ANIMATE. */
@@ -686,6 +727,33 @@ export default function Home() {
   /** `${turnId}:${videoUrl}` of a preview <video> that failed to load — keyed
    *  on the URL too, so a vault recovery swapping in a local URL retries. */
   const [deadPreview, setDeadPreview] = useState<string | null>(null);
+  /** ✂ POST — a Lightroom-style finishing pass on the previewed take: trim,
+   *  crop, colour grade, window light, vignette, sharpen, grain, handheld
+   *  shake, 30fps, phone encode, room tone (owner 2026-10-27/28: "everything
+   *  that makes it look real, in post — like Lightroom"). The OUTPUT frame
+   *  previews it live in WebGL (post-preview.tsx). The look survives a take
+   *  switch so one recipe runs on many takes. */
+  const [post, setPost] = useState<{
+    zoom: number;
+    cx: number;
+    cy: number;
+    shake: PostShake;
+    light: number;
+    lightSide: LightSide;
+    vignette: number;
+    sharpen: number;
+    grain: number;
+    phoneEncode: boolean;
+    grade: Grade;
+    fps30: boolean;
+    room: boolean;
+    trimStart: number;
+    trimEnd: number | null;
+    busy: boolean;
+    out: string | null;
+    showOut: boolean;
+    err: string | null;
+  } | null>(null);
   /** Pre-spend confirm: a paid action waits here until the user OKs it.
    *  "Don't ask again" is SESSION-scoped on purpose — a reload/new session
    *  re-arms it, since it's real money. */
@@ -739,11 +807,32 @@ export default function Home() {
     attach?.kind === "video"
       ? Math.round(Math.min(15, Math.max(1, attach.srcSeconds ?? 8)))
       : null;
-  const estCostUsd = estimateModelCost(
+  // Learn from the bills: per model, the median of billed ÷ estimated over
+  // the last takes that were matched (e.g. Grok Imagine billed $0.57 where
+  // seconds × rate said $0.32). The quote shown before spending uses it.
+  const billCalib = useMemo(() => {
+    const ratios = new Map<string, number[]>();
+    for (const c of clips) {
+      if (c.costSource !== "billed" && c.costSource !== "units") continue;
+      if (!c.estUsd || c.costUsd == null || !c.modelLabel) continue;
+      const list = ratios.get(c.modelLabel) ?? [];
+      if (list.length < 8) list.push(c.costUsd / c.estUsd);
+      ratios.set(c.modelLabel, list);
+    }
+    const out = new Map<string, number>();
+    ratios.forEach((v, k) => {
+      const sorted = [...v].sort((a, b) => a - b);
+      out.set(k, sorted[Math.floor(sorted.length / 2)]);
+    });
+    return out;
+  }, [clips]);
+  const rawEstCostUsd = estimateModelCost(
     model,
     resolution,
     providerId === "runway" && runwaySecs != null ? runwaySecs : duration,
+    { refSeconds: providerId === "kling4" && attach?.kind === "video" ? attach.srcSeconds : undefined },
   );
+  const estCostUsd = rawEstCostUsd != null ? rawEstCostUsd * (billCalib.get(model.short) ?? 1) : null;
   const keyMissing = keysLoaded && !keys[model.envVar];
   /** A key popover is absolutely positioned below .panel-controls, so its
    *  height never enters the layout — without reserved space it clips at
@@ -908,6 +997,7 @@ export default function Home() {
       const sid = store.get(SESSION_ID_KEY) ?? `s${Date.now()}`;
       store.set(SESSION_ID_KEY, sid);
       setSessionId(sid);
+      setSessionKind(storedSessions.find((s) => s.id === sid)?.kind ?? "take");
       // A reload mid-refine/submit can't be resumed (no jobId yet) — mark it.
       const restoredTurns = loadJson<Turn[]>(THREAD_KEY, []).map((t) =>
         (t.status === "refining" || t.status === "pending") && !t.jobId
@@ -984,6 +1074,7 @@ export default function Home() {
             renamed: existing?.renamed,
             autoTitled: existing?.autoTitled,
             pinned: existing?.pinned,
+            kind: existing?.kind, // rebuilt field-by-field — don't eat it
             updatedAt: Date.now(),
             createdAt: existing
               ? sessionCreatedAt(existing)
@@ -1055,6 +1146,29 @@ export default function Home() {
       store.set(GALLERY_KEY, JSON.stringify(clips));
     }
   }, [clips, hydrated]);
+  /* Adopt takes the flow panel wrote straight into the gallery (lib/clip.ts
+     GALLERY_EVENT). It only ever adds takes or swaps a take's video (audio
+     mux) — bills and vault paths stay this state's, which is newer. */
+  useEffect(() => {
+    const adopt = () =>
+      setClips((cs) => {
+        const disk = loadJson<Clip[]>(GALLERY_KEY, []);
+        const mine = new Map(cs.map((c) => [c.jobId, c]));
+        const onDisk = new Set(disk.map((d) => d.jobId));
+        return [
+          ...cs.filter((c) => !onDisk.has(c.jobId)),
+          ...disk.map((d) => {
+            const c = mine.get(d.jobId);
+            if (!c) return d;
+            return c.videoUrl === d.videoUrl ? c : { ...c, videoUrl: d.videoUrl };
+          }),
+        ];
+      });
+    window.addEventListener(GALLERY_EVENT, adopt);
+    return () => window.removeEventListener(GALLERY_EVENT, adopt);
+  }, []);
+  // Stills and text calls land in the server ledger under this session.
+  useEffect(() => setLedgerSession(sessionId), [sessionId]);
 
   /* remembered decline of the Gemini-key pitch */
   useEffect(() => {
@@ -1062,6 +1176,10 @@ export default function Home() {
     setSpecDeclined(store.get(SPEC_DECLINED_KEY) === "1");
     setRefineOn(store.get("hooklab.refine") === "1");
     setAutoTitleOn(store.get("hooklab.autoTitle") === "1");
+    // The last picked video model survives reloads (owner 2026-10-27: a
+    // reload mid-Act-Two silently fell back to Veo). Unknown keys → default.
+    const savedModel = store.get("hooklab.modelKey");
+    if (savedModel && MODELS.some((m) => m.key === savedModel)) setModelKey(savedModel);
   }, [hydrated]);
 
   /* FLOW work in the current session, reported up by the FlowPanel (attempt
@@ -1239,6 +1357,113 @@ export default function Home() {
     const iv = setInterval(poll, POLL_MS);
     return () => clearInterval(iv);
   }, [pollTurn?.jobId, ready, keyedHeaders, patchTurn, notifyDone]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Match each finished take's cost with the provider's bill (owner
+     2026-10-28: "match the real bill; identical where possible") —
+     /api/billing → lib/billing.ts. Runs a few seconds after a take lands and
+     then every 45s until the provider answers (or 10 tries / 6 days); the
+     estimate is kept as estUsd and calibrates the next quote. */
+  const clipsRef = useRef<Clip[]>([]);
+  clipsRef.current = clips;
+  const keysRef = useRef<Record<string, boolean>>({});
+  keysRef.current = keys;
+  const rebillRef = useRef<(() => Promise<boolean>) | null>(null);
+  const rebillBusyRef = useRef(false);
+  useEffect(() => {
+    if (hosted) return;
+    let off = false;
+    // force = the dashboard's "Match again": every unmatched take, any age,
+    // any number of earlier tries.
+    const run = async (force = false) => {
+      const now = Date.now();
+      const due = clipsRef.current.filter(
+        (c) =>
+          BILLABLE_PROVIDERS.has(c.provider) &&
+          c.costSource !== "billed" &&
+          c.costSource !== "units" &&
+          (force ||
+            (((c.billingTries ?? 0) < 10 ||
+              // stopped for want of the fal billing key — retry once it exists
+              (keysRef.current.FAL_BILLING_KEY && /FAL_BILLING_KEY/.test(c.billingNote ?? ""))) &&
+              now - c.createdAt < 6 * 86_400_000)),
+      );
+      for (let i = 0; i < due.length && !off; i += 20) await matchBills(due.slice(i, i + 20));
+      return !off; // false = the studio closed mid-pass
+    };
+    const matchBills = async (due: Clip[]) => {
+      try {
+        const r = await fetch("/api/billing", {
+          method: "POST",
+          headers: pwHeaders({ "content-type": "application/json" }),
+          body: JSON.stringify({
+            items: due.map((c) => ({ provider: c.provider, jobId: c.jobId, submittedAt: c.createdAt })),
+          }),
+        });
+        const b = await r.json();
+        if (off || !Array.isArray(b.results)) return;
+        type Res = { jobId: string; state: string; costUsd?: number; source?: "billed" | "units"; reason?: string };
+        const byId = new Map<string, Res>((b.results as Res[]).map((x) => [x.jobId, x]));
+        setClips((cs) =>
+          cs.map((c) => {
+            const x = byId.get(c.jobId);
+            if (!x) return c;
+            if (x.state === "done" && x.costUsd != null) {
+              return { ...c, estUsd: c.estUsd ?? c.costUsd, costUsd: x.costUsd, costSource: x.source, billingNote: undefined };
+            }
+            if (x.state === "unsupported") return { ...c, costSource: "est", billingTries: 10, billingNote: x.reason };
+            return { ...c, billingTries: (c.billingTries ?? 0) + 1 };
+          }),
+        );
+        // The take rows in this session show turn.costUsd — keep them in step.
+        setTurns((ts) =>
+          ts.map((t) => {
+            const x = t.jobId ? byId.get(t.jobId) : undefined;
+            return x && x.state === "done" && x.costUsd != null ? { ...t, costUsd: x.costUsd } : t;
+          }),
+        );
+      } catch {
+        /* next round */
+      }
+    };
+    rebillRef.current = () => run(true);
+    const first = setTimeout(run, 4000);
+    const iv = setInterval(run, 45_000);
+    return () => {
+      off = true;
+      clearTimeout(first);
+      clearInterval(iv);
+    };
+  }, [clips.length, hosted]); // eslint-disable-line react-hooks/exhaustive-deps
+  /* The dashboard asked to match again (REBILL_KEY) — now if this tab is
+     open, else the next time the studio loads. Marked done only after the
+     whole pass: leaving the studio mid-pass dropped the later chunks
+     (2026-10-28, the July Lucy take) — now the next load picks it up. */
+  useEffect(() => {
+    if (!hydrated || hosted) return;
+    const check = () => {
+      try {
+        const at = Number(localStorage.getItem(REBILL_KEY) || 0);
+        if (at <= Number(localStorage.getItem(REBILL_DONE_KEY) || 0) || rebillBusyRef.current) return;
+        const pass = rebillRef.current;
+        if (!pass) return;
+        rebillBusyRef.current = true;
+        void pass()
+          .then((finished) => {
+            if (finished) localStorage.setItem(REBILL_DONE_KEY, String(at));
+          })
+          .catch(() => {})
+          .finally(() => {
+            rebillBusyRef.current = false;
+          });
+      } catch {
+        /* storage blocked — the 45s loop still runs */
+      }
+    };
+    check();
+    const onStorage = (e: StorageEvent) => e.key === REBILL_KEY && check();
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [hydrated, hosted]);
 
   /* archive every finished take (survives rewinds) */
   useEffect(() => {
@@ -2594,16 +2819,27 @@ export default function Home() {
     if (selectedId === id) setSelectedId(null);
   };
 
-  /** Current thread is already auto-saved — just move to a fresh id. */
-  const newSession = () => {
+  /** Current thread is already auto-saved — just move to a fresh id.
+   *  `kind` is fixed here, at creation (docs/CUT-FLOW.md): the + New picker
+   *  is the only entry, and the other kind is always a NEW session. */
+  const newSession = (kind: "take" | "cut" = "take") => {
     if (busyTurn) return;
-    // Already on a fresh, empty session (no chat turns AND no flow work) —
-    // a second + New would only stack empty "New session" entries.
+    // Already on a fresh, empty session OF THIS KIND (no chat turns, no flow
+    // work, no cut work) — a second + New would only stack empty entries.
+    // A DIFFERENT kind proceeds: the untouched session was never persisted,
+    // so this reads as replacing it.
     const flowIds = flowWorkSessionIds();
-    if (!turns.length && !flowIds.has(sessionId)) return;
+    if (
+      !turns.length &&
+      !flowIds.has(sessionId) &&
+      !hasCutWork(sessionId) &&
+      kind === sessionKind
+    )
+      return;
     const nid = `s${Date.now()}`;
     store.set(SESSION_ID_KEY, nid);
     setSessionId(nid);
+    setSessionKind(kind);
     setTurns([]);
     setSelectedId(null);
     setCtxIds([]);
@@ -2622,12 +2858,15 @@ export default function Home() {
           title: "New session",
           updatedAt: Date.now(),
           createdAt: Date.now(),
+          ...(kind === "cut" ? { kind: "cut" as const } : {}),
           turns: [],
         },
         // …and sweep any stale never-sent placeholders while we're at it
-        // (flow work counts as sent — a session is chat, flow, or both).
+        // (flow and cut work count as sent — chat, flow, cut all keep one).
         ...prev.filter(
-          (s) => s.id !== nid && (s.turns.length > 0 || flowIds.has(s.id)),
+          (s) =>
+            s.id !== nid &&
+            (s.turns.length > 0 || flowIds.has(s.id) || hasCutWork(s.id)),
         ),
       ].slice(0, MAX_SESSIONS);
       store.set(SESSIONS_KEY, JSON.stringify(next));
@@ -2642,7 +2881,12 @@ export default function Home() {
     const q = new URLSearchParams(window.location.search);
     const open = q.get("open");
     if (open === "sessions") setSideOpen(true);
-    if (q.get("new") === "1") newSession();
+    // Rail's "+ new" lands on the kind picker, not a silently-created take
+    // session — forced choice buys CUT its discoverability (docs/CUT-FLOW.md).
+    if (q.get("new") === "1") {
+      setSideOpen(true);
+      setSidePick(true);
+    }
     if (open || q.get("new")) {
       window.history.replaceState(null, "", window.location.pathname);
     }
@@ -2715,6 +2959,7 @@ export default function Home() {
     if (!found) return;
     store.set(SESSION_ID_KEY, id);
     setSessionId(id);
+    setSessionKind(found.kind ?? "take");
     setTurns(found.turns);
     setSelectedId(null);
     setCtxIds([]);
@@ -2724,11 +2969,15 @@ export default function Home() {
     // flow-only session opens straight onto its flows.
     setMethod(found.turns.length ? "chat" : flowIds.has(id) ? "flow" : "chat");
     // Walking away from a session where nothing was ever SENT (no chat
-    // turns AND no flow work — a session is chat, flow, or both) drops its
-    // "New session" placeholder: an untouched session isn't worth keeping.
+    // turns, no flow work, no cut work) drops its "New session"
+    // placeholder: an untouched session isn't worth keeping.
     setSessions((prev) => {
       const next = prev.filter(
-        (s) => s.turns.length > 0 || flowIds.has(s.id) || s.id === id,
+        (s) =>
+          s.turns.length > 0 ||
+          flowIds.has(s.id) ||
+          hasCutWork(s.id) ||
+          s.id === id,
       );
       if (next.length !== prev.length) {
         store.set(SESSIONS_KEY, JSON.stringify(next));
@@ -2748,11 +2997,39 @@ export default function Home() {
       const nid = `s${Date.now()}`;
       store.set(SESSION_ID_KEY, nid);
       setSessionId(nid);
+      setSessionKind("take");
       setTurns([]);
       setSelectedId(null);
       setError(null);
     }
   };
+
+  /** A finished CUT vaulted via /api/clips lands in the gallery like any
+   *  take. provider "grab" keeps it out of the provider spend ledger —
+   *  the pipeline itself is free (TTS + stock). */
+  const onCutDone = useCallback(
+    (c: { videoUrl: string; seconds: number; prompt: string }) => {
+      setClips((prev) => [
+        {
+          jobId: `cut-${Date.now()}`,
+          sessionId,
+          provider: "grab" as const,
+          prompt: c.prompt.slice(0, 500),
+          variantLabel: "Cut",
+          modelLabel: "CUT",
+          createdAt: Date.now(),
+          status: "done" as const,
+          aspectRatio: "9:16" as AspectRatio,
+          durationSeconds: Math.round(c.seconds),
+          resolution: "720p" as Resolution,
+          videoUrl: c.videoUrl,
+          costUsd: 0,
+        },
+        ...prev,
+      ]);
+    },
+    [sessionId],
+  );
 
   /** Re-run a failed take. Uses its saved prompt (or re-refines from its
    *  message) with the CURRENTLY selected model/params — so you can flip
@@ -2912,6 +3189,488 @@ export default function Home() {
     [...turns].reverse().find((t) => !t.kind);
   const previewBusy =
     previewTurn && (previewTurn.status === "refining" || previewTurn.status === "pending");
+  // ✂ POST crop window, NORMALIZED — postWindow() also runs in the ffmpeg
+  // render (/api/grab action "post"), so what you see is what gets baked.
+  const postWin = post ? postWindow(post.zoom, post.cx, post.cy, shakeMargin(post.shake)) : null;
+  /** What ✎ Edit works on: the chat take in the frame, or the flow take in
+   *  the frame — same panel, preview, render and AI chat either way (owner
+   *  2026-10-28: "Edit on every result, affecting it the same way"). */
+  const editTarget: { id: string; src: string; label: string; cost?: number; billed?: boolean } | null = (() => {
+    const base =
+      method === "chat"
+        ? previewTurn?.status === "done" && previewTurn.videoUrl
+          ? { id: previewTurn.id, src: previewTurn.videoUrl, label: previewTurn.modelLabel ?? "", cost: previewTurn.costUsd, jobId: previewTurn.jobId }
+          : null
+        : flowPreview?.kind === "video"
+          ? { id: `flow:${flowPreview.src}`, src: flowPreview.src, label: flowPreview.label, cost: flowPreview.costUsd, jobId: undefined }
+          : null;
+    if (!base) return null;
+    // The ledger copy carries the bill once it's matched.
+    const clip = clips.find((c) => (base.jobId && c.jobId === base.jobId) || c.videoUrl === base.src);
+    const billed = clip?.costSource === "billed" || clip?.costSource === "units";
+    return { id: base.id, src: base.src, label: base.label, cost: billed ? clip!.costUsd : (clip?.costUsd ?? base.cost), billed };
+  })();
+  const postTurnId = editTarget?.id;
+  // Flow take rows show the bill once /api/billing matched it.
+  const billedByJob = useMemo(
+    () =>
+      new Map(
+        clips
+          .filter((c) => (c.costSource === "billed" || c.costSource === "units") && c.costUsd != null)
+          .map((c) => [c.jobId, c.costUsd!]),
+      ),
+    [clips],
+  );
+  useEffect(() => {
+    // A different take keeps the recipe but gets its own trim and render.
+    setPost((p) => p && { ...p, trimStart: 0, trimEnd: null, busy: false, out: null, showOut: false, err: null });
+  }, [postTurnId]);
+  const postVidRef = useRef<HTMLVideoElement | null>(null);
+  /** Which trim handle is being dragged — the preview then parks on that
+   *  frame (paused) instead of looping, so you see where you're cutting. */
+  const trimDrag = useRef<string | null>(null);
+  const [previewDur, setPreviewDur] = useState<number | null>(null);
+  /** Before/after: held down = the raw crop, no grade or effects. */
+  const [postBypass, setPostBypass] = useState(false);
+  /** Collapsed ✂ POST sections (Lightroom-style panels). */
+  const [postClosed, setPostClosed] = useState<Record<string, boolean>>({});
+  const postTrimStart = useRef(0);
+  postTrimStart.current = post?.trimStart ?? 0;
+  const postPreviewing = Boolean(post && !(post.showOut && post.out));
+  /** ✎ Edit mode: the controls take over the RIGHT column (chat hidden, not
+   *  unmounted — a half-typed prompt survives) so the preview on the left
+   *  and the knobs on the right are visible together (owner 2026-10-28). */
+  const postEditing = !!post && !!editTarget;
+  /** ✎ Edit chat (owner 2026-10-28): the owner asks, the local Claude Code
+   *  CLI turns the knobs through MCP tools and checks rendered stills
+   *  (/api/post-agent). One thread per studio session; the server rolls to a
+   *  fresh Claude session when the context fills and hands over. */
+  type AgentMsg = { role: "user" | "assistant" | "note"; text: string; tools?: string[]; refs?: string[]; live?: boolean };
+  /** Photos / videos attached to the next edit-chat message (owner: "drop
+   *  in a reference and say 'like this'"). Videos go to the clip vault first;
+   *  the server turns them into frames + look stats for Claude. */
+  type AgentRef = { id: string; kind: "image" | "video"; name: string; thumb?: string; dataUrl?: string; src?: string; uploading?: boolean; err?: string };
+  const [agentRefs, setAgentRefs] = useState<AgentRef[]>([]);
+  const agentFileRef = useRef<HTMLInputElement | null>(null);
+  const addAgentFiles = async (files: FileList | File[]) => {
+    for (const f of Array.from(files).slice(0, 4)) {
+      const id = `r${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+      if (f.type.startsWith("image/")) {
+        try {
+          const bmp = await createImageBitmap(f);
+          const k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+          const c = document.createElement("canvas");
+          c.width = Math.round(bmp.width * k);
+          c.height = Math.round(bmp.height * k);
+          c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+          const dataUrl = c.toDataURL("image/jpeg", 0.85);
+          setAgentRefs((rs) => [...rs, { id, kind: "image" as const, name: f.name, thumb: dataUrl, dataUrl }].slice(-4));
+        } catch {
+          setAgentRefs((rs) => [...rs, { id, kind: "image" as const, name: f.name, err: "can't read" }]);
+        }
+      } else if (f.type.startsWith("video/")) {
+        // A first-frame thumb from the local file, then upload to the vault.
+        const url = URL.createObjectURL(f);
+        const thumb = await new Promise<string | undefined>((resolve) => {
+          const v = document.createElement("video");
+          v.muted = true;
+          v.src = url;
+          v.onloadeddata = () => {
+            v.currentTime = Math.min(0.5, v.duration / 2 || 0);
+          };
+          v.onseeked = () => {
+            const c = document.createElement("canvas");
+            c.width = 96;
+            c.height = Math.round((96 * v.videoHeight) / (v.videoWidth || 1)) || 170;
+            c.getContext("2d")!.drawImage(v, 0, 0, c.width, c.height);
+            resolve(c.toDataURL("image/jpeg", 0.7));
+          };
+          v.onerror = () => resolve(undefined);
+        });
+        URL.revokeObjectURL(url);
+        setAgentRefs((rs) => [...rs, { id, kind: "video" as const, name: f.name, thumb, uploading: true }].slice(-4));
+        try {
+          const fd = new FormData();
+          fd.append("file", f);
+          const r = await fetch("/api/clips", { method: "POST", headers: pwHeaders(), body: fd });
+          const b = await r.json();
+          setAgentRefs((rs) =>
+            rs.map((x) =>
+              x.id === id
+                ? r.ok && typeof b.url === "string"
+                  ? { ...x, src: b.url, uploading: false }
+                  : { ...x, uploading: false, err: b.error ?? "upload failed" }
+                : x,
+            ),
+          );
+        } catch {
+          setAgentRefs((rs) => rs.map((x) => (x.id === id ? { ...x, uploading: false, err: "upload failed" } : x)));
+        }
+      }
+    }
+  };
+  const [agentMsgs, setAgentMsgs] = useState<AgentMsg[]>([]);
+  const [agentInput, setAgentInput] = useState("");
+  const [agentBusy, setAgentBusy] = useState(false);
+  const [agentCtx, setAgentCtx] = useState<{ tokens: number | null; window: number | null; sessionNo: number } | null>(null);
+  const agentLogRef = useRef<HTMLDivElement | null>(null);
+  /** The knobs fold away by default — the chat does the editing (owner). */
+  const [postControlsOpen, setPostControlsOpen] = useState(false);
+  /** The chat takes the left video's height (owner: "give the chat the
+   *  video's height"), measured off the frame. */
+  const frameBoxRef = useRef<HTMLDivElement | null>(null);
+  const [frameH, setFrameH] = useState<number | null>(null);
+  useEffect(() => {
+    const el = frameBoxRef.current;
+    if (!postEditing || !el) return;
+    const ro = new ResizeObserver(() => setFrameH(el.getBoundingClientRect().height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [postEditing]);
+  useEffect(() => {
+    if (!postEditing || !sessionId) return;
+    let off = false;
+    fetch("/api/post-agent", {
+      method: "POST",
+      headers: pwHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({ action: "thread", key: sessionId }),
+    })
+      .then((r) => r.json())
+      .then((b) => {
+        if (off) return;
+        const th = b.thread as
+          | { messages: { role: "user" | "assistant" | "note"; text: string; tools?: string[] }[]; ctxTokens: number | null; ctxWindow: number | null; sessionNo: number }
+          | null;
+        setAgentMsgs(th ? th.messages.map((m) => ({ role: m.role, text: m.text, tools: m.tools, refs: (m as { refs?: string[] }).refs })) : []);
+        setAgentCtx(th ? { tokens: th.ctxTokens, window: th.ctxWindow, sessionNo: th.sessionNo } : null);
+      })
+      .catch(() => {});
+    return () => {
+      off = true;
+    };
+  }, [postEditing, sessionId]);
+  useEffect(() => {
+    const el = agentLogRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [agentMsgs]);
+  /** Patch the streaming (last) assistant message. */
+  const patchLastAgent = (fn: (m: AgentMsg) => AgentMsg) =>
+    setAgentMsgs((ms) => {
+      const i = ms.length - 1;
+      return i >= 0 && ms[i].role === "assistant" ? [...ms.slice(0, i), fn(ms[i])] : ms;
+    });
+  /** Replace the "compacting…" note with how it went (or add one). */
+  const settleCompactNote = (text: string) =>
+    setAgentMsgs((ms) => {
+      const i = ms.length - 1;
+      const note: AgentMsg = { role: "note", text };
+      return i >= 0 && ms[i].role === "note" && ms[i].live ? [...ms.slice(0, i), note] : [...ms, note];
+    });
+  /** compact — the session writes a handover note and the next message opens
+   *  a fresh one from it (the server does the same on its own past 60%). */
+  const compactAgent = async () => {
+    if (agentBusy || !sessionId) return;
+    setAgentBusy(true);
+    setAgentMsgs((ms) => [...ms, { role: "note", text: "compacting…", live: true }]);
+    try {
+      const r = await fetch("/api/post-agent", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({ action: "compact", key: sessionId }),
+      });
+      const b = await r.json().catch(() => ({}));
+      if (r.ok) {
+        settleCompactNote(`compacted → Claude session ${b.sessionNo}\n${b.note}`);
+        setAgentCtx((c) => ({ tokens: null, window: c?.window ?? null, sessionNo: Number(b.sessionNo) || 1 }));
+      } else settleCompactNote(`⚠ ${b.error ?? `HTTP ${r.status}`}`);
+    } catch {
+      settleCompactNote("⚠ Network error — try again");
+    } finally {
+      setAgentBusy(false);
+    }
+  };
+  const sendAgent = async () => {
+    const ready = agentRefs.filter((r) => !r.uploading && !r.err && (r.dataUrl || r.src));
+    const text = agentInput.trim() || (ready.length ? "이 레퍼런스처럼 맞춰줘." : "");
+    if (!text || agentBusy || !post || !editTarget || !sessionId || agentRefs.some((r) => r.uploading)) return;
+    setAgentInput("");
+    setAgentRefs([]);
+    setAgentBusy(true);
+    setAgentMsgs((ms) => [
+      ...ms,
+      { role: "user", text, refs: ready.map((r) => r.name) },
+      { role: "assistant", text: "", tools: [], live: true },
+    ]);
+    try {
+      const r = await fetch("/api/post-agent", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          action: "chat",
+          key: sessionId,
+          text,
+          look: pickSettings(post),
+          src: editTarget.src,
+          refs: ready.map((r) =>
+            r.kind === "image" ? { kind: "image", name: r.name, dataUrl: r.dataUrl } : { kind: "video", name: r.name, src: r.src },
+          ),
+        }),
+      });
+      if (!r.ok || !r.body) {
+        const b = await r.json().catch(() => ({}));
+        patchLastAgent((m) => ({ ...m, text: `⚠ ${b.error ?? `HTTP ${r.status}`}`, live: false }));
+        return;
+      }
+      const reader = r.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, i);
+          buf = buf.slice(i + 1);
+          if (!line.trim()) continue;
+          let e: Record<string, unknown>;
+          try {
+            e = JSON.parse(line);
+          } catch {
+            continue;
+          }
+          if (e.t === "start" && e.rolled) {
+            setAgentMsgs((ms) => [
+              ...ms.slice(0, -1),
+              { role: "note", text: `new Claude session ${e.sessionNo} — the last one filled its context; recent turns handed over` },
+              ms[ms.length - 1],
+            ]);
+          } else if (e.t === "compacting") {
+            patchLastAgent((m) => ({ ...m, live: false }));
+            setAgentMsgs((ms) => [...ms, { role: "note", text: "context past 60% — compacting…", live: true }]);
+          } else if (e.t === "compacted") {
+            settleCompactNote(`compacted → Claude session ${e.sessionNo}\n${String(e.note)}`);
+          } else if (e.t === "compactFailed") {
+            settleCompactNote("couldn't compact — the next message hands the recent turns to a new session instead");
+          } else if (e.t === "text") {
+            patchLastAgent((m) => ({ ...m, text: m.text + String(e.d) }));
+          } else if (e.t === "tool") {
+            patchLastAgent((m) => ({ ...m, tools: [...(m.tools ?? []), String(e.name)] }));
+          } else if (e.t === "look" && e.look) {
+            const look = e.look as ReturnType<typeof pickSettings>;
+            setPost((p) => p && { ...p, ...look, showOut: false });
+          } else if (e.t === "done") {
+            setAgentCtx({
+              tokens: (e.ctxTokens as number | null) ?? null,
+              window: (e.ctxWindow as number | null) ?? null,
+              sessionNo: Number(e.sessionNo) || 1,
+            });
+          } else if (e.t === "error") {
+            patchLastAgent((m) => ({ ...m, text: m.text || `⚠ ${String(e.message)}` }));
+          }
+        }
+      }
+    } catch {
+      patchLastAgent((m) => ({ ...m, text: m.text || "⚠ Network error — try again" }));
+    } finally {
+      patchLastAgent((m) => ({ ...m, live: false }));
+      setAgentBusy(false);
+    }
+  };
+  const resetAgent = async () => {
+    if (agentBusy || !sessionId) return;
+    await fetch("/api/post-agent", {
+      method: "POST",
+      headers: pwHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({ action: "reset", key: sessionId }),
+    }).catch(() => {});
+    setAgentMsgs([]);
+    setAgentCtx(null);
+  };
+  /** Let go of a trim handle → resume the loop from the (new) start. */
+  const releaseTrim = () => {
+    trimDrag.current = null;
+    const el = postVidRef.current;
+    if (el) {
+      el.currentTime = postTrimStart.current;
+      void el.play().catch(() => {});
+    }
+  };
+  /** A preset → the look knobs (never the trim). */
+  const presetLook = (pr: PostPreset) => ({
+    zoom: pr.zoom,
+    cx: pr.cx,
+    cy: pr.cy,
+    shake: pr.shake,
+    light: pr.light,
+    lightSide: pr.lightSide,
+    vignette: pr.vignette,
+    sharpen: pr.sharpen,
+    grain: pr.grain,
+    phoneEncode: pr.phoneEncode,
+    fps30: pr.fps30,
+    room: pr.room,
+    grade: { ...NEUTRAL_GRADE, ...pr.grade },
+  });
+  /** One grey line under a ✂ POST control saying what it is for. */
+  const postHint = (text: string) => (
+    <p
+      className="frame-idle-sub"
+      style={{ margin: "-4px 0 0 80px", fontSize: 10, lineHeight: 1.45, letterSpacing: "0.04em", color: "var(--dim)" }}
+    >
+      {text}
+    </p>
+  );
+  /** A ✂ POST slider row. Double-click the label to reset it. */
+  const postSlider = (
+    label: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number,
+    shown: string,
+    set: (v: number) => void,
+    reset: number,
+  ) => (
+    <label key={label} className="mono" style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 11 }}>
+      <span
+        style={{ width: 70, cursor: "pointer", userSelect: "none" }}
+        title="Double-click to reset"
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          set(reset);
+        }}
+      >
+        {label}
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => set(Number(e.target.value))}
+        onDoubleClick={() => set(reset)}
+        style={{ flex: 1 }}
+      />
+      <span style={{ width: 44, textAlign: "right" }}>{shown}</span>
+    </label>
+  );
+  const setGrade = (k: keyof Grade) => (v: number) =>
+    setPost((p) => p && { ...p, grade: { ...p.grade, [k]: v }, showOut: false });
+  const signed = (v: number) => (v > 0 ? `+${Math.round(v)}` : `${Math.round(v)}`);
+  /** Lightroom-style collapsible section header. */
+  const postSection = (key: string, title: string, onReset?: () => void) => (
+    <div
+      className="mono"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        fontSize: 11,
+        marginTop: 6,
+        paddingTop: 8,
+        borderTop: "1px solid var(--hair)",
+        letterSpacing: "0.18em",
+      }}
+    >
+      <button
+        className="link-btn"
+        style={{ flex: 1, textAlign: "left" }}
+        onClick={() => setPostClosed((c) => ({ ...c, [key]: !c[key] }))}
+      >
+        {postClosed[key] ? "▸" : "▾"} {title}
+      </button>
+      {onReset && (
+        <button className="link-btn" style={{ fontSize: 10 }} onClick={onReset}>
+          reset
+        </button>
+      )}
+    </div>
+  );
+  const renderPost = async () => {
+    if (!post || !postWin || !editTarget || post.busy) return;
+    setPost({ ...post, busy: true, err: null });
+    try {
+      const r = await fetch("/api/grab", {
+        method: "POST",
+        headers: pwHeaders({ "content-type": "application/json" }),
+        body: JSON.stringify({
+          action: "post",
+          src: editTarget.src,
+          zoom: post.zoom,
+          cx: post.cx,
+          cy: post.cy,
+          shake: post.shake,
+          light: post.light,
+          lightSide: post.lightSide,
+          vignette: post.vignette,
+          sharpen: post.sharpen,
+          grain: post.grain,
+          phoneEncode: post.phoneEncode,
+          grade: post.grade,
+          fps30: post.fps30,
+          room: post.room,
+          trimStart: post.trimStart,
+          trimEnd: post.trimEnd,
+        }),
+      });
+      const b = await r.json();
+      setPost((p) =>
+        p && r.ok && typeof b.url === "string"
+          ? { ...p, busy: false, out: b.url, showOut: true }
+          : p && { ...p, busy: false, err: b.error ?? "Post render failed" },
+      );
+    } catch {
+      setPost((p) => p && { ...p, busy: false, err: "Network error — try again" });
+    }
+  };
+  /** The live WebGL preview over whichever <video> the frame shows. */
+  const postOverlay =
+    post && postWin && postPreviewing ? (
+      <PostPreview
+        videoRef={postVidRef}
+        trimDragRef={trimDrag}
+        bypass={postBypass}
+        look={{
+          win: postWin,
+          shake: post.shake,
+          trimStart: post.trimStart,
+          trimEnd: post.trimEnd,
+          grade: post.grade,
+          light: post.light,
+          lightSide: post.lightSide,
+          vignette: post.vignette,
+          sharpen: post.sharpen,
+          grainStrength: grainStrength(post.grain),
+        }}
+      />
+    ) : null;
+  /** ✎ Edit toggle — under every finished result (chat take or flow take). */
+  const editButton = hosted ? null : (
+    <button
+      className="btn-ghost"
+      onClick={() =>
+        setPost((p) =>
+          p
+            ? null
+            : {
+                // Opens on the first preset ("Quiet selfie").
+                ...presetLook(POST_PRESETS[0]),
+                trimStart: 0,
+                trimEnd: null,
+                busy: false,
+                out: null,
+                showOut: false,
+                err: null,
+              },
+        )
+      }
+      title="Edit this take like Lightroom — trim, crop, light, colour, window light, vignette, grain, shake — the controls open on the right"
+    >
+      {post ? "✕ Close edit" : "✎ Edit"}
+    </button>
+  );
 
   // The FLOW method reads its status off flowPreview, not the chat turns —
   // otherwise the header shows the last chat take's COMPLETE while a flow
@@ -3332,12 +4091,51 @@ export default function Home() {
           <span className="label">Sessions</span>
           <button
             className="link-btn"
-            onClick={() => newSession()}
+            onClick={() => setSidePick((v) => !v)}
             disabled={Boolean(busyTurn)}
           >
             + New
           </button>
         </div>
+        {/* + New kind picker — session kind is fixed at creation; the other
+            kind is always a NEW session (docs/CUT-FLOW.md). Cards mirror the
+            ＋ New flow picker: forced choice buys discoverability. */}
+        {sidePick && (
+          <div className="side-kind-pick fade">
+            {(
+              [
+                {
+                  kind: "take" as const,
+                  title: "PROMPT → TAKE",
+                  desc: "Generate one clip and iterate it forever — chat or flow.",
+                },
+                {
+                  kind: "cut" as const,
+                  title: "SCRIPT → SCENES → CUT",
+                  desc: "Write a script, cast visuals per scene, add a voiceover — one finished video, ready to post.",
+                },
+              ]
+            ).map((opt) => (
+              <button
+                key={opt.kind}
+                className="flow-kind-opt"
+                onClick={() => {
+                  setSidePick(false);
+                  newSession(opt.kind);
+                }}
+              >
+                <span className="spec-head">{opt.title}</span>
+                <span className="flow-kind-desc">{opt.desc}</span>
+              </button>
+            ))}
+            <button
+              className="btn-ghost flow-kind-cancel"
+              onClick={() => setSidePick(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         {(() => {
           const autoTitleReady = keysLoaded && Boolean(keys["GEMINI_API_KEY"]);
           return (
@@ -3420,6 +4218,15 @@ export default function Home() {
                     · ⇶ flow
                   </span>
                 )}
+                {s.kind === "cut" && (
+                  <span
+                    className="side-flow-badge"
+                    title="CUT session — script → scenes → voiceover → one finished video"
+                  >
+                    {" "}
+                    · ✂ cut
+                  </span>
+                )}
               </div>
               <button
                 className={`side-del side-pin ${s.pinned ? "on" : ""}`}
@@ -3471,27 +4278,454 @@ export default function Home() {
       </aside>
 
       <div className={`shell ${sideOpen ? "with-side" : ""}`}>
-      <main className="grid-main">
+      <main className={`grid-main ${postEditing ? "editing" : ""}`}>
         {/* session thread */}
-        <section className={`session-col ${method === "flow" ? "method-flow" : ""}`}>
+        <section
+          className={`session-col ${method === "flow" && sessionKind !== "cut" ? "method-flow" : ""} ${sessionKind === "cut" ? "kind-cut" : ""} ${postEditing ? "editing" : ""}`}
+        >
+          {postEditing && post && (
+            <div className="post-edit fade">
+              <div className="output-head session-head">
+                <span className="label">Edit</span>
+                <span className="status-line" style={{ marginLeft: 14 }}>
+                  {editTarget?.label ?? ""}{editTarget?.cost ? ` · ${fmtCost(editTarget.cost)}` : ""}
+                </span>
+                <button className="btn-ghost" style={{ marginLeft: "auto", padding: "4px 12px" }} onClick={() => setPost(null)}>
+                  ✓ Done — back to chat
+                </button>
+              </div>
+              <div className="fade" style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                <div
+                className="post-agent"
+                style={{ height: frameH ?? 620 }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files.length) void addAgentFiles(e.dataTransfer.files);
+                }}
+              >
+                  <div className="mono" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11 }}>
+                    <span style={{ letterSpacing: "0.18em" }}>AI EDIT</span>
+                    <span style={{ color: "var(--dim)", fontSize: 10 }}>
+                      Claude CLI
+                      {agentCtx
+                        ? `${agentCtx.tokens && agentCtx.window ? ` · ctx ${Math.max(1, Math.round((agentCtx.tokens / agentCtx.window) * 100))}%` : ""} · session ${agentCtx.sessionNo}`
+                        : ""}
+                    </span>
+                    <button
+                      className="link-btn"
+                      style={{ marginLeft: "auto", fontSize: 10 }}
+                      onClick={() => void compactAgent()}
+                      disabled={agentBusy || !agentCtx?.tokens}
+                      title="Summarise this chat and carry on in a fresh Claude session — happens on its own past 60%"
+                    >
+                      compact
+                    </button>
+                    <button className="link-btn" style={{ fontSize: 10 }} onClick={() => void resetAgent()} disabled={agentBusy}>
+                      new chat
+                    </button>
+                  </div>
+                  {(
+                    <div className="post-agent-log" ref={agentLogRef}>
+                      {agentMsgs.length === 0 && (
+                        <div className="post-agent-empty">
+                          Ask for a look in plain words — “moodier”, “light from the right”, “less filter-y, more iPhone”. Claude turns the
+                          knobs below, checks rendered frames and tells you what moved. The controls stay folded; open them anytime.
+                        </div>
+                      )}
+                      {agentMsgs.map((m, i) => (
+                        <div key={i} className={`post-agent-msg ${m.role}`}>
+                          {m.refs && m.refs.length > 0 && (
+                            <div className="post-agent-tools">
+                              {m.refs.map((r, j) => (
+                                <span key={j}>📎 {r}</span>
+                              ))}
+                            </div>
+                          )}
+                          {m.tools && m.tools.length > 0 && (
+                            <div className="post-agent-tools">
+                              {m.tools.map((t, j) => (
+                                <span key={j}>{t}</span>
+                              ))}
+                            </div>
+                          )}
+                          {m.role === "assistant" && m.text ? (
+                          <AgentText text={m.text} />
+                        ) : m.role === "note" && m.text.includes("\n") ? (
+                          // compact notes: one line, the handover note folded
+                          <details>
+                            <summary>{m.text.slice(0, m.text.indexOf("\n"))}</summary>
+                            {m.text.slice(m.text.indexOf("\n") + 1)}
+                          </details>
+                        ) : (
+                          m.text || (m.live ? "working…" : "")
+                        )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {agentRefs.length > 0 && (
+                    <div className="post-agent-refs">
+                      {agentRefs.map((r) => (
+                        <span key={r.id} className={r.err ? "err" : ""} title={r.err ?? r.name}>
+                          {r.thumb ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.thumb} alt="" />
+                          ) : (
+                            <i>{r.kind === "video" ? "▶" : "▣"}</i>
+                          )}
+                          <em>{r.uploading ? "uploading…" : r.err ? r.err : r.name}</em>
+                          <button className="link-btn" onClick={() => setAgentRefs((rs) => rs.filter((x) => x.id !== r.id))}>
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                    <button
+                      className="btn-ghost post-agent-attach"
+                      title="Attach photos or videos — Claude reads them as references (drag & drop or paste works too)"
+                      onClick={() => agentFileRef.current?.click()}
+                    >
+                      +
+                    </button>
+                    <input
+                      ref={agentFileRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      hidden
+                      onChange={(e) => {
+                        if (e.target.files?.length) void addAgentFiles(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                    <textarea
+                      onPaste={(e) => {
+                        if (e.clipboardData.files.length) {
+                          e.preventDefault();
+                          void addAgentFiles(e.clipboardData.files);
+                        }
+                      }}
+                      className="post-agent-input"
+                      rows={2}
+                      value={agentInput}
+                      placeholder="Tell Claude what to change — e.g. moodier, window light from the right, less filter-y. It turns the knobs and checks a frame."
+                      onChange={(e) => setAgentInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                          e.preventDefault();
+                          void sendAgent();
+                        }
+                      }}
+                    />
+                    <button className="btn-ghost" style={{ padding: "6px 14px" }} disabled={agentBusy || agentRefs.some((r) => r.uploading) || (!agentInput.trim() && !agentRefs.some((r) => !r.err))} onClick={() => void sendAgent()}>
+                      {agentBusy ? "Working…" : "Send"}
+                    </button>
+                  </div>
+                </div>
+                <div className="result-actions" style={{ marginTop: 0 }}>
+                  <button className="btn-ghost" disabled={post.busy} onClick={() => void renderPost()}>
+                    {post.busy ? "Making…" : "Make final video · 1080×1920"}
+                  </button>
+                  {postPreviewing && (
+                    <button
+                      className="btn-ghost"
+                      onPointerDown={() => setPostBypass(true)}
+                      onPointerUp={() => setPostBypass(false)}
+                      onPointerLeave={() => setPostBypass(false)}
+                      title="Hold to see the take without the grade and effects"
+                    >
+                      {postBypass ? "Original…" : "Hold: before"}
+                    </button>
+                  )}
+                  {post.out && (
+                    <>
+                      <button
+                        className="btn-ghost"
+                        onClick={() => setPost((p) => p && { ...p, showOut: !p.showOut })}
+                      >
+                        {post.showOut ? "Show preview" : "Show render"}
+                      </button>
+                      <button className="btn-ghost" onClick={() => download(post.out!)}>
+                        ↓ Download post
+                      </button>
+                    </>
+                  )}
+                </div>
+                {post.err && <p className="frame-idle-sub" style={{ color: "#f87171" }}>{post.err}</p>}
+                <button
+                  className="link-btn mono post-controls-toggle"
+                  onClick={() => setPostControlsOpen((o) => !o)}
+                >
+                  {postControlsOpen ? "▾" : "▸"} CONTROLS — presets · crop · light · color · effects · motion
+                </button>
+                {postControlsOpen && (
+                  <>
+                    <div className="mono" style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", fontSize: 11 }}>
+                      <span style={{ width: 70 }}>PRESETS</span>
+                      {POST_PRESETS.map((pr) => (
+                        <button
+                          key={pr.key}
+                          className="btn-ghost"
+                          style={{ padding: "4px 10px", fontSize: 11 }}
+                          title={pr.hint}
+                          onClick={() => setPost((p) => p && { ...p, ...presetLook(pr), showOut: false })}
+                        >
+                          {pr.label}
+                        </button>
+                      ))}
+                    </div>
+                    {postHint("A starting point — every knob below stays adjustable. Hover a preset for what it's for. Double-click any slider to reset it.")}
+
+                    {postSection("crop", "CROP & TIME")}
+                    {!postClosed.crop && (
+                      <>
+                        {previewDur &&
+                          (
+                            [
+                              ["TRIM START", "trimStart", post.trimStart],
+                              ["TRIM END", "trimEnd", post.trimEnd ?? previewDur],
+                            ] as const
+                          ).map(([label, k, v]) => (
+                            <label key={k} className="mono" style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 11 }}>
+                              <span style={{ width: 70 }}>{label}</span>
+                              <input
+                                type="range"
+                                min={0}
+                                max={previewDur}
+                                step={0.01}
+                                value={v}
+                                onPointerDown={() => {
+                                  trimDrag.current = k;
+                                }}
+                                onPointerUp={releaseTrim}
+                                onKeyUp={releaseTrim}
+                                onChange={(e) => {
+                                  const n = Number(e.target.value);
+                                  // Park the preview on the frame being cut at.
+                                  const el = postVidRef.current;
+                                  if (el) {
+                                    el.pause();
+                                    el.currentTime = n;
+                                  }
+                                  setPost((p) => {
+                                    if (!p) return p;
+                                    // Keep ≥0.5s between the handles; the end snaps
+                                    // back to "whole clip" when dragged to the end.
+                                    const end = p.trimEnd ?? previewDur;
+                                    return k === "trimStart"
+                                      ? { ...p, trimStart: Math.max(0, Math.min(n, end - 0.5)), showOut: false }
+                                      : {
+                                          ...p,
+                                          trimEnd: n >= previewDur - 0.03 ? null : Math.max(n, p.trimStart + 0.5),
+                                          showOut: false,
+                                        };
+                                  });
+                                }}
+                                style={{ flex: 1 }}
+                              />
+                              <span style={{ width: 44, textAlign: "right" }}>{v.toFixed(2)}s</span>
+                            </label>
+                          ))}
+                        {previewDur &&
+                          postHint(
+                            `Cut the dead start / end — drag to see the frame you cut at. Keeping ${(
+                              (post.trimEnd ?? previewDur) - post.trimStart
+                            ).toFixed(1)}s of ${previewDur.toFixed(1)}s.`,
+                          )}
+                        {postSlider("ZOOM", post.zoom, 1, 2.5, 0.01, `${(postWin?.zoom ?? post.zoom).toFixed(2)}×`, (v) => setPost((p) => p && { ...p, zoom: v, showOut: false }), 1)}
+                        {postSlider("CENTRE X", post.cx, 0, 1, 0.01, `${Math.round(post.cx * 100)}%`, (v) => setPost((p) => p && { ...p, cx: v, showOut: false }), 0.5)}
+                        {postSlider("CENTRE Y", post.cy, 0, 1, 0.01, `${Math.round(post.cy * 100)}%`, (v) => setPost((p) => p && { ...p, cy: v, showOut: false }), 0.45)}
+                        {postHint("How close (1.00× = the whole take) and where the frame sits — push the face off-centre like a real selfie.")}
+                      </>
+                    )}
+
+                    {postSection("light", "LIGHT", () =>
+                      setPost((p) => p && {
+                        ...p,
+                        grade: {
+                          ...p.grade,
+                          exposure: 0,
+                          contrast: 0,
+                          highlights: 0,
+                          shadows: 0,
+                          whites: 0,
+                          blacks: 0,
+                        },
+                      }),
+                    )}
+                    {!postClosed.light && (
+                      <>
+                        {postSlider("EXPOSURE", post.grade.exposure, -2, 2, 0.05, `${post.grade.exposure > 0 ? "+" : ""}${post.grade.exposure.toFixed(2)}`, setGrade("exposure"), 0)}
+                        {postSlider("CONTRAST", post.grade.contrast, -100, 100, 1, signed(post.grade.contrast), setGrade("contrast"), 0)}
+                        {postSlider("HIGHLIGHTS", post.grade.highlights, -100, 100, 1, signed(post.grade.highlights), setGrade("highlights"), 0)}
+                        {postSlider("SHADOWS", post.grade.shadows, -100, 100, 1, signed(post.grade.shadows), setGrade("shadows"), 0)}
+                        {postSlider("WHITES", post.grade.whites, -100, 100, 1, signed(post.grade.whites), setGrade("whites"), 0)}
+                        {postSlider("BLACKS", post.grade.blacks, -100, 100, 1, signed(post.grade.blacks), setGrade("blacks"), 0)}
+                        {postHint("Exposure = overall brightness (stops). Contrast = darks vs brights. Highlights / Shadows = only the bright / dark areas. Whites / Blacks = the very ends. Phone video looks flatter than AI: −highlights, +shadows.")}
+                      </>
+                    )}
+
+                    {postSection("color", "COLOR", () =>
+                      setPost((p) => p && {
+                        ...p,
+                        grade: {
+                          ...p.grade,
+                          temp: 0,
+                          tint: 0,
+                          vibrance: 0,
+                          saturation: 0,
+                          shadowTint: 0,
+                          highlightTint: 0,
+                        },
+                      }),
+                    )}
+                    {!postClosed.color && (
+                      <>
+                        {postSlider("TEMP", post.grade.temp, -100, 100, 1, signed(post.grade.temp), setGrade("temp"), 0)}
+                        {postSlider("TINT", post.grade.tint, -100, 100, 1, signed(post.grade.tint), setGrade("tint"), 0)}
+                        {postSlider("VIBRANCE", post.grade.vibrance, -100, 100, 1, signed(post.grade.vibrance), setGrade("vibrance"), 0)}
+                        {postSlider("SATURATION", post.grade.saturation, -100, 100, 1, signed(post.grade.saturation), setGrade("saturation"), 0)}
+                        {postHint("Temp = blue ↔ yellow. Tint = green ↔ magenta. Vibrance lifts muted colours and spares skin; Saturation moves every colour.")}
+                        {postSlider("SHADOW HUE", post.grade.shadowHue, 0, 360, 1, `${Math.round(post.grade.shadowHue)}°`, setGrade("shadowHue"), NEUTRAL_GRADE.shadowHue)}
+                        {postSlider("SHADOW AMT", post.grade.shadowTint, 0, 100, 1, `${Math.round(post.grade.shadowTint)}`, setGrade("shadowTint"), 0)}
+                        {postSlider("HIGH HUE", post.grade.highlightHue, 0, 360, 1, `${Math.round(post.grade.highlightHue)}°`, setGrade("highlightHue"), NEUTRAL_GRADE.highlightHue)}
+                        {postSlider("HIGH AMT", post.grade.highlightTint, 0, 100, 1, `${Math.round(post.grade.highlightTint)}`, setGrade("highlightTint"), 0)}
+                        {postHint("Split toning: a colour for the dark areas and one for the bright areas (e.g. cool shadows 210°, warm highlights 40°). Amount 0 = off.")}
+                      </>
+                    )}
+
+                    {postSection("effects", "EFFECTS")}
+                    {!postClosed.effects && (
+                      <>
+                        <label className="mono" style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 11 }}>
+                          <span
+                            style={{ width: 70, cursor: "pointer", userSelect: "none" }}
+                            title="Double-click to reset"
+                            onDoubleClick={() => setPost((p) => p && { ...p, light: 0, showOut: false })}
+                          >
+                            WINDOW
+                          </span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={0.6}
+                            step={0.01}
+                            value={post.light}
+                            onChange={(e) => setPost((p) => p && { ...p, light: Number(e.target.value), showOut: false })}
+                            style={{ flex: 1 }}
+                          />
+                          <select
+                            value={post.lightSide}
+                            onChange={(e) =>
+                              setPost((p) => p && { ...p, lightSide: e.target.value as LightSide, showOut: false })
+                            }
+                            title="Which side the window is on — the other side falls into shade"
+                            style={{ width: 110, flex: "none" }}
+                          >
+                            <option value="left">← light</option>
+                            <option value="right">light →</option>
+                          </select>
+                          <span style={{ width: 44, textAlign: "right" }}>{Math.round(post.light * 100)}%</span>
+                        </label>
+                        {postSlider("VIGNETTE", post.vignette, 0, 100, 1, `${Math.round(post.vignette)}`, (v) => setPost((p) => p && { ...p, vignette: v, showOut: false }), 0)}
+                        {postSlider("SHARPEN", post.sharpen, 0, 100, 1, `${Math.round(post.sharpen)}`, (v) => setPost((p) => p && { ...p, sharpen: v, showOut: false }), 0)}
+                        {postSlider("GRAIN", post.grain, 0, 100, 1, `${Math.round(post.grain)}`, (v) => setPost((p) => p && { ...p, grain: v, showOut: false }), 0)}
+                        <label className="mono" style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 11, marginLeft: 80 }}>
+                          <input
+                            type="checkbox"
+                            checked={post.phoneEncode}
+                            onChange={(e) => setPost((p) => p && { ...p, phoneEncode: e.target.checked })}
+                          />
+                          PHONE ENCODE (render only)
+                        </label>
+                        {postHint("Window = daylight from one side, the other side in soft shade. Vignette = darker edges, like a phone lens. Sharpen = crisper detail. Grain = sensor noise (AI frames are too clean). Phone encode = a touch of softness + a phone-like re-compression.")}
+                      </>
+                    )}
+
+                    {postSection("motion", "MOTION & SOUND")}
+                    {!postClosed.motion && (
+                      <>
+                        <label className="mono" style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 11 }}>
+                          <span style={{ width: 70 }}>SHAKE</span>
+                          <select
+                            value={post.shake}
+                            onChange={(e) =>
+                              setPost((p) => p && { ...p, shake: Number(e.target.value) as PostShake, showOut: false })
+                            }
+                          >
+                            <option value={0}>Off — tripod-still</option>
+                            {([1, 2] as const).map((l) => (
+                              <option key={l} value={l}>
+                                {POST_SHAKES[l].label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <div className="mono" style={{ display: "flex", gap: 16, alignItems: "center", fontSize: 11, marginLeft: 80 }}>
+                          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <input
+                              type="checkbox"
+                              checked={post.fps30}
+                              onChange={(e) => setPost((p) => p && { ...p, fps30: e.target.checked })}
+                            />
+                            30 FPS
+                          </label>
+                          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <input
+                              type="checkbox"
+                              checked={post.room}
+                              onChange={(e) => setPost((p) => p && { ...p, room: e.target.checked })}
+                            />
+                            ROOM TONE
+                          </label>
+                        </div>
+                        {postHint("Shake = a hand-held phone always drifts a little (AI floats like a tripod). 30fps = what phones record (AI is 24). Room tone = a quiet room's hiss instead of dead silence. Render only: 30fps, room tone.")}
+                      </>
+                    )}
+
+                    <p className="frame-idle-sub" style={{ margin: "4px 0 0", color: "var(--dim)", letterSpacing: "0.04em", fontSize: 10, lineHeight: 1.45 }}>
+                      The preview is the real thing, live (click it to play / pause). Make final video bakes it — plus 30fps, phone encode and room tone — into a new Reels-size file.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
           <div className="output-head session-head">
             <span className="label">Session</span>
-            <span className="method-toggle">
-              {(["chat", "flow"] as const).map((m) => (
-                <button
-                  key={m}
-                  className={`method-pill ${method === m ? "on" : ""}`}
-                  onClick={() => setMethod(m)}
-                  title={
-                    m === "chat"
-                      ? "Chat method — refine or SPEC-interview each take conversationally"
-                      : "Flow method — confirm a still, then iterate its motion (image → i2v pipeline)"
-                  }
+            {sessionKind === "cut" ? (
+              /* CUT sessions have no chat|flow method — the kind chip sits
+                 where the toggle would be, so the header always says what
+                 this session IS. */
+              <span className="method-toggle">
+                <span
+                  className="method-pill on cut-chip"
+                  title="CUT session — script → scenes → voiceover → one finished video"
                 >
-                  {m === "chat" ? "CHAT" : "⇶ FLOW"}
-                </button>
-              ))}
-            </span>
+                  ✂ CUT
+                </span>
+              </span>
+            ) : (
+              <span className="method-toggle">
+                {(["chat", "flow"] as const).map((m) => (
+                  <button
+                    key={m}
+                    className={`method-pill ${method === m ? "on" : ""}`}
+                    onClick={() => setMethod(m)}
+                    title={
+                      m === "chat"
+                        ? "Chat method — refine or SPEC-interview each take conversationally"
+                        : "Flow method — confirm a still, then iterate its motion (image → i2v pipeline)"
+                    }
+                  >
+                    {m === "chat" ? "CHAT" : "⇶ FLOW"}
+                  </button>
+                ))}
+              </span>
+            )}
             <span className="session-spend">
               {turns.length > 0 && (
                 <span className="status-line">
@@ -3606,14 +4840,19 @@ export default function Home() {
             </span>
           </div>
 
-          {method === "flow" && (
+          {method === "flow" && sessionKind !== "cut" && (
             <FlowPanel
+              billedByJob={billedByJob}
               onPreview={setFlowPreview}
               onNote={setFlowNote}
               sessionId={sessionId}
               sideOpen={sideOpen}
               onDigest={onFlowDigest}
             />
+          )}
+
+          {sessionKind === "cut" && (
+            <CutPanel sessionId={sessionId} onCutDone={onCutDone} />
           )}
 
           <div className="thread" ref={threadRef}>
@@ -4666,14 +5905,32 @@ export default function Home() {
         {/* preview + controls — rendered into the LEFT column via CSS order */}
         <section className="output-col">
           <div className="output-head">
-            <span className="label">Output</span>
+            <span className="label">
+              Output
+              {/* The cost of the take in the frame (chat or flow) — the
+                  header's session total is everything in this session. */}
+              {fmtCost(editTarget?.cost) && (
+                <span
+                  className="output-cost"
+                  title={
+                    editTarget?.billed
+                      ? "This take's cost — from the provider's bill"
+                      : "This take's cost — an estimate until the provider's bill is matched (checked automatically)"
+                  }
+                >
+                  {editTarget?.billed ? "" : "≈"}
+                  {fmtCost(editTarget?.cost)}
+                  <em>{editTarget?.billed ? " billed" : " est"}</em>
+                </span>
+              )}
+            </span>
             <span className="status-line">
               <span className={`dot ${status.dot}`} />
               {status.text}
             </span>
           </div>
 
-          <div className="frame" style={{ aspectRatio: frameAspect }}>
+          <div className="frame" ref={frameBoxRef} style={{ aspectRatio: frameAspect }}>
             {method === "flow" ? (
               /* the flow method drives the SAME frame — stills and takes */
               flowPreview ? (
@@ -4684,15 +5941,28 @@ export default function Home() {
                     since={flowPreview.startedAt ?? Date.now()}
                   />
                 ) : flowPreview.kind === "video" ? (
-                  <video
-                    key={flowPreview.src}
-                    src={videoSrc(flowPreview.src)}
-                    controls
-                    playsInline
-                    autoPlay
-                    loop
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+                  <>
+                    <video
+                      ref={postVidRef}
+                      key={post?.showOut && post.out ? post.out : flowPreview.src}
+                      src={post?.showOut && post.out ? post.out : videoSrc(flowPreview.src)}
+                      controls
+                      playsInline
+                      autoPlay
+                      loop
+                      muted={postPreviewing}
+                      onLoadedMetadata={(e) => {
+                        if (!(post?.showOut && post.out)) setPreviewDur(e.currentTarget.duration);
+                      }}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        ...(postPreviewing ? { opacity: 0 } : {}),
+                      }}
+                    />
+                    {postOverlay}
+                  </>
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -4749,19 +6019,31 @@ export default function Home() {
                 )}
               </div>
             ) : previewTurn?.videoUrl ? (
+              <>
               <video
-                key={`${previewTurn.id}:${previewTurn.videoUrl}`}
-                className="fade"
-                src={videoSrc(previewTurn.videoUrl)}
+                ref={postVidRef}
+                key={`${previewTurn.id}:${post?.showOut && post.out ? post.out : previewTurn.videoUrl}`}
+                // .fade animates transform with fill — it would pin the crop
+                // preview's inline transform, so drop it while ✂ POST is open.
+                className={post && !(post.showOut && post.out) ? undefined : "fade"}
+                src={post?.showOut && post.out ? post.out : videoSrc(previewTurn.videoUrl)}
+                // While ✂ POST previews, the WebGL canvas draws this video
+                // (cropped + graded) on top; the element keeps playing.
+                style={postPreviewing ? { opacity: 0 } : undefined}
                 autoPlay
                 muted
                 loop
                 playsInline
                 controls
+                onLoadedMetadata={(e) => {
+                  if (!(post?.showOut && post.out)) setPreviewDur(e.currentTarget.duration);
+                }}
                 onError={() =>
                   setDeadPreview(`${previewTurn.id}:${previewTurn.videoUrl}`)
                 }
               />
+              {postOverlay}
+              </>
             ) : previewTurn?.status === "error" ? (
               <div className="frame-fault fade">
                 <span className="label">Take failed</span>
@@ -4801,7 +6083,7 @@ export default function Home() {
               >
                 ↓ Download
               </button>
-              <span className="cost">{fmtCost(previewTurn.costUsd) ?? ""}</span>
+              {editButton}
               {hosted && (
                 // Hosted has no clip vault — the provider's copy is the only
                 // copy, and providers purge within days (docs/HOSTED.md §3.2).
@@ -4824,6 +6106,7 @@ export default function Home() {
               >
                 ↓ Download
               </button>
+              {editButton}
               {flowPreview.compareSrc && (
                 <button
                   className="btn-ghost"
@@ -4905,13 +6188,18 @@ export default function Home() {
               the flow panel carries its own params) */}
           <div
             className={`panel-controls${keyPopoverOpen ? " key-open" : ""}`}
-            style={method === "flow" ? { display: "none" } : undefined}
+            style={
+              method === "flow" || sessionKind === "cut"
+                ? { display: "none" }
+                : undefined
+            }
           >
             <div className="settings-strip">
               <ModelPicker
                 value={modelKey}
                 onChange={(k) => {
                   setModelKey(k);
+                  store.set("hooklab.modelKey", k);
                   setKeyMsg("");
                   setKeyInput("");
                   setKeyPanelHidden(false);

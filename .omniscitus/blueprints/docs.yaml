@@ -1,5 +1,5 @@
 version: 1
-updated: 2026-07-19T14:12:28.352Z
+updated: 2026-08-02T14:18:37.129Z
 
 files:
   "docs/ARCHITECTURE.md":
@@ -154,3 +154,34 @@ files:
       - date: 2026-07-14T15:34:42.736Z
         action: write
         source: "claude:Danial Nam"
+  "docs/CUT-FLOW.md":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-08-02
+    last_modified: 2026-08-02T14:18:37.129Z
+    change_count: 4
+    purpose: ""
+    change_log:
+      - date: 2026-08-02T14:18:37.129Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-08-02T14:18:24.430Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-08-02T14:01:36.854Z
+        action: edit
+        source: "claude:Danial Nam"
+      - date: 2026-08-02T13:37:10.712Z
+        action: write
+        source: "claude:Danial Nam"
+  "docs/VLOG-REALISM-SPEC.md":
+    status: active
+    source: "user:Danial Nam"
+    created: 2026-07-16
+    last_modified: 2026-10-28T05:07:41.000Z
+    change_count: 1
+    purpose: "Field-derived rules for an 8s talking vlog that reads as real (physics, syllable budget, gaze, positive composition)"
+    change_log:
+      - date: 2026-10-28T05:07:41.000Z
+        action: sync
+        source: "user:Danial Nam"

@@ -5,6 +5,94 @@ running local copy compares its version against the deployed one and prompts an
 update when it's behind (see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#versioning--updates)).
 
+## Unreleased
+
+<!-- Add notes here as you work; move them under a version heading on release. -->
+
+## 0.13.0 — 2026-10-28
+
+### Added
+- **CUT sessions (beta)** — a second session kind next to TAKE: topic or
+  script → scenes with stock-search terms → keyless voiceover per scene →
+  Pexels footage per scene → burned captions → one assembled vertical MP4
+  in the Library. Design + open items: [docs/CUT-FLOW.md](docs/CUT-FLOW.md).
+- **GRAB reads Threads posts** — the post's video is found on the page and
+  downloaded like a direct file (yt-dlp has no Threads extractor).
+- **Multi-reference edits**: ✎ on a look now takes extra references —
+  ＋ Reference image or ＋ Frame from video (scrub a local clip, grab a
+  frame) — riding as image 2+ after the look. ↺ Pose template fills the
+  "keep the person from image 1, copy only image 2's pose and framing"
+  instruction. Edited looks keep a strip of the references they used.
+- **Grok edit engine**: pick EDIT MODEL = Grok Imagine edit (xAI
+  `/v1/images/edits`, ~$0.08) or Gemini (default, ~$0.04).
+- **↺ Pose from frame**: turns a reference frame's camera distance, head
+  turn, gaze and expression into words (no identity) and puts them in the
+  edit prompt — reference images don't steer pose; words do.
+
+- **Kling 4.0 (fal)**: image-to-video, and reference-to-video when a clip is
+  attached — the clip lends timing, head moves and emotion; the face and
+  mouth are generated for your card.
+- **✂ Post** on a take — make it look real: trim, zoom and move the crop,
+  handheld shake, one-sided window light (all previewed live), 30fps, a phone
+  look (soften · temporal grain · re-encode) and an optional room tone, baked
+  into a new 1080×1920 file.
+- ✂ Post is a Lightroom-style panel: exposure, contrast, highlights,
+  shadows, whites, blacks, temperature, tint, vibrance, saturation, split
+  toning, window light, vignette, sharpen and grain — previewed live (WebGL)
+  exactly as it renders, with presets, per-section reset and a hold-to-see
+  before view.
+- ✎ Edit chat: tell Claude (your local Claude Code CLI) what to change — it
+  turns the knobs, checks rendered frames and explains the numbers; the
+  sliders and preview move live.
+- Attach photos or videos to the edit chat as references — Claude reads
+  them (frames + brightness/contrast/colour stats) and matches the look.
+- Edit chat **compact**: Claude writes a short handover note (goal, what you
+  liked and rejected, the numbers, what's next) and the chat carries on in a
+  fresh session from it — on its own when the context passes 60%, or with
+  the compact button any time.
+- The take's cost shows next to OUTPUT; the dashboard says since when, shows
+  this month / 7 days / today, dates per session, and no longer mislabels
+  live sessions as removed.
+
+- Costs match the bill: finished takes are looked up with the provider (xAI,
+  Runway, BytePlus, fal with a billing key) and marked "billed"; quotes learn
+  from past bills; the dashboard shows matched vs estimated spend.
+- Stills and text calls are in the spend ledger too: every look card, edit,
+  outfit swap, describe, refine, title, spec check and CUT script is priced
+  from the provider's own answer (xAI billed ticks; Gemini / OpenAI /
+  Anthropic tokens × the official price; Seedream per image) and counted in
+  the dashboard totals, charts and sessions.
+- Dashboard "Not matched to a bill": every take still on an estimate, with
+  the reason, and **Match again**. Kling (official API) takes are matched
+  from Kling's deduction records. OpenAI: paste an Admin key to see the
+  org's own bill next to ZCLIP's OpenAI lines.
+
+### Changed
+- ＋ New flow always opens the kind picker (no auto-made empty flow), so the
+  second pipeline is one click away.
+- Video Prompt Spec 1.1.0 — camcorder / lo-fi genre override, one emotional
+  through-line, continuity of physical state (additive; the photoreal
+  default is unchanged).
+- Hosted only: privacy-light page analytics (Vercel Web Analytics, query
+  strings stripped; local and self-hosted copies load nothing).
+- The GPT look engine no longer works — OpenAI shut gpt-image-1 down on
+  2026-10-23; pick Grok, Gemini or Seedream until a GPT Image 2.5 engine lands.
+- Grok Imagine is the default model — Veo 3.1 left the Gemini API on
+  2026-10-22.
+
+### Fixed
+- Takes whose video is gone no longer show as broken cards in the Library;
+  the hosted "video unavailable" note no longer points at a local folder.
+- Saved clips can be scrubbed (the clip vault now serves byte ranges).
+- Runway Act-Two: inline video cap is 5MB (was assumed 16MB); validation
+  errors now show which field failed.
+- The picked video model survives a page reload.
+- fal outputs are now saved to the local clip vault (they expire upstream).
+- Flow takes reach the studio's ledger right away — they're billed like chat
+  takes, the take list shows the bill, and the studio no longer overwrites a
+  flow take that landed after it loaded. Flow sessions get their flow's name
+  on the dashboard instead of "Removed session".
+
 ## 0.12.0 — 2026-07-19
 
 ### Added
@@ -133,8 +221,8 @@ update when it's behind (see
   ambiguity about which error it is (a credit/quota error reads nothing like
   a safety block). Added a plain credit/quota case. The real-person message
   now correctly says the filter fires on the REFERENCE VIDEO's real people
-  (not the identity image) — so text-only looks don't dodge it; a pose-
-  extracting engine (Kling Motion Control) or Act-Two does.
+  (not the identity image) — text-only looks don't change that; real-person
+  clips belong to a pose-extracting engine (Kling Motion Control) or Act-Two.
 
 ## 0.9.2 — 2026-07-16
 
@@ -161,7 +249,7 @@ update when it's behind (see
   gone. A selected look shows only as a compact chip.
 - **Per-look image/text toggle.** Each selected transfer look's chip flips
   between 🖼 image (reference_image) and ↳ text (its prompt as the character —
-  skips the real-person filter) — and stays selected either way. TEXT-mode
+  no face image sent) — and stays selected either way. TEXT-mode
   identities are prepended to the prompt at send.
 - **ANIMATE is only the floating bar now** — the duplicate inline button is
   gone. The bar floats (portaled to <body>, so no more horizontal scroll or

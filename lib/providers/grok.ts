@@ -11,8 +11,8 @@ import type { VideoProvider, SubmitParams, JobStatus } from "./types";
  *   2. POST /v1/videos/generations { model, prompt, image: { url }, duration }
  *      -> request id   (animates the still, guided by the prompt)
  *   GET  /v1/videos/{request_id} -> status: done|failed|expired, video.url
- * No aspect param is documented — the image follows aspect cues in the
- * prompt text ("Vertical 9:16 …") and the video follows the image.
+ * aspect_ratio is ignored for image-to-video (output follows the image).
+ * resolution ∈ 480p|720p|1080p, default 480p — always pass it.
  */
 
 const BASE = "https://api.x.ai/v1";
@@ -68,6 +68,11 @@ export const grok: VideoProvider = {
         prompt,
         image: { url: imageUrl },
         duration: Math.round(Math.min(15, Math.max(1, params.durationSeconds))),
+        // 2026-10-13: xAI defaults to 480p when omitted (a 9:16 i2v take came
+        // back 400x736). 1.5 is native 1080p for i2v. Silent — hooks get their
+        // sound in the edit.
+        resolution: params.resolution,
+        generate_audio: false,
       }),
     });
     if (!res.ok) throw new Error(`Video step: ${await readError(res)}`);

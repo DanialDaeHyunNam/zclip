@@ -32,7 +32,7 @@ chat refine 토글(기본 OFF). v0.6.0~v0.9.3 (2026-07-15~16).
   걸린다** — 이미지 없이 텍스트로만 넣어도 영상 프레임에서 실제 사람을
   잡아 차단. 원본이 통과한 건 참조가 **depth 렌더**(실제 얼굴 없음)였기
   때문. 실사 댄스 클립엔 Seedance r2v 부적합 → **Kling Motion Control**
-  (pose 추출, 필터 우회) 또는 Act-Two가 정답. depth 전처리는 ML 필요라
+  (포즈만 추출해 전달) 또는 Act-Two가 정답. depth 전처리는 ML 필요라
   스택에 없음. GRAB/트림/클립볼트는 로컬 dev 전용(hosted 불가).
 
 ## Timeline
@@ -63,7 +63,7 @@ chat refine 토글(기본 OFF). v0.6.0~v0.9.3 (2026-07-15~16).
 
 ## Pending
 - [ ] **Kling Motion Control 어댑터** — 실사 댄스 클립을 pose 추출로
-      전이(Seedance 실인물 필터 우회). $9.80 트라이얼 키로 첫 실런.
+      전이(포즈만 전달). $9.80 트라이얼 키로 첫 실런.
       TRANSFER flow 모델 선택지에 Seedance와 나란히 추가. [[flow-method-kling]]
 - [x] Seedance role 페어링 **실제 성공 영상** — 완료 2026-07-18: depth
       레퍼런스 + 2인 캐스트 해변 take 성공 ([[depth-transfer-pipeline]])

@@ -184,16 +184,39 @@ export async function GET(req: Request) {
   const file = path.join(CLIPS_DIR, f);
   try {
     const info = await stat(file);
+    const base = {
+      "content-type": "video/mp4",
+      "accept-ranges": "bytes",
+      "cache-control": "no-store",
+      ...(params.get("dl") && {
+        "content-disposition": `attachment; filename="${f}"`,
+      }),
+    };
+    // Byte ranges — without a 206 the browser can't seek a <video> (setting
+    // currentTime snaps back to 0), which ✂ POST's trim preview needs.
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get("range") ?? "");
+    if (range && (range[1] || range[2])) {
+      const start = range[1] ? Number(range[1]) : Math.max(0, info.size - Number(range[2]));
+      const end = range[1] && range[2] ? Math.min(Number(range[2]), info.size - 1) : info.size - 1;
+      if (start > end || start >= info.size) {
+        return new Response(null, {
+          status: 416,
+          headers: { "content-range": `bytes */${info.size}` },
+        });
+      }
+      const stream = Readable.toWeb(createReadStream(file, { start, end })) as ReadableStream;
+      return new Response(stream, {
+        status: 206,
+        headers: {
+          ...base,
+          "content-length": String(end - start + 1),
+          "content-range": `bytes ${start}-${end}/${info.size}`,
+        },
+      });
+    }
     const stream = Readable.toWeb(createReadStream(file)) as ReadableStream;
     return new Response(stream, {
-      headers: {
-        "content-type": "video/mp4",
-        "content-length": String(info.size),
-        "cache-control": "no-store",
-        ...(params.get("dl") && {
-          "content-disposition": `attachment; filename="${f}"`,
-        }),
-      },
+      headers: { ...base, "content-length": String(info.size) },
     });
   } catch {
     return Response.json({ error: "File not found" }, { status: 404 });

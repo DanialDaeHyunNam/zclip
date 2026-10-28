@@ -1,6 +1,7 @@
 import { REFINER_MODEL_ID } from "@/lib/config";
 import { checkPassword, unauthorized } from "@/lib/auth";
 import { resolveKey, missingKey } from "@/lib/server-keys";
+import { logCall } from "@/lib/call-ledger";
 import {
   SPEC_VERSION,
   SECTIONS,
@@ -235,6 +236,7 @@ export async function POST(req: Request) {
   }
 
   const data = await res.json();
+  await logCall(req, { route: "spec-check", kind: "text", provider: "gemini", model: REFINER_MODEL_ID, body: data, note: mode });
   const text = textOf(data);
   if (!text) {
     const finish = (data as { candidates?: { finishReason?: string }[] })
@@ -261,7 +263,11 @@ export async function POST(req: Request) {
         json: false,
         maxTokens: 2048,
       });
-      const rtext = retry.ok ? textOf(await retry.json()) : undefined;
+      const rdata = retry.ok ? await retry.json() : undefined;
+      if (rdata) {
+        await logCall(req, { route: "spec-check", kind: "text", provider: "gemini", model: REFINER_MODEL_ID, body: rdata, note: "assemble · shorten retry" });
+      }
+      const rtext = rdata ? textOf(rdata) : undefined;
       if (rtext && rtext.length <= 5800) {
         return Response.json({ prompt: rtext, specVersion: SPEC_VERSION });
       }

@@ -1,6 +1,7 @@
 import { REFINER_MODEL_ID } from "@/lib/config";
 import { checkPassword, unauthorized } from "@/lib/auth";
 import { resolveKey, missingKey } from "@/lib/server-keys";
+import { logCall } from "@/lib/call-ledger";
 
 /**
  * Auto session titles via Gemini Flash (same GEMINI_API_KEY as refine/Veo).
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
   }
 
   const data = await res.json();
+  await logCall(req, { route: "title", kind: "text", provider: "gemini", model: REFINER_MODEL_ID, body: data });
   const raw: string | undefined =
     data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
   if (!raw) {

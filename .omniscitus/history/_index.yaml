@@ -1,4 +1,20 @@
 units:
+  - id: grab-threads-support
+    file: web/2026-10-10-grab-threads-support.md
+    domain: web
+    status: open
+    created: 2026-10-10
+    last_updated: 2026-10-10
+    session_count: 1
+    title: "GRAB — Threads 글 다운로드 지원"
+  - id: launch-prep-growth
+    file: web/2026-07-21-launch-prep-growth.md
+    domain: web
+    status: open
+    created: 2026-07-21
+    last_updated: 2026-07-21
+    session_count: 1
+    title: "Launch Prep — Analytics · FLOW 발견성 · Library 정직성 · Spec 1.1.0 · @build_useful"
   - id: depth-transfer-pipeline
     file: web/2026-07-18-depth-transfer-pipeline.md
     domain: web
@@ -87,7 +103,30 @@ units:
     last_updated: 2026-07-13
     session_count: 1
     title: "Flow Method & Kling Provider"
+  - id: hyperreal-edit-studio
+    file: web/2026-10-27-hyperreal-edit-studio.md
+    domain: web
+    status: open
+    created: 2026-10-27
+    last_updated: 2026-10-28
+    session_count: 2
+    title: "하이퍼리얼 UGC 편집 스튜디오 — Kling 4.0 · ✎ 참고 편집 · ✂ POST → Lightroom 편집 + AI 편집 채팅"
+  - id: cost-ledger-billing
+    file: web/2026-10-28-cost-ledger-billing.md
+    domain: web
+    status: open
+    created: 2026-10-28
+    last_updated: 2026-10-28
+    session_count: 1
+    title: "비용 장부를 실제 청구에 맞추기 — /api/billing · 대시보드 · Veo 종료"
 weekly_summaries:
+  - week: "2026-W29"
+    file: "_weekly/2026-W29.md"
+    start: "2026-07-13"
+    end: "2026-07-19"
+    unit_count: 7
+    domains: [web]
+    generated_at: "2026-07-22"
   - week: "2026-W28"
     file: "_weekly/2026-W28.md"
     start: "2026-07-06"

@@ -12,6 +12,7 @@ import {
 } from "@/lib/config";
 import { checkPassword, unauthorized } from "@/lib/auth";
 import { resolveKey, missingKey } from "@/lib/server-keys";
+import { logJobVideoInput } from "@/lib/call-ledger";
 
 const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_B64 = 4_000_000; // ~3MB decoded — client downscales well below this
@@ -163,6 +164,9 @@ export async function POST(req: Request) {
       drivingVideo,
       modelId,
     }, apiKey);
+    // Seedance bills reference-video jobs at another token rate — the
+    // billing lookup reads this fact (lib/billing.ts · lib/call-ledger.ts).
+    if (drivingVideo) await logJobVideoInput(jobId, resolved.name);
     return Response.json({ jobId });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Submit failed";
