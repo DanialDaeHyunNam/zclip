@@ -259,10 +259,15 @@ do NOT store full images/videos in localStorage (5MB quota).
   into 3 frames; refine sees all frames, the video model gets the middle
   one. Reference priority: manual attach > starter-asset images >
   continuity snapshot.
-- **Costs are computed estimates** (duration × published $/s), not billing
-  API readouts. Sora bills min 8s. Spend chart groups the archive by
-  sessionId, stacked by provider, colors from `PROVIDERS[p].chartColor`
-  (palette validated for CVD/contrast on #000 — keep the set together).
+- **Costs match the bill where the provider allows** (v0.13.0). Quotes are
+  duration × published $/s, calibrated by past bills; a finished take is
+  then matched via `/api/billing` (`lib/billing.ts`: xAI ticks, Runway
+  credits, BytePlus tokens, fal / Kling deduction APIs) and marked
+  billed / units / est. Stills + text calls are priced from each route's
+  own response (`lib/call-ledger.ts` → `.zclip-data/calls.jsonl`, dev
+  only). Sora bills min 8s. Spend charts read takes + calls by session,
+  colors from `PROVIDERS[p].chartColor` (palette validated for CVD/contrast
+  on #000 — keep the set together).
 - **Errors must be visible** — every failure surfaces in the turn row
   and/or preview FAULT panel. Never fail silently.
 
