@@ -15,7 +15,9 @@ export const REMOTE_HOSTS = ["vidgen.x.ai", "cloudfront.net", "runwayml.com"];
 // Hosts the clip vault may download from directly — REMOTE_HOSTS plus the
 // providers whose URLs are browser-fetchable and never pass through the
 // /api/video proxy (Seedance serves from BytePlus/Volcengine TOS buckets).
-export const PERSIST_HOSTS = [...REMOTE_HOSTS, "volces.com", "bytepluses.com"];
+// fal.media = fal queue outputs (Lucy, Kling 4.0) — missing until 2026-10-27,
+// so the first Kling 4.0 take never vaulted and would have expired.
+export const PERSIST_HOSTS = [...REMOTE_HOSTS, "volces.com", "bytepluses.com", "fal.media"];
 
 export function hostAllowed(remote: string, hosts: string[]): boolean {
   try {

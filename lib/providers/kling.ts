@@ -19,7 +19,7 @@ import type { VideoProvider, SubmitParams, JobStatus } from "./types";
 const BASE = "https://api-singapore.klingai.com";
 const TASK_ID = /^[\w-]+$/;
 
-function jwt(raw: string): string {
+export function jwt(raw: string): string {
   if (!raw.includes(":")) {
     throw new Error(
       "KLING_API_KEY must be ACCESS_KEY:SECRET_KEY (colon-separated) — fix it in the UI key panel",

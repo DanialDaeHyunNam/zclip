@@ -49,3 +49,14 @@ files:
       - date: 2026-07-08T06:43:02.245Z
         action: write
         source: "claude:Danial Nam"
+  "scripts/post-agent-mcp.mjs":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-10-28
+    last_modified: 2026-10-28T05:07:41.000Z
+    change_count: 1
+    purpose: "Hand-rolled stdio MCP server for the edit agent: get_look · set_look · view_frame, calling back into /api/post-agent"
+    change_log:
+      - date: 2026-10-28T05:07:41.000Z
+        action: write
+        source: "claude:Danial Nam"

@@ -7013,3 +7013,385 @@ a.flow-scene-card { text-decoration: none; color: inherit; }
   margin: 0;
   box-shadow: none;
 }
+
+/* ── CUT session kind (docs/CUT-FLOW.md) ─────────────────────────────── */
+/* + New kind picker in the sessions sidebar — reuses .flow-kind-opt cards,
+   stacked to fit the narrow rail. */
+.side-kind-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 14px 4px;
+}
+.side-kind-pick .flow-kind-opt {
+  flex: none;
+  width: 100%;
+}
+.side-kind-pick .flow-kind-cancel {
+  align-self: flex-end;
+}
+/* CUT hides the chat innards the same way method-flow does. */
+.kind-cut .thread,
+.kind-cut .composer,
+.kind-cut .panel-controls {
+  display: none;
+}
+.cut-chip {
+  cursor: default;
+}
+/* CutPanel shell */
+.cut-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 2px 18px;
+}
+.cut-steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cut-step {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  color: var(--dim);
+}
+.cut-step.on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.cut-script {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  color: var(--fg);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 180px;
+}
+.cut-script:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.cut-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cut-note {
+  font-size: 12px;
+  color: var(--dim);
+  max-width: 60ch;
+}
+
+/* CUT wizard — steps 2–4 (voice/scenes/assemble) */
+.cut-step:disabled { opacity: 0.45; cursor: default; }
+.cut-step { background: none; cursor: pointer; transition: color 0.3s ease, border-color 0.3s ease; }
+.cut-total { align-self: center; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.cut-topic-row { display: flex; gap: 10px; align-items: center; }
+.cut-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--hair-strong);
+  border-radius: var(--r-pill);
+  padding: 10px 16px;
+  color: var(--fg);
+  font: inherit;
+}
+.cut-input:focus { outline: none; border-color: var(--accent); }
+.cut-select { flex: none; max-width: 260px; }
+.cut-keylink { font-size: 12px; color: var(--accent); white-space: nowrap; }
+.cut-error { color: #ff5f56; font-size: 13px; }
+.cut-busy { color: var(--accent); font-size: 13px; }
+.cut-scene-list { display: flex; flex-direction: column; gap: 12px; }
+.cut-scene {
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cut-scene-head { display: flex; gap: 10px; align-items: center; }
+.cut-scene-n { font-size: 11px; letter-spacing: 0.14em; color: var(--dim); }
+.cut-dur { font-size: 11px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.cut-picked { font-size: 11px; color: var(--accent); }
+.cut-mini { padding: 2px 10px; font-size: 11px; }
+.cut-scene-text { font-size: 13px; color: var(--fg); line-height: 1.55; margin: 0; }
+.cut-search-row { display: flex; gap: 8px; }
+.cut-results { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.cut-result {
+  flex: 0 0 84px;
+  position: relative;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  aspect-ratio: 9 / 16;
+}
+.cut-result img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cut-result span {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: #fff;
+}
+.cut-result.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.cut-summary { display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--dim); }
+.cut-cap-toggle { display: flex; gap: 6px; align-items: center; font-size: 12px; cursor: pointer; }
+.cut-assemble { align-self: flex-start; }
+.cut-preview { width: 100%; max-width: 320px; border-radius: var(--r-md); border: 1px solid var(--hair); }
+
+/* CUT — script model row */
+.cut-model-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.cut-model-label { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+.cut-model-select { flex: none; max-width: 300px; padding: 6px 12px; font-size: 13px; }
+.cut-model-note { font-size: 11px; color: var(--dim); }
+
+/* ✎ Edit mode (✂ POST): the controls replace the chat in the right column
+   — the chat stays mounted but hidden — and the preview on the left stays
+   on screen while the knobs scroll (owner 2026-10-28: "look left and right
+   while I adjust"). */
+.session-col.editing > :not(.post-edit) {
+  display: none;
+}
+.grid-main.editing .output-col {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+}
+.post-edit {
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain; /* the wheel stops at the panel's end */
+  padding-right: 8px;
+  padding-bottom: 72px; /* room under the last buttons when scrolled down */
+}
+.post-edit > div:not(.output-head) {
+  max-width: 640px;
+}
+
+/* ✎ Edit chat — the owner asks, Claude CLI turns the knobs (post-agent). */
+.post-agent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md);
+  margin-bottom: 4px;
+}
+.post-agent-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.post-agent-msg {
+  white-space: pre-wrap;
+  max-width: 92%;
+}
+.post-agent-msg.user {
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+.post-agent-msg.assistant {
+  color: var(--fg);
+}
+.post-agent-msg.note {
+  align-self: center;
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.post-agent-msg.note details {
+  text-align: left;
+}
+.post-agent-msg.note summary {
+  cursor: pointer;
+  text-align: center;
+}
+.post-agent-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.post-agent-tools span {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--dim);
+  border: 1px solid var(--hair);
+  border-radius: 99px;
+  padding: 1px 7px;
+}
+.post-agent-input {
+  flex: 1;
+  resize: vertical;
+  min-height: 44px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.post-agent-empty {
+  margin: auto 0;
+  color: var(--dim);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  padding: 0 24px;
+}
+.post-controls-toggle {
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--hair);
+}
+/* Claude's replies — the agent-text.tsx subset */
+.agent-text p {
+  margin: 0 0 6px;
+}
+.agent-text p:last-child {
+  margin-bottom: 0;
+}
+.agent-text ul,
+.agent-text ol {
+  margin: 2px 0 6px;
+  padding-left: 18px;
+  display: grid;
+  gap: 3px;
+}
+.agent-text strong {
+  color: #fff;
+  font-weight: 600;
+}
+.agent-text code {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.agent-h {
+  font-weight: 600;
+  color: #fff;
+  margin: 4px 0;
+}
+.agent-delta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  border: 1px solid var(--hair);
+  border-radius: 99px;
+  padding: 0 7px;
+  margin: 0 1px;
+  white-space: nowrap;
+}
+.agent-delta s {
+  color: var(--dim);
+}
+.agent-delta b {
+  color: #9ad1ff;
+  font-weight: 600;
+}
+.post-agent-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.post-agent-refs span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  padding: 3px 6px 3px 3px;
+  font-size: 10px;
+  max-width: 220px;
+}
+.post-agent-refs span.err {
+  border-color: #f87171;
+  color: #f87171;
+}
+.post-agent-refs img,
+.post-agent-refs i {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  background: rgba(255, 255, 255, 0.06);
+}
+.post-agent-refs em {
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.post-agent-attach {
+  padding: 6px 12px;
+  font-size: 14px;
+  line-height: 1;
+}
+.output-cost {
+  margin-left: 12px;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+}
+/* Dashboard: say WHEN (owner 2026-10-28: "$49 since when?") */
+.dash-sub {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+.dash-col-value {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  color: var(--dim);
+  margin-bottom: 4px;
+}
+.spend-when {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--dim);
+  margin-left: 8px;
+  letter-spacing: 0.04em;
+}
+.output-cost em {
+  font-style: normal;
+  font-size: 9px;
+  opacity: 0.7;
+}

@@ -1,5 +1,6 @@
 import { checkPassword, unauthorized } from "@/lib/auth";
 import { resolveKey, missingKey } from "@/lib/server-keys";
+import { logCall } from "@/lib/call-ledger";
 
 /**
  * DRESS — composite a chosen outfit onto a character image with the Gemini
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
   }
 
   const data = await res.json();
+  await logCall(req, { route: "dress", kind: "still", provider: "gemini", model: MODEL, body: data });
   const part = data?.candidates?.[0]?.content?.parts?.find(
     (p: Record<string, unknown>) => p.inlineData ?? p.inline_data,
   );

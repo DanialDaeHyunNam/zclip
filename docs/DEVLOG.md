@@ -681,8 +681,8 @@ All entries 2026-07-06 (single build session, owner: Dan).
   (label /^depth/) skip the pass and disable the toggle. depthRef rides
   inputSig so toggling re-shows the ANIMATE bar.
 - Depth-pass failure refuses loudly and does NOT submit (no silent
-  raw-clip fallback — that would re-trip the filter the pass exists to
-  dodge). Vault failure (hosted) is best-effort: the in-memory depth
+  raw-clip fallback — the raw clip shows real faces, which Seedance
+  rejects). Vault failure (hosted) is best-effort: the in-memory depth
   still rides the render, it just can't be cached.
 - Verified: /depth end-to-end re-run green on the shared engine (30
   frames → mp4, headless); studio loads clean. The full ANIMATE money
@@ -953,7 +953,7 @@ All entries 2026-07-06 (single build session, owner: Dan).
   "Exhausted balance/User is locked" gate — pay-as-you-go draws from a
   PREPAID balance; humanizeError is now provider-routed after its
   Seedance wording sent the owner to the wrong console.)
-- Quality verdict (owner: "개판 ㅋㅋ"): photoreal identity swap on a
+- Quality verdict (owner: not good enough): photoreal identity swap on a
   2-dancer clip came out doll-faced. Root cause is structural — the
   impressive lucy.decart.ai demo is Lucy 2.5 (REALTIME-only model);
   offline lucy-edit is Wan 2.2 5B-based, a smaller older model, weakest
@@ -966,12 +966,343 @@ All entries 2026-07-06 (single build session, owner: Dan).
   Lucy 2.5-quality on files would mean pushing a file through the
   realtime WebRTC endpoint and recording — cinerec's LIVE work is the
   natural place to verify that first, then back-port.
-- DECISION: restyle flow HIDDEN, not deleted (owner: "너무 구려서 미노출,
-  머지는 해두고 나중에 재발전"). `RESTYLE_ENABLED=false` drops it from
+- DECISION: restyle flow HIDDEN, not deleted (owner: hide it for now,
+  merge the code, revisit later). `RESTYLE_ENABLED=false` drops it from
   the ＋ New flow picker; every line of restyle code (adapter, config,
   isRestyle branches, stages) stays wired so the flag is the only revive
   switch. No version bump / prod deploy — zero user-facing change, so
   the update banner shouldn't fire. Merged to main as dormant code.
+
+## 47. ✎ EDIT takes extra references + a Grok edit engine (2026-10-27)
+
+- Owner ask: put a character's look card AND a frame of the
+  owner's own acting into ONE edit, so the card matches the driving clip's
+  head angle/framing before Act-Two. ✎ only took the look itself (image 1),
+  and any edit was forced onto Gemini.
+- `/api/image`: `images` (≤4) ride after `image` in order. EDIT engine is
+  now explicit — `engine: "grok"` with a reference → `grokEdit()` on xAI
+  `/v1/images/edits` (`grok-imagine-image-2.0`, data URIs, one source =
+  `image`, several = `images`, `response_format: b64_json`); anything else
+  stays on Gemini (multi `inline_data` parts). Key header follows the edit
+  engine. Verified live from a script first (2 runs, usage 800M ticks each
+  ≈ $0.08; the returned URL 403s for a bare client UA → ask for b64).
+- Flow ✎ form: chips for image 2+ (＋ Reference image · ＋ Frame from video
+  — opens a local clip, scrub, 📸 Use this frame), ↺ Pose template
+  (image 1 = identity, image 2 = pose/framing only), EDIT MODEL select
+  (Gemini ~$0.04 default · Grok ~$0.08) stored as `flow.editEngine`.
+  Refs persist across re-edits until removed/cancelled; each result keeps
+  the ref thumbs (`refThumbs`) as a corner strip = the record of what
+  steered it.
+- Owner rule from here on: anything hyperreal work needs gets BUILT into
+  ZCLIP and run in the studio where he can watch — no side scripts.
+- First live A/B in the studio (a look card × the owner's crying-clip frame,
+  2026-10-27): with the pose frame as image 2 + "keep image 1 exactly",
+  BOTH engines kept image 1 and ignored the pose (Grok: a slight head
+  tilt; Gemini: ~unchanged). The "keep exactly" half of the template wins.
+  A TEXT-only "new shot" edit (no image 2: extreme close-up, head turned
+  3/4 left, crying) worked: Gemini got the turn + tears but stayed at
+  chest framing; **Grok got close-up + turn + tears** — the owner's pick
+  candidate. Lesson: image 2 is good for identity/outfit borrowing; for
+  camera/pose, describe the new shot in words. Keep the pose-ref feature
+  (record + identity use) but don't expect it to drive framing.
+- Follow-up same day — **↺ Pose from frame**: `/api/describe` got
+  `mode: "pose"` (camera distance/crop, head turn by frame edge, tilt,
+  gaze, lids, brows, mouth, emotion — NO identity). The button writes it
+  into the prompt as "same person … a new shot of them: …" and flips that
+  reference to `send:false` (chip "pose → words"): it no longer rides as an
+  image but its thumb still lands on the result. Replaces the human
+  (Claude) translating the frame into words by eye.
+- Runway: data-URI cap is 5MB (not 16MB) — guard + message fixed; the
+  adapter now surfaces Runway's `issues` list (was a bare "Validation of
+  body failed"). Studio remembers the picked video model across reloads
+  (`hooklab.modelKey`) — a reload had silently fallen back to Veo.
+
+## 48. Kling 4.0 (fal) + ✂ POST reframe/phone look (2026-10-27)
+
+- Research-led pick (owner rule: models are chosen after web research;
+  owner-only log in lab/HYPERREAL.md): Kling 4.0 via fal —
+  `kling/v4/image-to-video` (image only) and `kling/v4/reference-to-video`
+  (image + clip). Adapter `lib/providers/kling4.ts`; base64 data URIs go
+  straight to fal (no public temp host for the owner's face clip). The
+  reference prompt pins "@Image1 is the person … Reference @Video1 only for
+  timing, head movement, gaze, emotion … generate this person's own mouth".
+  First run: natural crying, native mouth, followed the head turn — the
+  opposite of Act-Two's transfer. `readsClip` now includes kling4 (raw clip
+  rides); the context manifest no longer shows Seedance's "can't mix image
+  and video" line for it.
+- fal.media added to PERSIST_HOSTS — the first Kling take never vaulted.
+- ✂ POST under a chat take: ZOOM / CENTRE X / CENTRE Y sliders preview the
+  crop live on the OUTPUT video (CSS translate+scale from the SAME
+  normalized window the server uses), PHONE LOOK Off/Light/Medium, Render
+  → `/api/grab` action `post` (dev-only ffmpeg): crop → 1080×1920 lanczos →
+  gblur + temporal noise → crf30 pass → crf18 + light unsharp, audio
+  dropped. `.fade` pins transform via animation fill — removed while POST
+  is open (the preview didn't move at first).
+
+## 49. ✂ POST 0.5× lens — built, then removed (2026-10-27)
+
+- Built a LENS select (barrel via a looser crop + `lenscorrection`
+  k·(1+k)², corner-only blur, vignette) — centre matched the 1× render
+  pixel-for-pixel. Removed the same day: the owner's own 1×/0.5× photo
+  pair (24mm vs 14mm, same arm's length) showed the 0.5 look is GEOMETRY —
+  face 40% → 24% of the width, ceiling/room/arm in frame, near things loom
+  at the edges — with lines kept STRAIGHT by iPhone's correction (a barrel
+  bends the wrong way) and near-identical texture at 1080 wide. Post can't
+  add field of view → the 0.5 shot is generated (lab/HYPERREAL.md run 8).
+- Kept: `lib/post-frame.ts` `postWindow()` — the crop window now runs in
+  BOTH the studio preview and the route (the request sends zoom/cx/cy, not
+  left/top), so they can't drift.
+- ffmpeg lessons worth keeping: k1>0 leaves the corners unmapped (crop a
+  looser window first); `maskedmerge` has no shortest option, so a
+  `loop=-1` mask renders forever — hold one mask frame with
+  `overlay=eof_action=repeat` on a black copy of the base instead.
+- The preview `<video>` ignores `currentTime` seeks (stays at 0) — compare
+  preview vs render at t=0.
+
+## 50. ✂ POST "make it look real" — trim · shake · window light · 30fps · room tone (2026-10-28)
+
+- Owner: "everything that makes it look real has to be doable in post".
+  Diagnosis on a Grok crying take (wall noise σ 0.46 vs the owner's phone
+  1.1–1.3; 24fps; a perfectly floating camera; even beauty light; silence)
+  → five free ffmpeg steps in ✂ POST, all previewed live except fps/grain/sound.
+- One table, two copies: `lib/post-frame.ts` holds the shake (sums of
+  sines — arm sway 0.5–0.7Hz, breathing ~2Hz, tremor 5–6Hz, plus a roll) and
+  the window light (multiply: far edge × (1 − a·u^1.4), shadow side cooler).
+  `shakeAt()`/`lightGradient()` drive the preview; `shakeExpr()`/`lightGeq()`
+  emit the SAME numbers as ffmpeg expressions. Render order: trim → rotate
+  (roll about the source centre) → crop with `t`-expressions → 1080×1920 →
+  multiply (one geq frame held via the overlay trick) → fps=30 → look.
+  Room tone = band-limited brown noise, `-shortest`.
+- Preview: a rAF loop writes the video's transform per frame from
+  `currentTime` (translate · scale · rotate about the centre — the render's
+  rotate → crop order) and loops the trim range; React state only on knob
+  changes. The light is a `mix-blend-mode: multiply` gradient over the frame.
+- `/api/clips` now answers byte ranges (206). Without them Chrome couldn't
+  seek the preview at all — `currentTime = 2` snapped back to 0.
+- Shake needs room: `postWindow(…, margin)` floors the zoom so drift + roll
+  never reach the frame edge. Settings survive a take switch (one recipe
+  for many takes); only trim and the render reset.
+- "Render 1080×1920" read as jargon to the owner → "Make final video ·
+  1080×1920" with a line saying the preview is a simulation and this bakes
+  the file.
+- Not in post (needs a video-to-video edit model, research running): outfit,
+  a really-cried face (puffy red eyes, red nose), true relighting.
+- Owner pass 1: trim handles now PARK the preview on the frame being cut
+  (pause + seek while dragging, resume the loop on release — pointer or
+  keyboard) and reach the true end (step 0.01, "≥ end − 0.03" = whole clip);
+  the default zoom was too tight on takes that are already close-ups → opens
+  at 1.00 (shake floors it to ~1.02). Every control got one grey line saying
+  what it is for (studio stays English-only), and POST_PRESETS (Quiet selfie ·
+  Restless hand · Moody window · Tight off-centre · Clean) set the look
+  knobs, never the trim.
+
+## 51. ✂ POST → a Lightroom panel, previewed in WebGL (2026-10-28)
+
+- Owner: "like Lightroom — every kind of change". Sections CROP & TIME ·
+  LIGHT (exposure · contrast · highlights · shadows · whites · blacks) ·
+  COLOR (temp · tint · vibrance · saturation · split-tone hue/amount ×2) ·
+  EFFECTS (window light · vignette · sharpen · grain · phone encode) ·
+  MOTION & SOUND (shake · 30fps · room tone). Collapsible, per-section reset,
+  double-click a slider to reset, "Hold: before" for the raw crop. Presets
+  now carry a grade (Quiet selfie · Restless hand · Moody window · Warm lamp
+  · Tight off-centre · Clean).
+- One function, two consumers: `lib/post-grade.ts` `gradePixel()` (WB +
+  exposure in linear light → banded tone curve → S-contrast → split toning
+  → saturation/vibrance) is baked into a 33³ LUT — RGBA8 3D texture for the
+  preview, `.cube` for ffmpeg `lut3d=interp=trilinear`. Spot check: ffmpeg's
+  LUT output = the JS function within 1/255.
+- Preview = `app/chat/post-preview.tsx`, a WebGL2 canvas over the hidden,
+  playing <video>: crop window + shake + roll as a UV transform (the
+  render's rotate → crop), LUT, light × vignette multiply, 3×3 sharpen at
+  1080×1920 texel size, grain. React state only on knob changes.
+- Render: trim → roll → crop → 1080×1920 → gbrp → lut3d → mask multiply →
+  convolution sharpen ([-a…900+8a…]/900 = c + a·(c − box)) → yuv420p →
+  30fps → (phone encode: gblur) → noise → encode, outputs tagged bt709.
+  Plain `format=` conversions round-trip exactly; explicit
+  in/out_color_matrix drifted ~2/255 darker.
+- Owner: "open the controls on the right instead of the chat so I can look
+  left and right while I adjust" → ✎ Edit mode: the panel renders as
+  `.post-edit` at the top of the session column; `.session-col.editing >
+  :not(.post-edit)` hides (doesn't unmount) the chat, the output column goes
+  sticky and the panel scrolls inside itself (`overscroll-behavior:
+  contain`). "✓ Done — back to chat" closes it.
+- Two display traps: (1) the canvas showed RAW code values, the <video>
+  shows bt709 the Apple way (gamma ≈1.961 → sRGB, lighter/flatter — the
+  QuickTime gamma shift; decode itself was identical, 200/142/127 both) →
+  the shader ends with that transform so preview = what plays (incl.
+  iPhones). (2) zsh: `$var:s…` / `$H:flags` are history modifiers — brace
+  variables in ffmpeg strings.
+
+## 52. ✎ Edit chat — Claude CLI turns the knobs (2026-10-28)
+
+- Owner: "a chat above the presets; the connected Claude CLI should adjust
+  it as one primitive tool and improve it — and roll to a new session when
+  the context fills, handled smartly".
+- `/api/post-agent` (dev-only) spawns the owner's `claude -p` (stream-json,
+  `--tools ""`, `--setting-sources ""`, neutral cwd, API-key env stripped →
+  the owner's subscription) with ONE MCP server, `scripts/post-agent-mcp.mjs`
+  (hand-rolled stdio JSON-RPC — no SDK installed): `get_look` · `set_look`
+  (the whole panel as one patch-merge primitive; clamped by
+  `lib/post-settings.ts`) · `view_frame` (a before|after still rendered by
+  the SAME ffmpeg graph — `lib/post-render.ts`, now shared with the video
+  render). The MCP server calls back into the route over HTTP; patches go to
+  a globalThis store and are pushed into the open chat stream as `look`
+  events, so the owner's sliders + WebGL preview move while Claude works.
+- Sessions: one thread per studio session, `--resume`d; the last request's
+  input+cache tokens / the model's context window (qa/social's method) is
+  shown as "ctx %"; over 60% the next message starts a fresh session with the
+  last 8 turns handed over (the look itself is live via get_look). A session
+  that can't be resumed retries once fresh. Threads persist in
+  `.zclip-data/post-agent.json`.
+- First live turns: get_look → set_look → view_frame → set_look →
+  view_frame, ~30–60s, Korean summary with the numbers. Prompt now demands a
+  final view_frame after the last change (it once reported an unchecked
+  tweak).
+- Owner pass: "make the chat bigger, fold the knobs by default, give the
+  chat the video's height, and render markdown / the important bits as
+  HTML". The chat box now takes the frame's measured height (ResizeObserver
+  on .frame); Make final video / Hold: before sit right under it; presets +
+  every section fold under "▸ CONTROLS" (closed by default). Replies render
+  through `app/chat/agent-text.tsx` — a safe subset (paragraphs, lists,
+  headings, **bold**, `code`, and any "a → b" number change as a
+  before/after chip); the prompt asks for exactly that markdown.
+
+- Owner: "Edit shows on some results and not others — put it under every
+  result, same effect". It was chat-only. Now one `editTarget` (the chat take
+  OR the flow take in the frame: id · vaulted src · label) feeds the Edit
+  button, the WebGL overlay, the render and the AI chat; the flow <video>
+  got the same ref / opacity / overlay wiring (`postOverlay` + `editButton`
+  are shared JSX). Flow takes vault to /api/clips, so the render works on
+  them unchanged. (The red "1 Issue" badge seen while testing is a hydration
+  warning from a browser extension's `cz-shortcut-listen` attribute on
+  <body>, not ZCLIP.)
+
+## 53. Edit chat takes references · cost beside OUTPUT · honest dashboard (2026-10-28)
+
+- References: the edit chat takes photos / videos (+ button, drag & drop,
+  paste). Images are downscaled to ≤1024px JPEG in the browser; videos go to
+  the vault (/api/clips multipart) first. The route turns a video into 4
+  evenly spaced 512px frames + look stats (ffmpeg signalstats averaged at
+  2fps: luma avg / p10 / p90, SATAVG, Cb, Cr) and sends the whole message as
+  stream-json content blocks (`--input-format stream-json`) — verified the
+  CLI sees images (it described a card's light/grade correctly). view_frame
+  now returns the same stats for the edited half, so Claude matches by
+  numbers; first run: ref 133/71/189 sat 17 warmth 23 vs edit 129/70/192 sat
+  16 warmth 22 after 4 rounds. The last 2 references stay on disk
+  (.zclip-data/post-agent-refs/<key>/) and are re-attached when a session
+  rolls over.
+- The take's cost moved from the action row to beside OUTPUT (owner); flow
+  takes now pass their costUsd through FlowPreview so it shows for them too.
+- Dashboard: it read hooklab.* straight from localStorage, which went stale
+  when the file store took over — live sessions showed as "Removed
+  session". It now hydrates lib/store like the studio. "All-time" says since
+  when (first take 2026-07-08), a This-month tile carries last-7-days and
+  today, day bars print their $, and session rows show first → last date.
+  ($49.31 all-time = $46.79 July + $2.52 October.)
+
+## 54. Costs from the bill, not seconds × rate (2026-10-28)
+
+- Owner: "match the real bill — if it can be identical, it must be". Agent
+  research of each provider's official docs (read 2026-10-28): xAI video
+  polls carry usage.cost_in_usd_ticks (USD = /1e10, billed); Runway tasks
+  carry cost.credits ($0.01 each, billed — re-read, refunds lower it);
+  BytePlus tasks carry usage.completion_tokens (× published $/1M, with/without
+  video input — "units"); fal needs billing-events?request_id with a key on
+  the BILLING preset; Veo 3.1 LEFT the Gemini API on 2026-10-22 (verified: no
+  veo model in the models list) → DEFAULT_PROVIDER is grok, Veo marked
+  implemented:false.
+- `lib/billing.ts` + `/api/billing` look a job up; the studio matches every
+  finished take a few seconds after it lands and every 45s after (≤10 tries,
+  ≤6 days — provider records expire), keeps the estimate as estUsd, and
+  marks costSource. The quote before spending is calibrated per model by the
+  median billed ÷ estimate. OUTPUT shows "$0.57 billed" or "≈$0.63 est".
+  JobStatus always had a costUsd slot — nothing filled or read it.
+- First matches: Grok Imagine 4s 720p i2v billed **$0.57** (estimate said
+  $0.32 — off by 1.8×; 3 takes today); Act-Two $0.30 = estimate. Kling stays
+  estimated until FAL_BILLING_KEY exists — the dashboard now has a paste box
+  for it (saved through /api/keys) and the studio re-tries those takes once
+  the key is there. Kling's estimate itself now counts the reference clip
+  (input + output s, ≥ 2× output, $0.094 / $0.141).
+- Dashboard: "All-time" is split into "matched to bills" vs "estimated".
+- Not yet in the ledger: image edits (Grok / Gemini), Gemini describe /
+  refine calls. Grok edits also return billed ticks — next.
+
+## 55. Every paid call in the ledger (2026-10-28)
+
+- Owner: "fill every hole". Stills and text calls never reached the ledger —
+  only video takes did. Now each paid route prices its OWN upstream answer
+  and appends a line to `.zclip-data/calls.jsonl` (`lib/call-ledger.ts`):
+  /api/image (all five engines), dress, describe, refine, title, spec-check
+  (+ its shorten retry), cut-script, lab assemble. Server-side on purpose —
+  no call site can forget, and a 200 without an image is still recorded
+  (tokens are billed). Dev-only like /api/store; hosted stays video-only.
+- Prices read in a browser 2026-10-28 from official pages: xAI documents
+  `usage.cost_in_usd_ticks` on chat, image AND video responses ("the actual
+  amount billed") → billed; Gemini 2.5 Flash $0.30/$2.50, Flash-Lite
+  $0.10/$0.40, Pro $1.25/$10, 2.5 Flash Image $0.30 in + $30/1M image out
+  (= $0.039/image); OpenAI gpt-5.1 $1.25/$0.125/$10, gpt-5-mini
+  $0.25/$0.025/$2, gpt-image-1 $5 text / $10 image in / $40 out; Seedream
+  4.0 $0.03/image (failed images free); Claude Opus 5 $5/$25, Sonnet 5
+  $2/$10, Haiku 4.5 $1/$5. Unit-checked against the pages' own per-image
+  figures ($0.0388 vs $0.039, gpt-image-1 medium portrait $0.0636 vs $0.063).
+- Found on the way: **gpt-image-1 was shut down 2026-10-23** (OpenAI model
+  page) — the "gpt" look engine is dead until it moves to GPT Image 2.5;
+  gemini-2.5-flash-image is past its 10-02 shutdown date on the pricing page
+  but still listed and answering.
+- `x-zclip-session` rides every keyed request (lib/client-keys `keyHeader`),
+  so calls group by session on the dashboard like takes.
+- Seedance video input: /api/generate writes `.zclip-data/jobs.jsonl` when a
+  reference video rode along; /api/billing prices those tokens at the
+  with-video rate. One place instead of five submit paths.
+- Kling official: POST /account/billing/balance (Kling's "Deduction Query")
+  gives deduction_amount per task_id → billed; a resource-package plan shows
+  up in /account/billing/package as units and is reported as such.
+- OpenAI org check: Costs API by line item with OPENAI_ADMIN_KEY (new key
+  slot + dashboard box) — an Admin key of the org that owns
+  OPENAI_API_KEY.
+- Flow ↔ studio ledger race: the flow panel wrote takes straight into the
+  gallery while the studio rewrote the gallery whole from its state (billing,
+  vault) — flow takes were never billed and could be dropped. Flow writes now
+  fire `zclip:gallery`; the studio adopts them (keeps its own bills).
+- Dashboard: one spend list (video + stills + text) behind every number and
+  chart; "Not matched to a bill" with reasons + Match again (asks the
+  providers itself, shows the answers, and leaves `zclip.rebillAt` so the
+  studio — the only store writer — saves them: forced pass, any age).
+  First run: 60 unmatched → 1 more matched ($2.01 → $2.66 matched); the rest
+  now say why — July Grok "xAI 404", Seedance "records kept 7 days",
+  Kling / Lucy "add FAL_BILLING_KEY". Studio saved it: gallery 118 intact,
+  5 matched, 59 with reasons.
+- Same day, after the owner added the fal BILLING key: Kling 4.0 4s ref
+  takes billed **$0.91** each (estimate $0.63), the July Lucy take **$0.75**
+  (estimate $2.25). fal caps a billing-events query at 90 days — the lookup
+  now asks a 2-day window around the submit (the July take was refused).
+  Ledger: 8 takes matched, $5.23.
+- Match again marked itself done BEFORE the pass ran, so leaving the studio
+  mid-pass dropped the later chunks for good; now it's marked done only when
+  the whole pass finishes (next load resumes otherwise).
+- OpenAI: an org usually bills more than ZCLIP, so the bill check now finds
+  the project holding OPENAI_API_KEY via the admin API (redacted key match)
+  and asks the Costs API for that project only, from the day it was created.
+  Tip: give ZCLIP its own OpenAI project.
+
+## 56. Edit chat compacts itself (2026-10-28)
+
+- Owner: "give me a compact button" → "and compact by default at 60%".
+  Past 60% the old roll handed the next session the last 8 turns verbatim;
+  now the turn that crosses 60% ends with the SAME session writing a
+  handover note (goal · liked / rejected with the numbers · tried · next,
+  <180 words, the owner's language — `compactThread`, `--resume`, json out,
+  max 1 turn, MCP config kept because the history holds tool calls). The
+  next message opens a new session from note + last exchange + last
+  references. Compacting runs while the owner reads the reply, so the next
+  message doesn't wait; if it fails, the old 8-turn handover still applies.
+- Button `compact` beside `new chat` (action "compact"); the note shows as
+  one folded line "compacted → Claude session N".
+- Exercised on a throwaway key: one real turn (get_look · set_look ·
+  view_frame) → compact in 6.8s (Korean note, session 2) → the new session
+  answered "shadows 0 → 10, nothing else" from the note alone. The automatic
+  60% path uses the same function but wasn't crossed live — the window is
+  1,000,000 tokens (Opus), so 60% means ~600k.
 
 ## Verification ledger (what was actually exercised)
 

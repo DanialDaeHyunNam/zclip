@@ -49,15 +49,24 @@ export function localKeyFlags(): Record<string, boolean> {
   );
 }
 
+/** The studio's open session. It rides every keyed request so the server's
+ *  call ledger (lib/call-ledger.ts) groups stills and text calls by session
+ *  the way video takes are. */
+let ledgerSession: string | null = null;
+export function setLedgerSession(id: string | null): void {
+  ledgerSession = id || null;
+}
+
 /** Merge the provider-key header for `envVar` into `base` when a browser
  *  key exists. Call on every money/keyed API fetch; no-op locally. */
 export function keyHeader(
   envVar: string | null | undefined,
   base: Record<string, string> = {},
 ): Record<string, string> {
-  if (!envVar) return base;
+  const tagged = ledgerSession ? { ...base, "x-zclip-session": ledgerSession } : base;
+  if (!envVar) return tagged;
   const key = getLocalKey(envVar);
-  return key ? { ...base, "x-provider-key": key } : base;
+  return key ? { ...tagged, "x-provider-key": key } : tagged;
 }
 
 /** The envVar an /api/video proxy URL needs, or null for public-CDN

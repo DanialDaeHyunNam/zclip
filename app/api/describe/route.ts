@@ -1,5 +1,6 @@
 import { checkPassword, unauthorized } from "@/lib/auth";
 import { resolveKey, missingKey } from "@/lib/server-keys";
+import { logCall } from "@/lib/call-ledger";
 
 /**
  * DESCRIBE — turn a look card into an IDENTITY TEXT for the transfer
@@ -21,6 +22,19 @@ const INSTRUCTION =
   "Be specific enough that a different artist would draw the SAME person and could tell them apart from a similar-looking one. " +
   "This is a fictional character — no names, no locations, no camera or photography terms. Output ONLY the description.";
 
+/** mode "pose" — the FRAME's camera + performance only, for re-shooting it
+ *  with a different person (owner 2026-10-27: a pose image riding as
+ *  "image 2" is ignored by both edit engines; words describing the shot
+ *  work — this writes those words from the frame instead of a human). */
+const POSE_INSTRUCTION =
+  "Describe ONLY the camera and the performance in this frame, so the shot can be re-created with a DIFFERENT person. " +
+  "One paragraph, 3–4 sentences. Use directions relative to the FRAME (left/right edge of the image). Cover: " +
+  "camera distance and crop (e.g. extreme close-up, top of the head cropped, chin near the bottom edge), camera height and angle, " +
+  "head turn (which frame edge the nose points to and how far — frontal, three-quarter, near-profile), head tilt, " +
+  "gaze direction, eyelids, eyebrows, mouth (open or closed, its shape) and the emotion being shown. " +
+  "Do NOT describe identity: no gender, age, ethnicity, face shape, hair, skin, glasses, clothing, background or room. " +
+  "Output ONLY the description.";
+
 export async function POST(req: Request) {
   if (!checkPassword(req)) return unauthorized();
   const key = resolveKey(req, "GEMINI_API_KEY");
@@ -32,6 +46,7 @@ export async function POST(req: Request) {
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+  const pose = body.mode === "pose";
   const img = body.image as Record<string, unknown> | undefined;
   const base64 = typeof img?.base64 === "string" ? img.base64 : "";
   const mimeType = typeof img?.mimeType === "string" ? img.mimeType : "";
@@ -48,7 +63,7 @@ export async function POST(req: Request) {
         contents: [
           {
             parts: [
-              { text: INSTRUCTION },
+              { text: pose ? POSE_INSTRUCTION : INSTRUCTION },
               { inline_data: { mime_type: mimeType, data: base64 } },
             ],
           },
@@ -66,6 +81,7 @@ export async function POST(req: Request) {
     return Response.json({ error: msg }, { status: 502 });
   }
   const data = await res.json();
+  await logCall(req, { route: "describe", kind: "text", provider: "gemini", model: MODEL, body: data, note: pose ? "pose" : undefined });
   const text: unknown = data?.candidates?.[0]?.content?.parts
     ?.map((p: Record<string, unknown>) => p?.text ?? "")
     .join(" ")

@@ -14,14 +14,16 @@ import type { VideoProvider, SubmitParams, JobStatus } from "./types";
  *   POST /v1/character_performance -> { id }
  *   GET  /v1/tasks/{id} -> { status, output: [url], failure? }
  * Inputs are passed as data: URIs (local dev has no public URL to hand
- * Runway); Runway caps data URIs at 16MB, so the driving clip must be small
- * — trim it with the GRAB tool first.
+ * Runway). Runway caps a data URI at 5MB (live error 2026-10-27: "Data URI
+ * is too large: 7.2MB exceeds the 5MB limit. Upload the file and pass the
+ * returned URI instead") — base64 inflates 4/3, so the FILE must be ≲3.7MB.
+ * Act-Two renders 720p anyway: a 720×1280 re-encode of a few seconds fits.
  */
 
 const BASE = "https://api.dev.runwayml.com/v1";
 const VERSION = "2024-11-06";
 const TASK_ID = /^[\w-]+$/;
-const MAX_URI_BYTES = 16_000_000;
+const MAX_URI_BYTES = 5_000_000; // data-URI cap, measured on the base64 string
 
 function headers(apiKey: string, json = true): Record<string, string> {
   return {
@@ -34,7 +36,20 @@ function headers(apiKey: string, json = true): Record<string, string> {
 async function readError(res: Response): Promise<string> {
   try {
     const body = await res.json();
-    return body?.error ?? body?.message ?? `Runway API error (HTTP ${res.status})`;
+    const head = body?.error ?? body?.message ?? `Runway API error (HTTP ${res.status})`;
+    // "Validation of body failed" alone is useless — Runway lists the failing
+    // fields in `issues` ({path, message}); surface them (2026-10-27).
+    const issues = Array.isArray(body?.issues)
+      ? body.issues
+          .map((i: { path?: unknown; message?: unknown }) =>
+            [Array.isArray(i?.path) ? i.path.join(".") : i?.path, i?.message]
+              .filter(Boolean)
+              .join(": "),
+          )
+          .filter(Boolean)
+          .slice(0, 4)
+      : [];
+    return issues.length ? `${head} — ${issues.join(" · ")}` : head;
   } catch {
     return `Runway API error (HTTP ${res.status})`;
   }
@@ -52,9 +67,9 @@ export const runway: VideoProvider = {
         "Act-Two needs both a character (a cast card) and a driving video (attach a reference clip). Pick a face card and attach a video, then send.",
       );
     }
-    if (decodedBytes(params.drivingVideo.base64) > MAX_URI_BYTES) {
+    if (params.drivingVideo.base64.length > MAX_URI_BYTES) {
       throw new Error(
-        "Driving video is over Runway's 16MB inline limit — trim it shorter with the GRAB tool (⤓) and try again.",
+        `Driving video is ${(decodedBytes(params.drivingVideo.base64) / 1e6).toFixed(1)}MB — Runway takes ≲3.7MB inline (5MB data-URI cap). Re-encode to 720×1280 or trim it shorter, then retry.`,
       );
     }
 

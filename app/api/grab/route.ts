@@ -5,12 +5,17 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { checkPassword, unauthorized } from "@/lib/auth";
 import { dirUsage } from "@/lib/dir-usage";
+import { isNeutral, lutCube } from "@/lib/post-grade";
+import { buildPostGraph } from "@/lib/post-render";
+import { sanitizeSettings } from "@/lib/post-settings";
 
 /**
- * GRAB — local-only reference-video fetcher. Three source kinds:
+ * GRAB — local-only reference-video fetcher. Four source kinds:
  *   - X post/article URLs: guest-token GraphQL (TweetResultByRestId with
  *     withArticleRichContentState) → direct video.twimg.com mp4s. Articles
  *     embed media that yt-dlp can't reach; this path can.
+ *   - Threads post URLs: yt-dlp has no Threads extractor. The post page
+ *     (fetched as a crawler) carries the media JSON → direct cdninstagram mp4.
  *   - Anything yt-dlp supports (YouTube etc.): shell out to yt-dlp.
  *   - Direct .mp4/.webm links: plain server-side download.
  * Optional start/end trim runs through ffmpeg (re-encode, frame-accurate).
@@ -28,6 +33,8 @@ const BLOCKED_HOST =
   /^(localhost|127\.|0\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|\[?::1|metadata\.)/i;
 const X_URL =
   /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/(?:\w+\/status\/(\d+)|i\/article\/\d+)/;
+const THREADS_URL =
+  /^https?:\/\/(?:www\.)?threads\.(?:com|net)\/@[\w.]+\/post\/([\w-]+)/;
 const MAX_BYTES = 200_000_000;
 const CHILD_TIMEOUT_MS = 150_000;
 
@@ -38,6 +45,9 @@ const X_BEARER =
 const X_QUERY_ID = "2ICDjqPd81tulZcYrtpTuQ"; // TweetResultByRestId
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36";
+// Threads server-renders a post's media JSON only for crawlers — a browser
+// UA gets the login-wall shell with no video_versions (verified 2026-10-10).
+const CRAWLER_UA = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
 
 function devOnly(): Response | null {
   if (process.env.NODE_ENV !== "development") {
@@ -154,6 +164,46 @@ async function probeX(tweetId: string): Promise<{ id: string; url: string; res: 
     if ((best.get(id)?.px ?? 0) < px) best.set(id, { url, res: `${w}x${h}`, px });
   }
   return [...best.entries()].map(([id, v]) => ({ id, url: v.url, res: v.res }));
+}
+
+/** Threads post → its direct mp4. The page also carries replies and other
+ *  posts' media, so walk the embedded JSON for the object whose `code` is
+ *  this post and take its video (or a carousel's first video). */
+async function resolveThreadsVideo(postUrl: string, code: string): Promise<string> {
+  const res = await fetch(postUrl, {
+    headers: { "user-agent": CRAWLER_UA },
+    redirect: "follow",
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Threads returned HTTP ${res.status}`);
+  const html = await res.text();
+
+  type Media = { code?: string; video_versions?: { url?: string }[]; carousel_media?: Media[] };
+  const videoOf = (m: Media) =>
+    m.video_versions?.[0]?.url ??
+    m.carousel_media?.find((c) => c.video_versions?.length)?.video_versions?.[0]?.url;
+  const find = (o: unknown): string | undefined => {
+    if (!o || typeof o !== "object") return undefined;
+    const m = o as Media;
+    const hit = m.code === code ? videoOf(m) : undefined;
+    if (hit) return hit;
+    for (const v of Object.values(o)) {
+      const found = find(v);
+      if (found) return found;
+    }
+    return undefined;
+  };
+
+  for (const [, blob] of html.matchAll(/<script type="application\/json"[^>]*>([\s\S]*?)<\/script>/g)) {
+    if (!blob.includes(code) || !blob.includes("video_versions")) continue;
+    try {
+      const url = find(JSON.parse(blob));
+      if (url) return url;
+    } catch {
+      // not valid JSON — keep scanning the other blobs
+    }
+  }
+  throw new Error("No video found in that Threads post (text/images only, or private)");
 }
 
 async function trim(file: string, start: number, end: number): Promise<string> {
@@ -291,6 +341,85 @@ export async function POST(req: Request) {
     }
   }
 
+  // POST — reframe + phone look on a vaulted take (owner 2026-10-27: Kling
+  // framed the character dead-centre with a phone poking in at the bottom;
+  // real selfie UGC is tighter and off-centre). The crop window comes from postWindow()
+  // (lib/post-frame.ts) on BOTH sides, so the studio's CSS preview and this
+  // render agree — and so do the shake, the colour grade (a 3D LUT built by
+  // lib/post-grade.ts), the window light × vignette mask and the sharpen
+  // (owner 2026-10-28: "like Lightroom, everything doable in post"). Order:
+  // trim → roll → shaking crop → 1080×1920 → RGB (bt709) → LUT → mask →
+  // sharpen → YUV (bt709) → 30fps → soften → grain → encode. The phone
+  // encode is the research chain (lab/HYPERREAL.md): a low-quality pass,
+  // then a high-quality re-encode with a light unsharp. Audio: dropped, or
+  // a quiet room tone.
+  if (action === "post") {
+    const src = typeof body.src === "string" ? body.src : "";
+    const cm = src.match(/^\/api\/clips\?f=([^&]+)/);
+    const f = cm ? decodeURIComponent(cm[1]) : "";
+    if (!cm || !CLIP_FILE_NAME.test(f)) {
+      return Response.json(
+        { error: "Post works on a saved take — wait until it's vaulted (reload once), then retry." },
+        { status: 400 },
+      );
+    }
+    const srcPath = path.join(CLIPS_DIR, f);
+    try {
+      await stat(srcPath);
+    } catch {
+      return Response.json({ error: "Source clip not found" }, { status: 404 });
+    }
+    // One builder for this render and the edit agent's stills
+    // (lib/post-render.ts) — see the order there.
+    const settings = sanitizeSettings(body);
+    const phoneEncode = settings.phoneEncode;
+    await mkdir(CLIPS_DIR, { recursive: true });
+    const stamp = Date.now();
+    const lutPath = isNeutral(settings.grade) ? null : path.join(CLIPS_DIR, `post-lut-${stamp}.cube`);
+    if (lutPath) await writeFile(lutPath, lutCube(settings.grade));
+    const { graph, room } = buildPostGraph(settings, lutPath);
+    const audioArgs = room
+      ? ["-map", "[a]", "-c:a", "aac", "-b:a", "96k", "-shortest"]
+      : ["-an"];
+    const out = path.join(CLIPS_DIR, `clip-post-${stamp}.mp4`);
+    const pass1 = phoneEncode ? path.join(CLIPS_DIR, `clip-post-${stamp}-p1.mp4`) : out;
+    const tag = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709"];
+    try {
+      await run("ffmpeg", [
+        "-y", "-i", srcPath,
+        "-filter_complex", graph, "-map", "[v]",
+        ...audioArgs,
+        "-c:v", "libx264", "-preset", phoneEncode ? "veryfast" : "medium",
+        "-crf", phoneEncode ? "30" : "18", "-pix_fmt", "yuv420p", ...tag,
+        "-movflags", "+faststart",
+        pass1,
+      ]);
+      if (phoneEncode) {
+        await run("ffmpeg", [
+          "-y", "-i", pass1,
+          "-vf", "unsharp=5:5:0.25:5:5:0",
+          ...(room ? ["-c:a", "copy"] : ["-an"]),
+          "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", ...tag,
+          "-movflags", "+faststart",
+          out,
+        ]);
+        await rm(pass1, { force: true });
+      }
+      if (lutPath) await rm(lutPath, { force: true });
+      const info = await stat(out);
+      const served = path.basename(out);
+      return Response.json({
+        name: served,
+        url: `/api/clips?f=${encodeURIComponent(served)}`,
+        bytes: info.size,
+      });
+    } catch (err) {
+      if (lutPath) await rm(lutPath, { force: true });
+      const message = err instanceof Error ? err.message : "Post render failed";
+      return Response.json({ error: message }, { status: 502 });
+    }
+  }
+
   // Lay one vaulted clip's AUDIO over another's VIDEO (transfer flow's
   // "REF AUDIO": the depth pass strips the reference's music, and the take
   // follows the choreography 1:1 — so the original soundtrack drops back
@@ -390,9 +519,13 @@ export async function POST(req: Request) {
       // would cut the wrong (usually empty) range.
       let alreadyTrimmed = false;
 
-      if (/\.(mp4|webm|mov)(\?|$)/i.test(raw) || u.hostname === "video.twimg.com") {
+      // Threads has no yt-dlp extractor — resolve the post to its mp4 first.
+      const threads = raw.match(THREADS_URL);
+      const direct = threads ? await resolveThreadsVideo(raw, threads[1]) : null;
+
+      if (direct || /\.(mp4|webm|mov)(\?|$)/i.test(raw) || u.hostname === "video.twimg.com") {
         // Direct file — plain download.
-        const res = await fetch(raw, { redirect: "follow" });
+        const res = await fetch(direct ?? raw, { redirect: "follow" });
         if (!res.ok) throw new Error(`Source returned HTTP ${res.status}`);
         const len = Number(res.headers.get("content-length") ?? 0);
         if (len > MAX_BYTES) throw new Error("Video too large (200MB max)");

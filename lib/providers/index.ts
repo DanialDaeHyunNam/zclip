@@ -6,6 +6,7 @@ import { grok } from "./grok";
 import { seedance } from "./seedance";
 import { runway } from "./runway";
 import { kling } from "./kling";
+import { kling4 } from "./kling4";
 import { lucy } from "./lucy";
 
 const registry: Record<ProviderName, VideoProvider> = {
@@ -15,6 +16,7 @@ const registry: Record<ProviderName, VideoProvider> = {
   seedance,
   runway,
   kling,
+  kling4,
   lucy,
 };
 

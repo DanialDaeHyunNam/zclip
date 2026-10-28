@@ -21,6 +21,7 @@ import {
   fmtCost,
   isLocalVideoUrl,
   GALLERY_KEY,
+  GALLERY_EVENT,
   PW_KEY,
   PENDING_DEPTH_KEY,
 } from "@/lib/clip";
@@ -44,6 +45,12 @@ import { persistRemoteVideo } from "@/lib/persist-clip";
 
 const FLOWS_KEY = "hooklab.flows";
 
+/** Every gallery write from here tells the studio to adopt it (GALLERY_EVENT). */
+const saveGallery = (gallery: Clip[]) => {
+  store.set(GALLERY_KEY, JSON.stringify(gallery));
+  window.dispatchEvent(new Event(GALLERY_EVENT));
+};
+
 /** What the studio's left frame should show for the flow method. */
 export interface FlowPreview {
   /** "busy" renders the chat method's scanline + elapsed timer in the
@@ -58,6 +65,8 @@ export interface FlowPreview {
    *  COMPARE view (reference | take side-by-side, played together). */
   compareSrc?: string;
   compareLabel?: string;
+  /** video takes only — the take's (estimated) cost, shown beside OUTPUT. */
+  costUsd?: number;
 }
 
 /** 🎲 starter drafts — editing a full draft beats a blank box. Varied
@@ -100,6 +109,51 @@ const IMG_ENGINES = [
   { key: "seedream", label: "Seedream 4.0 (ByteDance — matches Seedance)", cost: 0.035 },
 ] as const;
 
+/** EDIT engines (✎ on a look) — the look rides as image 1, extra references
+ *  (a pose frame, another still) after it. Gemini stays the default so old
+ *  edits behave the same; Grok = xAI /v1/images/edits (~$0.08, observed
+ *  2026-10-27). Owner ask 2026-10-27: a look card + a frame of his acting. */
+const EDIT_ENGINES = [
+  { key: "gemini", label: "Gemini 2.5 Flash Image edit", short: "Gemini", cost: 0.04 },
+  { key: "grok", label: "Grok Imagine edit (multi-image)", short: "Grok", cost: 0.08 },
+] as const;
+
+/** Starter text when a pose/framing reference is attached — image 1 keeps
+ *  the identity, image 2 only lends the pose. Editable, one click. */
+const POSE_REF_TEMPLATE =
+  "Image 1 is the person to keep. Image 2 is a pose and framing reference only. " +
+  "Create a new photo of the person from image 1, keeping their face, identity, hair, makeup, outfit and background exactly as in image 1. " +
+  "Copy image 2's head angle, camera distance, framing, crop and eye direction exactly. " +
+  "Copy nothing else from image 2, not the person's face, hair, skin, clothes, body or room. Natural iPhone front-camera look.";
+
+/** Downscale any drawable to a JPEG dataURL (longest side ≤ max). */
+const drawJpeg = (
+  src: CanvasImageSource,
+  w: number,
+  h: number,
+  max: number,
+  q = 0.88,
+): string => {
+  const k = Math.min(1, max / Math.max(w, h));
+  const c = document.createElement("canvas");
+  c.width = Math.round(w * k);
+  c.height = Math.round(h * k);
+  c.getContext("2d")!.drawImage(src, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", q);
+};
+
+/** An extra reference for an EDIT — full image for the request, a small
+ *  thumb that stays on the resulting attempt as the record. */
+interface EditRef {
+  id: string;
+  image: string; // dataURL, ≤1536px
+  thumb: string; // dataURL, ≤200px
+  label: string;
+  /** false = only DESCRIBED into the prompt (↺ Pose from frame), not sent as
+   *  an image — its thumb still lands on the result as the record. */
+  send?: boolean;
+}
+
 interface FlowImageAttempt {
   id: string;
   prompt: string;
@@ -108,6 +162,9 @@ interface FlowImageAttempt {
   /** Which engine drew it — transfer flows sort Seedream-made first and
    *  badge the rest (their text may render differently on Seedance). */
   engine?: string;
+  /** EDIT made with extra references (pose frame …) — their thumbs, kept as
+   *  the record of what the edit was steered by. */
+  refThumbs?: string[];
 }
 
 interface FlowMotionAttempt {
@@ -180,6 +237,8 @@ interface Flow {
    *  depth-labeled references. */
   keepAudio?: boolean;
   imgEngine?: string;
+  /** Engine for ✎ edits (EDIT_ENGINES) — undefined = gemini. */
+  editEngine?: string;
   imgPrompt: string;
   imgAttempts: FlowImageAttempt[];
   /** Legacy single-confirm (undefined once confirmedImgIds is written). */
@@ -574,12 +633,15 @@ const parseClock = (raw: string): number | null => {
 };
 
 export function FlowPanel({
+  billedByJob,
   onPreview,
   sessionId,
   sideOpen,
   onDigest,
   onNote,
 }: {
+  /** jobId → the provider's bill, once the studio matched it (/api/billing). */
+  billedByJob?: Map<string, number>;
   /** Surface an image/video in the studio's shared left frame. */
   onPreview: (p: FlowPreview | null) => void;
   /** Pipeline status one-liner (depth pass → model call → rendering) —
@@ -608,6 +670,15 @@ export function FlowPanel({
   /** A previous attempt picked as EDIT context ("same look, change only
    *  the outfit") — one-shot, consumed by the next Generate. */
   const [editFrom, setEditFrom] = useState<FlowImageAttempt | null>(null);
+  /** Extra references for the edit (image 2+) — they stay until removed or
+   *  the edit is cancelled, so a re-edit of the result reuses them. */
+  const [editRefs, setEditRefs] = useState<EditRef[]>([]);
+  /** A local video opened to grab ONE frame as a reference (object URL). */
+  const [frameSrc, setFrameSrc] = useState<{ url: string; name: string } | null>(null);
+  const [poseBusy, setPoseBusy] = useState(false);
+  const refImgInput = useRef<HTMLInputElement>(null);
+  const refVidInput = useRef<HTMLInputElement>(null);
+  const frameVid = useRef<HTMLVideoElement>(null);
   /** Live one-liner for the ANIMATE pipeline (depth pass → model call) —
    *  the user must SEE what's running and what to wait for. */
   const [depthNote, setDepthNote] = useState<string | null>(null);
@@ -813,6 +884,80 @@ export function FlowPanel({
   const imgEngine =
     IMG_ENGINES.find((e) => e.key === (flow?.imgEngine ?? "grok")) ??
     IMG_ENGINES[0];
+  const editEngine =
+    EDIT_ENGINES.find((e) => e.key === (flow?.editEngine ?? "gemini")) ??
+    EDIT_ENGINES[0];
+  const runLabel = editFrom ? editEngine.label : imgEngine.label;
+
+  /** ＋ Reference image → an EditRef (image 2+ of the next edit). */
+  const addRefImage = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    try {
+      const bmp = await createImageBitmap(file);
+      const ref: EditRef = {
+        id: `r${Date.now()}`,
+        image: drawJpeg(bmp, bmp.width, bmp.height, 1536),
+        thumb: drawJpeg(bmp, bmp.width, bmp.height, 200, 0.75),
+        label: file.name,
+      };
+      setEditRefs((rs) => [...rs, ref].slice(-4));
+    } catch {
+      setError("Could not read that image.");
+    }
+  };
+
+  /** ↺ Pose from frame — Gemini writes the newest reference's camera +
+   *  performance as words (no identity), the prompt becomes "same person, new
+   *  shot: …", and that reference stops riding as an image (words steer the
+   *  camera; a pose image is ignored — DEVLOG #47). */
+  const poseFromFrame = async () => {
+    const ref = editRefs[editRefs.length - 1];
+    if (!flow || !ref || poseBusy) return;
+    setPoseBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/describe", {
+        method: "POST",
+        headers: headers("GEMINI_API_KEY"),
+        body: JSON.stringify({ image: splitDataUrl(ref.image), mode: "pose" }),
+      });
+      const b = await r.json();
+      if (!r.ok || typeof b.text !== "string") {
+        setError(b.error ?? "Couldn't read the pose from that frame");
+        return;
+      }
+      patchFlow(flow.id, {
+        imgPrompt:
+          "Same person as this look, same outfit and background. A new shot of them: " +
+          b.text.trim() +
+          " Natural iPhone front-camera look.",
+      });
+      setEditRefs((rs) => rs.map((x) => (x.id === ref.id ? { ...x, send: false } : x)));
+    } catch {
+      setError("Network error — try again");
+    } finally {
+      setPoseBusy(false);
+    }
+  };
+
+  /** 📸 Use this frame — the paused video frame becomes an EditRef. */
+  const grabFrame = () => {
+    const v = frameVid.current;
+    if (!v || !frameSrc || !v.videoWidth) {
+      setError("The video isn't ready yet — let it load, then scrub to the frame.");
+      return;
+    }
+    const t = v.currentTime;
+    const ref: EditRef = {
+      id: `r${Date.now()}`,
+      image: drawJpeg(v, v.videoWidth, v.videoHeight, 1536),
+      thumb: drawJpeg(v, v.videoWidth, v.videoHeight, 200, 0.75),
+      label: `${frameSrc.name} @ ${t.toFixed(1)}s`,
+    };
+    setEditRefs((rs) => [...rs, ref].slice(-4));
+    URL.revokeObjectURL(frameSrc.url);
+    setFrameSrc(null);
+  };
   // Confirmed looks, in order. Migrate the legacy single field on read.
   const confirmedIds =
     flow?.confirmedImgIds ??
@@ -892,6 +1037,7 @@ export function FlowPanel({
         src: done.videoUrl,
         aspect: done.aspectRatio,
         label: `${done.modelLabel} · take`,
+        costUsd: done.costUsd,
         compareSrc:
           (flow.kind ?? "look") !== "look" ? flow.refClip?.url : undefined,
         compareLabel: flow.refClip?.label,
@@ -947,7 +1093,7 @@ export function FlowPanel({
 
   /** Flip a selected look between IMAGE mode (rides as a reference_image)
    *  and TEXT mode (its generation prompt is sent as the character
-   *  description — skips Seedance's real-person filter). The chip STAYS
+   *  description — Seedance rejects photoreal face images, not text). The chip STAYS
    *  either way; only how it's sent changes. */
   const toggleLookText = (a: FlowImageAttempt) => {
     if (!flow) return;
@@ -1240,7 +1386,7 @@ export function FlowPanel({
         const hit = gallery.find((c) => c.jobId === a.jobId);
         if (hit) {
           hit.videoUrl = mb.url;
-          store.set(GALLERY_KEY, JSON.stringify(gallery));
+          saveGallery(gallery);
         }
       } catch {
         /* library share is best-effort */
@@ -1250,6 +1396,7 @@ export function FlowPanel({
         src: mb.url,
         aspect: a.aspectRatio,
         label: `${a.modelLabel} · take ♪`,
+        costUsd: a.costUsd,
         compareSrc: flow.refClip?.url,
         compareLabel: flow.refClip?.label,
       });
@@ -1494,7 +1641,7 @@ export function FlowPanel({
         try {
           const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
           if (!gallery.some((c) => c.jobId === clip.jobId)) {
-            store.set(GALLERY_KEY, JSON.stringify([clip, ...gallery]));
+            saveGallery([clip, ...gallery]);
           }
         } catch {
           /* library share is best-effort */
@@ -1613,17 +1760,23 @@ export function FlowPanel({
       kind: "busy",
       src: "",
       aspect: flow.aspect,
-      label: `${imgEngine.label} — generating a still · usually ~10s`,
+      label: `${runLabel} — ${editFrom ? "editing" : "generating"} a still · usually ~10s${
+        editFrom && editRefs.some((r) => r.send !== false)
+          ? ` · +${editRefs.filter((r) => r.send !== false).length} ref`
+          : ""
+      }`,
       startedAt: Date.now(),
     });
     setError(null);
     try {
       const r = await fetch("/api/image", {
         method: "POST",
-        // Edits route through Gemini image server-side regardless of engine.
+        // Edits run on the EDIT engine (Gemini unless Grok is picked).
         headers: headers(
           editFrom
-            ? "GEMINI_API_KEY"
+            ? editEngine.key === "grok"
+              ? "XAI_API_KEY"
+              : "GEMINI_API_KEY"
             : imgEngine.key === "gpt"
               ? "OPENAI_API_KEY"
               : imgEngine.key === "gemini"
@@ -1632,11 +1785,15 @@ export function FlowPanel({
         ),
         body: JSON.stringify({
           prompt: flow.imgPrompt,
-          engine: imgEngine.key,
+          engine: editFrom ? editEngine.key : imgEngine.key,
           aspect: flow.aspect,
-          // EDIT mode: the picked attempt rides as reference (server
-          // routes edits through Gemini image regardless of engine)
+          // EDIT mode: the picked attempt rides as image 1, extra
+          // references (pose frame …) as image 2+.
           image: editFrom ? splitDataUrl(editFrom.image) : undefined,
+          images:
+            editFrom && editRefs.some((r) => r.send !== false)
+              ? editRefs.filter((r) => r.send !== false).map((r) => splitDataUrl(r.image))
+              : undefined,
         }),
       });
       const b = await r.json();
@@ -1650,7 +1807,10 @@ export function FlowPanel({
         prompt: flow.imgPrompt,
         image: `data:${b.mimeType};base64,${b.base64}`,
         createdAt: Date.now(),
-        engine: editFrom ? "gemini" : imgEngine.key,
+        engine: editFrom ? editEngine.key : imgEngine.key,
+        ...(editFrom && editRefs.length
+          ? { refThumbs: editRefs.map((r) => r.thumb) }
+          : {}),
       };
       patchFlow(flow.id, (f) => ({
         imgAttempts: [...f.imgAttempts, attempt],
@@ -1660,7 +1820,7 @@ export function FlowPanel({
         kind: "image",
         src: attempt.image,
         aspect: flow.aspect,
-        label: `${imgEngine.label} · draft`,
+        label: `${runLabel} · draft`,
       });
     } catch {
       setError("Network error — try again");
@@ -1766,7 +1926,7 @@ export function FlowPanel({
       };
       try {
         const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
-        store.set(GALLERY_KEY, JSON.stringify([clip, ...gallery]));
+        saveGallery([clip, ...gallery]);
       } catch {
         /* library share is best-effort */
       }
@@ -1827,7 +1987,7 @@ export function FlowPanel({
       };
       try {
         const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
-        store.set(GALLERY_KEY, JSON.stringify([clip, ...gallery]));
+        saveGallery([clip, ...gallery]);
       } catch {
         /* library share is best-effort */
       }
@@ -1849,9 +2009,9 @@ export function FlowPanel({
     if (!flow || !flow.motionPrompt.trim()) return;
     // Look flows need a confirmed still (it IS the i2v input). Transfer flows
     // need the MOVES clip; the identity look is OPTIONAL — describing a
-    // fictional character in the prompt (no image) sidesteps Seedance's
-    // real-person filter entirely (motion from the depth clip, identity from
-    // text).
+    // fictional character in the prompt (no image) is accepted — Seedance
+    // rejects photoreal face images (motion from the depth clip, identity
+    // from text).
     if (flow.kind === "transfer" ? !flow.refClip : !confirmedImg) return;
     // In-flight lock: the bar only hides after the request resolves, so a
     // second click in that window would fire a duplicate take. Guard it.
@@ -2043,7 +2203,7 @@ export function FlowPanel({
                   };
                   try {
                     const gallery = JSON.parse(store.get(GALLERY_KEY) ?? "[]") as Clip[];
-                    store.set(GALLERY_KEY, JSON.stringify([clip, ...gallery]));
+                    saveGallery([clip, ...gallery]);
                   } catch {
                     /* library share is best-effort */
                   }
@@ -2183,7 +2343,7 @@ export function FlowPanel({
           // first-frame image (identity is reference_image or pure text).
           image: isTransfer || flow.kind === "restyle" ? undefined : stillImage,
           // Transfer: each confirmed look rides as a reference_image (one per
-          // person). Empty ⇒ text-only identity (skips the real-person filter).
+          // person). Empty ⇒ text-only identity (no face image sent).
           images: isTransfer && refImages.length ? refImages : undefined,
           drivingVideo,
         }),
@@ -2306,6 +2466,7 @@ export function FlowPanel({
                 src: url,
                 aspect: a.aspectRatio,
                 label: `${a.modelLabel} · done`,
+                costUsd: a.costUsd,
                 compareSrc:
                   (f.kind ?? "look") !== "look" ? f.refClip?.url : undefined,
                 compareLabel: f.refClip?.label,
@@ -2332,7 +2493,7 @@ export function FlowPanel({
                     remoteUrl: local ? b.videoUrl : undefined,
                     costUsd: a.costUsd,
                   });
-                  store.set(GALLERY_KEY, JSON.stringify(gallery));
+                  saveGallery(gallery);
                 }
               } catch {
                 /* gallery share is best-effort; the flow keeps its copy */
@@ -2886,6 +3047,33 @@ export function FlowPanel({
                       ✓ {isTransfer ? "SELECTED" : "CONFIRMED"}
                     </span>
                   )}
+                  {/* EDIT steered by extra refs — the ref thumbs are the record */}
+                  {a.refThumbs?.length ? (
+                    <span
+                      className="mono"
+                      title={`Edited with ${a.refThumbs.length} extra reference(s) · ${a.engine ?? ""}`}
+                      style={{
+                        position: "absolute",
+                        left: 6,
+                        top: 6,
+                        display: "flex",
+                        gap: 3,
+                        padding: 3,
+                        borderRadius: 8,
+                        background: "rgba(0,0,0,.55)",
+                      }}
+                    >
+                      {a.refThumbs.map((t, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={i}
+                          src={t}
+                          alt=""
+                          style={{ width: 18, height: 30, objectFit: "cover", borderRadius: 3 }}
+                        />
+                      ))}
+                    </span>
+                  ) : null}
                   {/* Non-Seedream cards in a transfer flow: honest note —
                       the text identity may render differently on Seedance. */}
                   {isTransfer && a.engine && a.engine !== "seedream" && (
@@ -2940,7 +3128,7 @@ export function FlowPanel({
         {/* Selected looks as compact removable chips (the thumbnail also
             stays ✓-badged in the carousel above). Transfer flows: each
             chip can go as the IMAGE (default) or ↳ its TEXT (the prompt that
-            made it, avoiding the real-person filter). */}
+            made it — no face image sent). */}
         {confirmedImgs.length > 0 && (
           <div className="flow-selected-chips">
             {confirmedImgs.map((a, n) => {
@@ -2957,14 +3145,14 @@ export function FlowPanel({
                   {isTransfer && confirmedImgs.length > 1 ? `#${n + 1} · ` : ""}
                   {a.prompt.startsWith("(") ? "look" : a.prompt.slice(0, 18)}
                   {/* Sent as… toggle: IMAGE (default) vs TEXT (its prompt).
-                      TEXT sidesteps Seedance's real-person filter. */}
+                      TEXT sends no face image. */}
                   {isTransfer && hasText && (
                     <button
                       className="flow-sel-mode"
                       title={
                         asText
                           ? "Sent as TEXT (this look's identity description). Click to send the IMAGE instead."
-                          : "Sent as the IMAGE. Click to send its identity as text (avoids Seedance's real-person filter)."
+                          : "Sent as the IMAGE. Click to send its identity as text instead (Seedance rejects photoreal face images)."
                       }
                       onClick={() => toggleLookText(a)}
                     >
@@ -3133,30 +3321,158 @@ export function FlowPanel({
                   editing this look — describe ONLY the change
                   <button
                     className="link-btn danger"
-                    onClick={() => setEditFrom(null)}
+                    onClick={() => {
+                      setEditFrom(null);
+                      setEditRefs([]);
+                    }}
                     aria-label="Cancel edit context"
                   >
                     ✕
                   </button>
                 </span>
+                {/* image 2+ — pose frame / other stills that steer the edit */}
+                {editRefs.map((r, i) => (
+                  <span key={r.id} className="sel-chip" title={r.label}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={r.thumb} alt="" />
+                    {r.send === false ? "pose → words" : `image ${i + 2}`} ·{" "}
+                    {r.label.length > 22 ? `${r.label.slice(0, 22)}…` : r.label}
+                    <button
+                      className="link-btn danger"
+                      onClick={() => setEditRefs((rs) => rs.filter((x) => x.id !== r.id))}
+                      aria-label="Remove reference"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {editFrom && (
+              <div className="flow-gen-actions" style={{ marginBottom: 8 }}>
+                <button
+                  className="link-btn"
+                  disabled={editRefs.length >= 4}
+                  onClick={() => refImgInput.current?.click()}
+                  title="Add a still that steers the edit — it rides as image 2+ after the look"
+                >
+                  ＋ Reference image
+                </button>
+                <button
+                  className="link-btn"
+                  disabled={editRefs.length >= 4}
+                  onClick={() => refVidInput.current?.click()}
+                  title="Open a local video, scrub to a frame, use it as a reference (e.g. the first frame of your own acting clip)"
+                >
+                  ＋ Frame from video
+                </button>
+                {editRefs.length > 0 && (
+                  <button
+                    className="link-btn"
+                    disabled={poseBusy}
+                    onClick={() => void poseFromFrame()}
+                    title="Gemini reads the newest reference's camera distance, head turn, gaze and expression (no identity) and writes them as the prompt — the frame then steers by WORDS, not as an image (~$0.001)"
+                  >
+                    {poseBusy ? "Reading pose…" : "↺ Pose from frame"}
+                  </button>
+                )}
+                {editRefs.length > 0 && (
+                  <button
+                    className="link-btn"
+                    onClick={() => patchFlow(flow.id, { imgPrompt: POSE_REF_TEMPLATE })}
+                    title="Fill the prompt with the pose-match template — image 1 keeps identity, image 2 lends only the pose"
+                  >
+                    ↺ Pose template
+                  </button>
+                )}
+                <input
+                  ref={refImgInput}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void addRefImage(f);
+                    e.target.value = "";
+                  }}
+                />
+                <input
+                  ref={refVidInput}
+                  type="file"
+                  accept="video/*"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      if (frameSrc) URL.revokeObjectURL(frameSrc.url);
+                      setFrameSrc({ url: URL.createObjectURL(f), name: f.name });
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            )}
+            {editFrom && frameSrc && (
+              <div className="flow-gen-row" style={{ marginBottom: 10 }}>
+                <video
+                  ref={frameVid}
+                  src={frameSrc.url}
+                  controls
+                  muted
+                  playsInline
+                  preload="auto"
+                  style={{ maxHeight: 260, maxWidth: "100%", borderRadius: 12, background: "#000" }}
+                />
+                <div className="flow-gen-actions">
+                  <button className="btn-primary flow-btn" onClick={grabFrame}>
+                    📸 Use this frame
+                  </button>
+                  <button
+                    className="link-btn"
+                    onClick={() => {
+                      URL.revokeObjectURL(frameSrc.url);
+                      setFrameSrc(null);
+                    }}
+                  >
+                    ✕ close
+                  </button>
+                </div>
               </div>
             )}
             <div className="flow-params">
-              <label className="mono">
-                IMAGE MODEL{" "}
-                <select
-                  value={imgEngine.key}
-                  onChange={(e) =>
-                    patchFlow(flow.id, { imgEngine: e.target.value })
-                  }
-                >
-                  {IMG_ENGINES.map((e) => (
-                    <option key={e.key} value={e.key}>
-                      {e.label} · ~${e.cost.toFixed(2)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {editFrom ? (
+                <label className="mono">
+                  EDIT MODEL{" "}
+                  <select
+                    value={editEngine.key}
+                    onChange={(e) =>
+                      patchFlow(flow.id, { editEngine: e.target.value })
+                    }
+                  >
+                    {EDIT_ENGINES.map((e) => (
+                      <option key={e.key} value={e.key}>
+                        {e.label} · ~${e.cost.toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label className="mono">
+                  IMAGE MODEL{" "}
+                  <select
+                    value={imgEngine.key}
+                    onChange={(e) =>
+                      patchFlow(flow.id, { imgEngine: e.target.value })
+                    }
+                  >
+                    {IMG_ENGINES.map((e) => (
+                      <option key={e.key} value={e.key}>
+                        {e.label} · ~${e.cost.toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
             <div className="flow-gen-row">
               <textarea
@@ -3182,9 +3498,13 @@ export function FlowPanel({
                   {busyImg
                     ? "Generating…"
                     : armed === "img"
-                      ? `Confirm · ~$${editFrom ? "0.04" : imgEngine.cost.toFixed(2)}`
+                      ? `Confirm · ~$${(editFrom ? editEngine.cost : imgEngine.cost).toFixed(2)}`
                       : editFrom
-                        ? "Edit look · Gemini"
+                        ? `Edit look · ${editEngine.short}${
+                            editRefs.some((r) => r.send !== false)
+                              ? ` · +${editRefs.filter((r) => r.send !== false).length} ref`
+                              : ""
+                          }`
                         : "Generate look"}
                 </button>
                 <button
@@ -3821,6 +4141,7 @@ export function FlowPanel({
                     src: a.videoUrl,
                     aspect: a.aspectRatio,
                     label: `${a.modelLabel} · take`,
+                    costUsd: a.costUsd,
                     compareSrc:
                       (flow.kind ?? "look") !== "look" ? flow.refClip?.url : undefined,
                     compareLabel: flow.refClip?.label,
@@ -3830,7 +4151,11 @@ export function FlowPanel({
                 <div className="spec-head">
                   {a.modelLabel.toUpperCase()} · {a.durationSeconds}s ·{" "}
                   {a.status.toUpperCase()}
-                  {fmtCost(a.costUsd) ? ` · ${fmtCost(a.costUsd)}` : ""}
+                  {a.jobId && billedByJob?.has(a.jobId)
+                    ? ` · ${fmtCost(billedByJob.get(a.jobId))} billed`
+                    : fmtCost(a.costUsd)
+                      ? ` · ≈${fmtCost(a.costUsd)}`
+                      : ""}
                 </div>
                 {/* prune the history — a finished take stays in the Library
                     (the spend ledger), only this list entry goes */}

@@ -1,15 +1,18 @@
 version: 1
-updated: 2026-07-21T07:39:26.528Z
+updated: 2026-08-02T15:10:34.960Z
 
 files:
   "lib/config.ts":
     status: active
     source: "claude:Danial Nam"
     created: 2026-07-07
-    last_modified: 2026-07-19T04:18:12.566Z
-    change_count: 34
+    last_modified: 2026-08-02T15:10:34.960Z
+    change_count: 35
     purpose: "The switchboard: PROVIDERS adapters + MODELS catalog (model≠adapter), pricing, duration rules (effectiveSeconds), cost estimates, key allowlist"
     change_log:
+      - date: 2026-08-02T15:10:34.960Z
+        action: edit
+        source: "claude:Danial Nam"
       - date: 2026-07-19T04:18:12.566Z
         action: edit
         source: "claude:Danial Nam"
@@ -742,3 +745,102 @@ files:
       - date: 2026-07-21T07:39:26.528Z
         action: write
         source: "claude:Danial Nam"
+  "lib/stock.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-08-02
+    last_modified: 2026-08-02T14:09:22.054Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-08-02T14:09:22.054Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/cut-compose.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-08-02
+    last_modified: 2026-08-02T14:10:08.642Z
+    change_count: 1
+    purpose: ""
+    change_log:
+      - date: 2026-08-02T14:10:08.642Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/billing.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-10-28
+    last_modified: 2026-10-28T05:07:41.000Z
+    change_count: 1
+    purpose: "Per-provider actual cost of one job (xAI ticks, Runway credits, BytePlus tokens × price, fal billing-events) with billed/units/est source"
+    change_log:
+      - date: 2026-10-28T05:07:41.000Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/post-frame.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-10-28
+    last_modified: 2026-10-28T05:07:41.000Z
+    change_count: 1
+    purpose: "✂ POST geometry/effects SSOT: crop window, handheld shake (JS + ffmpeg expr), window light × vignette mask, grain strength, presets"
+    change_log:
+      - date: 2026-10-28T05:07:41.000Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/post-grade.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-10-28
+    last_modified: 2026-10-28T05:07:41.000Z
+    change_count: 1
+    purpose: "Lightroom-style grade as one per-pixel function → 33³ LUT (WebGL texture + .cube for ffmpeg lut3d), neutral/sanitize helpers"
+    change_log:
+      - date: 2026-10-28T05:07:41.000Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/post-render.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-10-28
+    last_modified: 2026-10-28T05:07:41.000Z
+    change_count: 1
+    purpose: "Builds the ✂ POST ffmpeg filter graph (video render and the edit agent's stills share it)"
+    change_log:
+      - date: 2026-10-28T05:07:41.000Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/post-settings.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-10-28
+    last_modified: 2026-10-28T05:07:41.000Z
+    change_count: 1
+    purpose: "PostSettings shape + clamp/merge (patches over a base) shared by the panel, render route and edit agent"
+    change_log:
+      - date: 2026-10-28T05:07:41.000Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/providers/kling4.ts":
+    status: active
+    source: "claude:Danial Nam"
+    created: 2026-10-27
+    last_modified: 2026-10-28T05:07:41.000Z
+    change_count: 1
+    purpose: "Kling 4.0 via fal queue — image-to-video, or reference-to-video when a clip rides (clip = timing/emotion reference, face native)"
+    change_log:
+      - date: 2026-10-28T05:07:41.000Z
+        action: write
+        source: "claude:Danial Nam"
+  "lib/vlog-blocks.ts":
+    status: active
+    source: "user:Danial Nam"
+    created: 2026-07-16
+    last_modified: 2026-10-28T05:07:41.000Z
+    change_count: 1
+    purpose: "Vlog format bank — pickable format/look/move/script blocks + composeVlog() for realistic talking-vlog prompts"
+    change_log:
+      - date: 2026-10-28T05:07:41.000Z
+        action: sync
+        source: "user:Danial Nam"

@@ -6,8 +6,8 @@ import type { VideoProvider, SubmitParams, JobStatus } from "./types";
  * restyling. The opposite philosophy from the depth→Seedance path: the raw
  * clip IS the driver (motion, camera, timing come free) and the prompt says
  * what to change ("turn the dancer into …"). Decart's product openly edits
- * real people (self-transformation is its demo), so no depth pass and no
- * real-person filter dance here — the RAW clip uploads to the temp host.
+ * real people (self-transformation is its demo), so no depth pass here —
+ * the RAW clip uploads to the temp host.
  *
  * fal queue convention (docs 2026-07-19, shapes UNVERIFIED until the first
  * real run — a reject surfaces loudly and bills nothing):

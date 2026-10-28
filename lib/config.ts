@@ -13,6 +13,7 @@ export type ProviderName =
   | "seedance"
   | "runway"
   | "kling"
+  | "kling4"
   | "lucy";
 export type AspectRatio = "9:16" | "16:9";
 export type Resolution = "720p" | "1080p";
@@ -63,7 +64,7 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     label: "Veo 3.1 Fast",
     // Veo 3.0 was shut down 2026-06-30 — 3.1 is the current family.
     modelId: "veo-3.1-fast-generate-preview",
-    implemented: true,
+    implemented: false, // shut down in the Gemini API 2026-10-22
     envVar: "GEMINI_API_KEY",
     docsUrl: "https://ai.google.dev/gemini-api/docs/veo",
     keyUrl: "https://aistudio.google.com/apikey",
@@ -78,7 +79,7 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     tier: "recommended",
     quality: 3,
     speed: 2,
-    note: "No free tier — the API key's project needs billing. Durations 4/6/8s (1080p ⇒ 8s).",
+    note: "SHUT DOWN — Veo 3.1 left the Gemini API on 2026-10-22 (no veo model listed 2026-10-28). Successor gemini-omni-1.1-flash (~$0.10/s) isn't wired yet.",
   },
   sora: {
     label: "Sora 2",
@@ -187,6 +188,28 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     speed: 2,
     note: "UNVERIFIED — adapter built from Kling API docs 2026-07-13; verify on first real run. Key format ACCESS_KEY:SECRET_KEY (needs the separate API plan, not the consumer sub). Durations snap to 5/10s.",
   },
+  kling4: {
+    label: "Kling 4.0 (fal)",
+    modelId: "kling/v4/image-to-video", // reference-to-video when a clip rides along (adapter picks)
+    implemented: true,
+    envVar: "FAL_KEY",
+    docsUrl: "https://fal.ai/models/kling/v4/reference-to-video/api",
+    keyUrl: "https://fal.ai/dashboard/keys",
+    dashboardUrl: "https://fal.ai/dashboard/usage-billing",
+    adapterFile: "lib/providers/kling4.ts",
+    // fal page 2026-10-27: 720p $0.157/s · 1080p $0.235/s (a video reference
+    // bills $0.094/s on input+output instead — estimate uses the i2v rate).
+    costPerSecondUsd: { "720p": 0.157, "1080p": 0.235 },
+    chartColor: "#D2694A", // added 2026-10-27 — re-validate the palette set
+    short: "Kling 4.0",
+    company: "Kuaishou (fal)",
+    tagline: "Best micro-expressions (Oct 2026 tests) · a clip rides as REFERENCE, face stays native",
+    bestFor: "Hyperreal UGC reactions — a look + your own acting as timing reference",
+    tier: "recommended",
+    quality: 3,
+    speed: 2,
+    note: "Image only → image-to-video; image + attached clip → reference-to-video (the clip lends timing/head moves/emotion, the face and mouth are generated for the card). Duration 3–15s. First wired 2026-10-27 — verify on the first run.",
+  },
   lucy: {
     label: "Lucy Edit Pro",
     // Decart's text-guided VIDEO-TO-VIDEO restyle via fal's queue API — the
@@ -212,11 +235,13 @@ export const PROVIDERS: Record<ProviderName, ProviderInfo> = {
     quality: 3,
     speed: 2,
     transferOnly: true,
-    note: "Video-to-video ONLY (the source clip drives everything). fal queue shapes from docs 2026-07-19 — verify on first real run. The RAW clip is uploaded to a temp host; unlike Seedance there is no real-person filter to dodge.",
+    note: "Video-to-video ONLY (the source clip drives everything). fal queue shapes from docs 2026-07-19 — verify on first real run. The RAW clip is uploaded to a temp host; unlike Seedance it takes real-person footage as is.",
   },
 };
 
-export const DEFAULT_PROVIDER: ProviderName = "veo";
+// Veo 3.1 left the Gemini API on 2026-10-22 (verified 2026-10-28: no veo
+// model in the models list) — Grok Imagine is the default now.
+export const DEFAULT_PROVIDER: ProviderName = "grok";
 
 /* ── MODEL CATALOG ────────────────────────────────────────────────────
  * The picker shops MODELS, not PROVIDERS. Several models can ride ONE
@@ -332,6 +357,7 @@ export const MODELS: ModelEntry[] = [
   defaultModel("runway"),
   // Kuaishou
   defaultModel("kling"),
+  defaultModel("kling4"),
   // Decart (fal)
   defaultModel("lucy"),
   // ByteDance
@@ -377,7 +403,7 @@ export const MODELS: ModelEntry[] = [
  *  (reference-to-video). Gates transfer flows, SPEC keep/bypass, the
  *  continuity skip, and the reference_image+reference_video pairing. */
 export const readsClip = (modelKey: string): boolean =>
-  modelKey.startsWith("seedance-2");
+  modelKey.startsWith("seedance-2") || modelKey === "kling4";
 
 /** Lucy-family v2v restylers — the models behind the RESTYLE flow
  *  (Video → Image): the raw clip drives, the prompt says what to become. */
@@ -417,6 +443,17 @@ export const KEY_ENV_VARS = [
   "RUNWAYML_API_SECRET",
   "KLING_API_KEY",
   "FAL_KEY",
+  // fal's billing-events API refuses inference keys — a separate key with
+  // the BILLING (or FULL) preset lets /api/billing read the real charge of
+  // each Kling / Lucy request (lib/billing.ts).
+  "FAL_BILLING_KEY",
+  // OpenAI's Costs API (organization bill by day / line item) needs an ADMIN
+  // key from the org that owns OPENAI_API_KEY — the dashboard compares it
+  // with ZCLIP's own OpenAI ledger lines (lib/call-ledger.ts).
+  "OPENAI_ADMIN_KEY",
+  // No video provider uses Anthropic — this key exists for the CUT script
+  // writer only (app/api/cut-script), so Claude shows up in its model picker.
+  "ANTHROPIC_API_KEY",
 ] as const;
 
 /** Whitelists — the API routes validate against these, never raw client input. */
@@ -444,6 +481,7 @@ export function effectiveSeconds(
   }
   if (provider === "sora") return 8;
   if (provider === "kling") return r <= 7 ? 5 : 10; // API grid: 5s or 10s
+  if (provider === "kling4") return Math.max(3, r); // fal Kling 4.0: 3–30s
   // Act-Two's output length = the driving video's length; the caller passes
   // the reference clip's duration through as `requested`.
   return r;
@@ -475,11 +513,19 @@ export function estimateCostUsd(
 
 /** Per-model cost — uses the model's own pricing (a variant can cost more
  *  than its provider's default) but the provider's duration/min rules. */
+/** fal Kling 4.0 reference-to-video: billed on input + output seconds,
+ *  at least 2× the output (fal pricing page, read 2026-10-28). */
+const KLING4_REF_RATE: Record<Resolution, number> = { "720p": 0.094, "1080p": 0.141 };
+
 export function estimateModelCost(
   m: ModelEntry,
   resolution: Resolution,
   durationSeconds: number,
+  opts: { refSeconds?: number } = {},
 ): number | null {
+  if (m.provider === "kling4" && opts.refSeconds) {
+    return KLING4_REF_RATE[resolution] * Math.max(opts.refSeconds + durationSeconds, 2 * durationSeconds);
+  }
   const rate = m.pricePerSecUsd?.[resolution];
   if (rate == null) return null;
   return (

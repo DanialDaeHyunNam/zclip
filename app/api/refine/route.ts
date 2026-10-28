@@ -1,6 +1,7 @@
 import { REFINER_MODEL_ID } from "@/lib/config";
 import { checkPassword, unauthorized } from "@/lib/auth";
 import { resolveKey, missingKey } from "@/lib/server-keys";
+import { logCall } from "@/lib/call-ledger";
 
 /**
  * Conversational prompt refinement via Gemini Flash (same API key as Veo).
@@ -172,6 +173,7 @@ HARD RULES:
   }
 
   const data = await res.json();
+  await logCall(req, { route: "refine", kind: "text", provider: "gemini", model: REFINER_MODEL_ID, body: data });
   const prompt: string | undefined =
     data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
   if (!prompt) {
